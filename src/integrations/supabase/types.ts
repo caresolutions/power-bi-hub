@@ -17,6 +17,7 @@ export type Database = {
       dashboards: {
         Row: {
           created_at: string
+          credential_id: string | null
           dashboard_id: string
           id: string
           name: string
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          credential_id?: string | null
           dashboard_id: string
           id?: string
           name: string
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          credential_id?: string | null
           dashboard_id?: string
           id?: string
           name?: string
@@ -46,6 +49,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dashboards_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "power_bi_configs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dashboards_owner_id_fkey"
             columns: ["owner_id"]
@@ -61,6 +71,7 @@ export type Database = {
           client_secret: string
           created_at: string
           id: string
+          name: string
           tenant_id: string
           updated_at: string
           user_id: string
@@ -70,6 +81,7 @@ export type Database = {
           client_secret: string
           created_at?: string
           id?: string
+          name?: string
           tenant_id: string
           updated_at?: string
           user_id: string
@@ -79,6 +91,7 @@ export type Database = {
           client_secret?: string
           created_at?: string
           id?: string
+          name?: string
           tenant_id?: string
           updated_at?: string
           user_id?: string
@@ -87,7 +100,7 @@ export type Database = {
           {
             foreignKeyName: "power_bi_configs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -114,6 +127,45 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -163,15 +215,75 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          dashboard_ids: string[]
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          dashboard_ids?: string[]
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          dashboard_ids?: string[]
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -298,6 +410,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

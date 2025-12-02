@@ -36,7 +36,7 @@ const Auth = () => {
           description: "Você será redirecionado...",
         });
         
-        navigate("/dashboard");
+        navigate("/home");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -56,7 +56,7 @@ const Auth = () => {
           description: "Você será redirecionado para o onboarding...",
         });
         
-        navigate("/onboarding");
+        navigate("/home");
       }
     } catch (error: any) {
       toast({
