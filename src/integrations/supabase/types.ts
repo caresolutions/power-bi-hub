@@ -19,9 +19,11 @@ export type Database = {
           created_at: string
           credential_id: string | null
           dashboard_id: string
+          embed_type: string
           id: string
           name: string
           owner_id: string
+          public_link: string | null
           report_section: string | null
           updated_at: string
           workspace_id: string
@@ -30,9 +32,11 @@ export type Database = {
           created_at?: string
           credential_id?: string | null
           dashboard_id: string
+          embed_type?: string
           id?: string
           name: string
           owner_id: string
+          public_link?: string | null
           report_section?: string | null
           updated_at?: string
           workspace_id: string
@@ -41,9 +45,11 @@ export type Database = {
           created_at?: string
           credential_id?: string | null
           dashboard_id?: string
+          embed_type?: string
           id?: string
           name?: string
           owner_id?: string
+          public_link?: string | null
           report_section?: string | null
           updated_at?: string
           workspace_id?: string
