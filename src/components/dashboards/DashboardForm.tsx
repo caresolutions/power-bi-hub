@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -37,15 +37,71 @@ interface DashboardFormProps {
 }
 
 const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: DashboardFormProps) => {
+  const [url, setUrl] = useState("");
   const [name, setName] = useState(dashboard?.name || "");
   const [workspaceId, setWorkspaceId] = useState(dashboard?.workspace_id || "");
   const [dashboardId, setDashboardId] = useState(dashboard?.dashboard_id || "");
   const [reportSection, setReportSection] = useState(dashboard?.report_section || "");
   const [credentialId, setCredentialId] = useState(dashboard?.credential_id || "");
   const [loading, setLoading] = useState(false);
+  const [urlParsed, setUrlParsed] = useState(false);
   const { toast } = useToast();
 
   const isEditing = !!dashboard;
+
+  const parseDashboardUrl = (inputUrl: string) => {
+    try {
+      // Expected format: https://app.powerbi.com/groups/{workspaceId}/reports/{dashboardId}/{reportSection}
+      const match = inputUrl.match(/groups\/([^/]+)\/reports\/([^/]+)\/([^?]+)/);
+      
+      if (match) {
+        setWorkspaceId(match[1]);
+        setDashboardId(match[2]);
+        setReportSection(match[3]);
+        setUrlParsed(true);
+        
+        toast({
+          title: "URL processada!",
+          description: "Campos preenchidos automaticamente",
+        });
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const handleUrlChange = (value: string) => {
+    setUrl(value);
+    setUrlParsed(false);
+    
+    // Auto-parse when URL looks complete
+    if (value.includes("powerbi.com") && value.includes("/reports/")) {
+      parseDashboardUrl(value);
+    }
+  };
+
+  const handleParseUrl = () => {
+    if (!url) {
+      toast({
+        title: "Erro",
+        description: "Cole a URL do dashboard primeiro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = parseDashboardUrl(url);
+    if (!success) {
+      toast({
+        title: "URL inválida",
+        description: "Não foi possível extrair as informações. Verifique se a URL está no formato correto.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,12 +184,49 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             <p className="text-muted-foreground">
               {isEditing 
                 ? "Atualize as informações do dashboard" 
-                : "Adicione um novo dashboard Power BI"}
+                : "Cole a URL do Power BI para extrair automaticamente"}
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* URL Parser Section */}
+          {!isEditing && (
+            <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <Label htmlFor="url" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                URL do Dashboard (preenchimento automático)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  placeholder="https://app.powerbi.com/groups/..."
+                  className="bg-background/50 font-mono text-sm flex-1"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={handleParseUrl}
+                  className="shrink-0"
+                >
+                  <Link2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cole a URL completa do Power BI para extrair Workspace ID, Report ID e Section automaticamente
+              </p>
+              {urlParsed && (
+                <p className="text-xs text-green-500 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Campos preenchidos automaticamente!
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="credentialId">Credencial do Power BI</Label>
             <Select value={credentialId} onValueChange={setCredentialId}>
