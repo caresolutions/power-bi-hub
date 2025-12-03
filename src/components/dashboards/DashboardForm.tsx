@@ -22,6 +22,8 @@ interface Dashboard {
   dashboard_id: string;
   report_section: string | null;
   credential_id: string | null;
+  embed_type: string;
+  public_link: string | null;
 }
 
 interface Credential {
@@ -39,6 +41,8 @@ interface DashboardFormProps {
 const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: DashboardFormProps) => {
   const [url, setUrl] = useState("");
   const [name, setName] = useState(dashboard?.name || "");
+  const [embedType, setEmbedType] = useState(dashboard?.embed_type || "workspace_id");
+  const [publicLink, setPublicLink] = useState(dashboard?.public_link || "");
   const [workspaceId, setWorkspaceId] = useState(dashboard?.workspace_id || "");
   const [dashboardId, setDashboardId] = useState(dashboard?.dashboard_id || "");
   const [reportSection, setReportSection] = useState(dashboard?.report_section || "");
@@ -116,10 +120,12 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
           .from("dashboards")
           .update({
             name,
-            workspace_id: workspaceId,
-            dashboard_id: dashboardId,
+            embed_type: embedType,
+            public_link: publicLink || null,
+            workspace_id: embedType === "public_link" ? "public" : workspaceId,
+            dashboard_id: embedType === "public_link" ? "public" : dashboardId,
             report_section: reportSection || null,
-            credential_id: credentialId || null,
+            credential_id: embedType === "public_link" ? null : (credentialId || null),
           })
           .eq("id", dashboard.id);
 
@@ -135,10 +141,12 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
           .insert({
             owner_id: user.id,
             name,
-            workspace_id: workspaceId,
-            dashboard_id: dashboardId,
+            embed_type: embedType,
+            public_link: publicLink || null,
+            workspace_id: embedType === "public_link" ? "public" : workspaceId,
+            dashboard_id: embedType === "public_link" ? "public" : dashboardId,
             report_section: reportSection || null,
-            credential_id: credentialId || null,
+            credential_id: embedType === "public_link" ? null : (credentialId || null),
           });
 
         if (error) throw error;
@@ -190,8 +198,49 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* URL Parser Section */}
-          {!isEditing && (
+          {/* Embed Type Selector */}
+          <div className="space-y-2">
+            <Label>Tipo de Integração</Label>
+            <Select value={embedType} onValueChange={setEmbedType}>
+              <SelectTrigger className="bg-background/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="workspace_id">ID do Workspace (Power BI Embedded)</SelectItem>
+                <SelectItem value="public_link">Link Público</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {embedType === "public_link" 
+                ? "Use um link público para incorporar o dashboard diretamente" 
+                : "Use as credenciais do Power BI para incorporar dashboards privados"}
+            </p>
+          </div>
+
+          {/* Public Link Section */}
+          {embedType === "public_link" && (
+            <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <Label htmlFor="publicLink" className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                Link Público do Dashboard
+              </Label>
+              <Input
+                id="publicLink"
+                type="url"
+                value={publicLink}
+                onChange={(e) => setPublicLink(e.target.value)}
+                placeholder="https://app.powerbi.com/view?r=..."
+                className="bg-background/50 font-mono text-sm"
+                required={embedType === "public_link"}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole o link público do Power BI (formato: https://app.powerbi.com/view?r=...)
+              </p>
+            </div>
+          )}
+
+          {/* URL Parser Section - Only for workspace_id type */}
+          {embedType === "workspace_id" && !isEditing && (
             <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
               <Label htmlFor="url" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -227,32 +276,34 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="credentialId">Credencial do Power BI</Label>
-            <Select value={credentialId} onValueChange={setCredentialId}>
-              <SelectTrigger className="bg-background/50">
-                <SelectValue placeholder="Selecione uma credencial" />
-              </SelectTrigger>
-              <SelectContent>
-                {credentials.length === 0 ? (
-                  <SelectItem value="none" disabled>
-                    Nenhuma credencial cadastrada
-                  </SelectItem>
-                ) : (
-                  credentials.map((credential) => (
-                    <SelectItem key={credential.id} value={credential.id}>
-                      {credential.name}
+          {embedType === "workspace_id" && (
+            <div className="space-y-2">
+              <Label htmlFor="credentialId">Credencial do Power BI</Label>
+              <Select value={credentialId} onValueChange={setCredentialId}>
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Selecione uma credencial" />
+                </SelectTrigger>
+                <SelectContent>
+                  {credentials.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      Nenhuma credencial cadastrada
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {credentials.length === 0 && (
-              <p className="text-xs text-amber-500">
-                Configure suas credenciais primeiro em "Configuração de Ambiente"
-              </p>
-            )}
-          </div>
+                  ) : (
+                    credentials.map((credential) => (
+                      <SelectItem key={credential.id} value={credential.id}>
+                        {credential.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {credentials.length === 0 && (
+                <p className="text-xs text-amber-500">
+                  Configure suas credenciais primeiro em "Configuração de Ambiente"
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="name">Nome do Dashboard</Label>
@@ -267,43 +318,47 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="workspaceId">Workspace ID</Label>
-            <Input
-              id="workspaceId"
-              type="text"
-              value={workspaceId}
-              onChange={(e) => setWorkspaceId(e.target.value)}
-              required
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="bg-background/50 font-mono"
-            />
-          </div>
+          {embedType === "workspace_id" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="workspaceId">Workspace ID</Label>
+                <Input
+                  id="workspaceId"
+                  type="text"
+                  value={workspaceId}
+                  onChange={(e) => setWorkspaceId(e.target.value)}
+                  required
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="bg-background/50 font-mono"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="dashboardId">Dashboard/Report ID</Label>
-            <Input
-              id="dashboardId"
-              type="text"
-              value={dashboardId}
-              onChange={(e) => setDashboardId(e.target.value)}
-              required
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="bg-background/50 font-mono"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="dashboardId">Dashboard/Report ID</Label>
+                <Input
+                  id="dashboardId"
+                  type="text"
+                  value={dashboardId}
+                  onChange={(e) => setDashboardId(e.target.value)}
+                  required
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="bg-background/50 font-mono"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reportSection">Report Section (opcional)</Label>
-            <Input
-              id="reportSection"
-              type="text"
-              value={reportSection}
-              onChange={(e) => setReportSection(e.target.value)}
-              placeholder="Nome da seção do relatório"
-              className="bg-background/50"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="reportSection">Report Section (opcional)</Label>
+                <Input
+                  id="reportSection"
+                  type="text"
+                  value={reportSection}
+                  onChange={(e) => setReportSection(e.target.value)}
+                  placeholder="Nome da seção do relatório"
+                  className="bg-background/50"
+                />
+              </div>
+            </>
+          )}
 
           <div className="flex gap-4">
             <Button

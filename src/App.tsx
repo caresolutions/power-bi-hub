@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Credentials from "./pages/Credentials";
 import Dashboards from "./pages/Dashboards";
+import DashboardViewer from "./pages/DashboardViewer";
 import UsersManagement from "./pages/UsersManagement";
 import Subscription from "./pages/Subscription";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/home" element={<Home />} />
           <Route path="/credentials" element={<Credentials />} />
           <Route path="/dashboards" element={<Dashboards />} />
+          <Route path="/dashboard/:id" element={<DashboardViewer />} />
           <Route path="/users" element={<UsersManagement />} />
           <Route path="/subscription" element={<Subscription />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

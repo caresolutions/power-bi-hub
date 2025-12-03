@@ -25,6 +25,8 @@ interface Dashboard {
   dashboard_id: string;
   report_section: string | null;
   credential_id: string | null;
+  embed_type: string;
+  public_link: string | null;
 }
 
 interface Credential {
@@ -273,13 +275,16 @@ const Dashboards = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                   >
-                    <Card className="glass p-6 border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
+                    <Card 
+                      className="glass p-6 border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer"
+                      onClick={() => navigate(`/dashboard/${dashboard.id}`)}
+                    >
                       <div className="flex items-start justify-between mb-4">
                         <div className="bg-accent/10 p-3 rounded-lg">
                           <BarChart3 className="h-6 w-6 text-accent" />
                         </div>
                         {userRole === 'admin' && (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -301,9 +306,17 @@ const Dashboards = () => {
                       <h3 className="text-xl font-bold mb-3">{dashboard.name}</h3>
                       
                       <div className="space-y-2 text-sm text-muted-foreground">
-                        <p className="truncate font-mono">WS: {dashboard.workspace_id}</p>
-                        <p className="truncate font-mono">ID: {dashboard.dashboard_id}</p>
-                        {userRole === 'admin' && (
+                        {dashboard.embed_type === "public_link" ? (
+                          <p className="text-xs">
+                            <span className="bg-primary/20 text-primary px-2 py-1 rounded">Link Público</span>
+                          </p>
+                        ) : (
+                          <>
+                            <p className="truncate font-mono">WS: {dashboard.workspace_id}</p>
+                            <p className="truncate font-mono">ID: {dashboard.dashboard_id}</p>
+                          </>
+                        )}
+                        {userRole === 'admin' && dashboard.embed_type !== "public_link" && (
                           <p className="text-xs mt-2">
                             Credencial: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
                           </p>
@@ -314,7 +327,10 @@ const Dashboards = () => {
                         <Button
                           variant="outline"
                           className="w-full mt-6"
-                          onClick={() => navigate(`/users?dashboard=${dashboard.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/users?dashboard=${dashboard.id}`);
+                          }}
                         >
                           <Users className="mr-2 h-4 w-4" />
                           Gerenciar Acesso
