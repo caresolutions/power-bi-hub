@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Mail, Lock, ChevronRight } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -88,12 +88,17 @@ const Auth = () => {
           Voltar
         </Button>
 
-        <Card className="glass p-8 border-border/50">
+        <Card className="bg-card/80 backdrop-blur-md p-8 border-border/50">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">
+            <div className="flex items-center justify-center gap-1 mb-4">
+              <span className="text-2xl font-bold text-foreground">care</span>
+              <ChevronRight className="h-5 w-5 text-primary" />
+              <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">
               {isLogin ? "Bem-vindo de volta" : "Criar conta"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {isLogin
                 ? "Entre com suas credenciais"
                 : "Comece sua jornada conosco"}
