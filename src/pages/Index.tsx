@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, Lock, Users, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, Lock, Users, Zap, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -31,33 +31,63 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-foreground tracking-tight">care</span>
+            <ChevronRight className="h-5 w-5 text-primary" />
+            <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+          </div>
+          
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#recursos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Recursos
+            </a>
+            <a href="#sobre" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Sobre
+            </a>
+          </nav>
+          
+          <Button 
+            variant="default"
+            onClick={() => navigate("/auth")}
+            className="bg-primary hover:bg-primary/90"
+          >
+            Acessar
+          </Button>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero opacity-50" />
+      <section className="relative overflow-hidden pt-16">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
         
-        <div className="container relative mx-auto px-6 pt-32 pb-24">
+        <div className="container relative mx-auto px-6 pt-24 pb-32">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="max-w-4xl mx-auto text-center"
           >
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
-              Publique seus{" "}
-              <span className="gradient-text">
-                Dashboards Power BI
-              </span>
+            <p className="text-primary font-medium mb-4 uppercase tracking-wider text-sm">
+              Care BI
+            </p>
+            
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight text-foreground">
+              Transformamos dados complexos{" "}
+              <span className="text-primary">em insights</span>
             </h1>
             
-            <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
               A plataforma profissional para compartilhar dashboards Power BI com sua equipe.
-              Controle de acesso, segurança e cobrança por usuário.
+              Controle de acesso, segurança e as melhores metodologias em Business Intelligence.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                className="text-lg h-14 px-8 bg-primary hover:bg-primary/90 shadow-glow"
+                className="text-base h-12 px-8 bg-primary hover:bg-primary/90"
                 onClick={() => navigate("/auth")}
               >
                 Começar Agora
@@ -67,9 +97,9 @@ const Index = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="text-lg h-14 px-8 border-border/50"
+                className="text-base h-12 px-8 border-primary/30 text-foreground hover:bg-primary/10"
               >
-                Ver Demonstração
+                Saiba Mais
               </Button>
             </div>
           </motion.div>
@@ -77,7 +107,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-card/30">
+      <section id="recursos" className="py-24 bg-card/50">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0 }}
@@ -86,15 +116,18 @@ const Index = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold mb-4">
+            <p className="text-primary font-medium mb-2 uppercase tracking-wider text-sm">
+              Nossas Soluções
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
               Recursos Principais
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Tudo que você precisa para gerenciar e compartilhar seus dashboards Power BI
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -102,17 +135,17 @@ const Index = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="glass p-8 rounded-2xl border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
+                className="bg-card p-6 rounded-lg border border-border/50 hover:border-primary/50 transition-all duration-300 group"
               >
-                <div className="bg-primary/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
-                  <feature.icon className="h-7 w-7 text-primary" />
+                <div className="bg-primary/10 w-12 h-12 rounded-lg flex items-center justify-center mb-5 group-hover:bg-primary/20 transition-colors">
+                  <feature.icon className="h-6 w-6 text-primary" />
                 </div>
                 
-                <h3 className="text-xl font-bold mb-3">
+                <h3 className="text-lg font-semibold mb-2 text-foreground">
                   {feature.title}
                 </h3>
                 
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {feature.description}
                 </p>
               </motion.div>
@@ -122,34 +155,51 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24">
+      <section id="sobre" className="py-24">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="glass max-w-4xl mx-auto p-12 rounded-3xl border border-border/50 text-center"
+            className="bg-gradient-to-r from-primary/20 to-primary/5 max-w-4xl mx-auto p-12 rounded-2xl border border-primary/20 text-center"
           >
-            <h2 className="text-4xl font-bold mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
               Pronto para começar?
             </h2>
             
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
               Configure sua conta em minutos e comece a compartilhar dashboards Power BI com sua equipe hoje mesmo.
             </p>
             
             <Button 
               size="lg" 
-              className="text-lg h-14 px-8 bg-primary hover:bg-primary/90 shadow-glow"
+              className="text-base h-12 px-8 bg-primary hover:bg-primary/90"
               onClick={() => navigate("/auth")}
             >
-              Criar Conta Gratuita
+              Criar Conta
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="py-8 border-t border-border/50">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-foreground">care</span>
+              <ChevronRight className="h-4 w-4 text-primary" />
+              <ChevronRight className="h-4 w-4 text-primary -ml-2" />
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} Care Business. Todos os direitos reservados.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

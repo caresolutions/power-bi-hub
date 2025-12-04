@@ -4,13 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
-  BarChart3, 
   Settings, 
   Users, 
   LayoutDashboard, 
   LogOut,
   CreditCard,
-  Shield
+  Shield,
+  ChevronRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -106,14 +106,14 @@ const Home = () => {
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
       
       {/* Header */}
-      <header className="relative z-10 border-b border-border/50 bg-card/30 backdrop-blur">
+      <header className="relative z-10 border-b border-border/50 bg-card/80 backdrop-blur-md">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold">Power BI Manager</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-foreground">care</span>
+              <ChevronRight className="h-5 w-5 text-primary" />
+              <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+              <span className="text-lg font-medium text-muted-foreground ml-2">BI</span>
             </div>
             
             <div className="flex items-center gap-4">
@@ -134,8 +134,8 @@ const Home = () => {
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-12">
         <div className="mb-12 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Bem-vindo ao <span className="gradient-text">Power BI Manager</span>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+            Bem-vindo ao <span className="text-primary">Care BI</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             {userRole === 'admin' 
@@ -153,7 +153,7 @@ const Home = () => {
               transition={{ delay: index * 0.1 }}
             >
               <Card 
-                className="glass p-8 border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer group"
+                className="bg-card/80 backdrop-blur-md p-8 border-border/50 hover:border-primary/50 transition-all duration-300 cursor-pointer group"
                 onClick={() => navigate(item.path)}
               >
                 <div className={`${item.color} p-4 rounded-xl w-fit mb-6 group-hover:scale-110 transition-transform`}>
