@@ -18,8 +18,9 @@ const plans = [
   {
     id: "free",
     name: "Free",
-    price: "R$ 0",
+    price: "R$ 1",
     period: "/mês",
+    trial: "7 dias grátis",
     features: [
       "1 Credencial Power BI",
       "3 Dashboards",
@@ -31,8 +32,9 @@ const plans = [
   {
     id: "pro",
     name: "Profissional",
-    price: "R$ 99",
+    price: "R$ 2",
     period: "/mês",
+    trial: "7 dias grátis",
     features: [
       "5 Credenciais Power BI",
       "20 Dashboards",
@@ -45,8 +47,9 @@ const plans = [
   {
     id: "enterprise",
     name: "Enterprise",
-    price: "R$ 299",
+    price: "R$ 3",
     period: "/mês",
+    trial: "7 dias grátis",
     features: [
       "Credenciais ilimitadas",
       "Dashboards ilimitados",
@@ -188,6 +191,7 @@ const Subscription = () => {
                   <div className="mb-6">
                     <span className="text-4xl font-bold">{plan.price}</span>
                     <span className="text-muted-foreground">{plan.period}</span>
+                    <p className="text-sm text-primary mt-2 font-medium">{plan.trial}</p>
                   </div>
                   
                   <ul className="space-y-3 mb-8">
