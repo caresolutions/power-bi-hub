@@ -30,6 +30,7 @@ interface Credential {
   name: string;
   client_id: string;
   tenant_id: string;
+  username?: string;
   created_at: string;
 }
 
@@ -70,7 +71,7 @@ const Credentials = () => {
     try {
       const { data, error } = await supabase
         .from("power_bi_configs")
-        .select("id, name, client_id, tenant_id, created_at")
+        .select("id, name, client_id, tenant_id, username, created_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -227,9 +228,12 @@ const Credentials = () => {
                       
                       <h3 className="text-xl font-bold mb-3">{credential.name}</h3>
                       
-                      <div className="space-y-2 text-sm text-muted-foreground font-mono">
-                        <p className="truncate">Client ID: {credential.client_id.slice(0, 8)}...</p>
-                        <p className="truncate">Tenant ID: {credential.tenant_id.slice(0, 8)}...</p>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p className="truncate font-mono">Client ID: {credential.client_id.slice(0, 8)}...</p>
+                        <p className="truncate font-mono">Tenant ID: {credential.tenant_id.slice(0, 8)}...</p>
+                        {credential.username && (
+                          <p className="truncate">Login: {credential.username}</p>
+                        )}
                       </div>
                     </Card>
                   </motion.div>
