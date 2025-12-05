@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, ArrowLeft } from "lucide-react";
+import { Key, ArrowLeft, User, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Credential {
@@ -13,6 +13,7 @@ interface Credential {
   name: string;
   client_id: string;
   tenant_id: string;
+  username?: string;
 }
 
 interface CredentialFormProps {
@@ -26,6 +27,8 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
   const [clientId, setClientId] = useState(credential?.client_id || "");
   const [clientSecret, setClientSecret] = useState("");
   const [tenantId, setTenantId] = useState(credential?.tenant_id || "");
+  const [username, setUsername] = useState(credential?.username || "");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -45,11 +48,15 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
           name,
           client_id: clientId,
           tenant_id: tenantId,
+          username,
         };
         
-        // Only update secret if provided
+        // Only update secrets if provided
         if (clientSecret) {
           updateData.client_secret = clientSecret;
+        }
+        if (password) {
+          updateData.password = password;
         }
 
         const { error } = await supabase
@@ -73,6 +80,8 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
             client_id: clientId,
             client_secret: clientSecret,
             tenant_id: tenantId,
+            username,
+            password,
           });
 
         if (error) throw error;
@@ -137,45 +146,92 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tenantId">Tenant ID</Label>
-            <Input
-              id="tenantId"
-              type="text"
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              required
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="bg-background/50 font-mono"
-            />
+          {/* Azure AD App Section */}
+          <div className="border border-border/50 rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Configuração Azure AD
+            </h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="tenantId">Tenant ID</Label>
+              <Input
+                id="tenantId"
+                type="text"
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                required
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="bg-background/50 font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="clientId">Client ID (Application ID)</Label>
+              <Input
+                id="clientId"
+                type="text"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                required
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="bg-background/50 font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="clientSecret">
+                Client Secret {isEditing && "(deixe em branco para manter)"}
+              </Label>
+              <Input
+                id="clientSecret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                required={!isEditing}
+                placeholder="••••••••••••••••"
+                className="bg-background/50"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="clientId">Client ID</Label>
-            <Input
-              id="clientId"
-              type="text"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              required
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="bg-background/50 font-mono"
-            />
-          </div>
+          {/* Power BI Account Section */}
+          <div className="border border-border/50 rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Conta Power BI (Master User)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Informe as credenciais da conta Microsoft com licença Power BI Pro/Premium que tem acesso aos workspaces.
+            </p>
 
-          <div className="space-y-2">
-            <Label htmlFor="clientSecret">
-              Client Secret {isEditing && "(deixe em branco para manter)"}
-            </Label>
-            <Input
-              id="clientSecret"
-              type="password"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              required={!isEditing}
-              placeholder="••••••••••••••••"
-              className="bg-background/50"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="username">Email / Login</Label>
+              <Input
+                id="username"
+                type="email"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                placeholder="usuario@empresa.onmicrosoft.com"
+                className="bg-background/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="flex items-center gap-2">
+                <Lock className="h-3 w-3" />
+                Senha {isEditing && "(deixe em branco para manter)"}
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required={!isEditing}
+                placeholder="••••••••••••••••"
+                className="bg-background/50"
+              />
+            </div>
           </div>
 
           <div className="flex gap-4">

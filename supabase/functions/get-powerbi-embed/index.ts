@@ -10,6 +10,8 @@ interface PowerBIConfig {
   client_id: string;
   client_secret: string;
   tenant_id: string;
+  username: string;
+  password: string;
 }
 
 interface EmbedTokenResponse {
@@ -18,17 +20,22 @@ interface EmbedTokenResponse {
   expiration: string;
 }
 
+// Master User authentication using ROPC flow
 async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   const tokenUrl = `https://login.microsoftonline.com/${config.tenant_id}/oauth2/v2.0/token`;
 
   const params = new URLSearchParams({
-    grant_type: "client_credentials",
+    grant_type: "password",
     client_id: config.client_id,
     client_secret: config.client_secret,
     scope: "https://analysis.windows.net/powerbi/api/.default",
+    username: config.username,
+    password: config.password,
   });
 
-  console.log("Requesting Azure AD token...");
+  console.log("Requesting Azure AD token using Master User auth...");
+  console.log("Username:", config.username);
+  console.log("Tenant:", config.tenant_id);
 
   const response = await fetch(tokenUrl, {
     method: "POST",
@@ -41,6 +48,17 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Azure AD token error:", errorText);
+    
+    // Parse error for better message
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.error_description) {
+        throw new Error(`Falha na autenticação Azure: ${errorJson.error_description}`);
+      }
+    } catch (e) {
+      // If parsing fails, use the raw text
+    }
+    
     throw new Error(`Failed to get Azure AD token: ${response.status} - ${errorText}`);
   }
 
@@ -68,7 +86,7 @@ async function getReportEmbedToken(
   if (!reportResponse.ok) {
     const errorText = await reportResponse.text();
     console.error("Report fetch error:", errorText);
-    throw new Error(`Failed to get report: ${reportResponse.status} - ${errorText}`);
+    throw new Error(`Falha ao buscar relatório: ${reportResponse.status} - Verifique se o Workspace ID e Report ID estão corretos`);
   }
 
   const reportData = await reportResponse.json();
@@ -93,7 +111,7 @@ async function getReportEmbedToken(
   if (!embedResponse.ok) {
     const errorText = await embedResponse.text();
     console.error("Embed token error:", errorText);
-    throw new Error(`Failed to generate embed token: ${embedResponse.status} - ${errorText}`);
+    throw new Error(`Falha ao gerar token de embed: ${embedResponse.status} - Verifique as permissões do usuário no workspace`);
   }
 
   const embedData = await embedResponse.json();
@@ -148,7 +166,7 @@ serve(async (req) => {
 
     if (dashboardError || !dashboard) {
       console.error("Dashboard not found:", dashboardError);
-      throw new Error("Dashboard not found");
+      throw new Error("Dashboard não encontrado");
     }
 
     // Check if user has access (owner or has been granted access)
@@ -163,30 +181,36 @@ serve(async (req) => {
         .single();
 
       if (!access) {
-        throw new Error("Access denied to this dashboard");
+        throw new Error("Acesso negado a este dashboard");
       }
     }
 
     if (!dashboard.credential_id) {
-      throw new Error("No credential configured for this dashboard");
+      throw new Error("Nenhuma credencial configurada para este dashboard. Configure uma credencial na página de Credenciais.");
     }
 
-    // Get Power BI credentials
+    // Get Power BI credentials including username and password
     const { data: credential, error: credError } = await supabase
       .from("power_bi_configs")
-      .select("client_id, client_secret, tenant_id")
+      .select("client_id, client_secret, tenant_id, username, password")
       .eq("id", dashboard.credential_id)
       .single();
 
     if (credError || !credential) {
       console.error("Credential not found:", credError);
-      throw new Error("Power BI credentials not found");
+      throw new Error("Credenciais do Power BI não encontradas");
+    }
+
+    // Validate required fields
+    if (!credential.username || !credential.password) {
+      throw new Error("Credenciais incompletas. Configure o Login e Senha da conta Power BI na página de Credenciais.");
     }
 
     console.log("Using credential for tenant:", credential.tenant_id);
+    console.log("Username:", credential.username);
 
-    // Get Azure AD access token
-    const accessToken = await getAzureAccessToken(credential);
+    // Get Azure AD access token using Master User auth
+    const accessToken = await getAzureAccessToken(credential as PowerBIConfig);
 
     // Get embed token
     const embedData = await getReportEmbedToken(
