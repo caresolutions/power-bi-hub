@@ -145,12 +145,16 @@ const DashboardViewer = () => {
         throw new Error(data.error || "Falha ao obter token de embed");
       }
 
-      // Embed the report
-      embedReport(data);
+      // Set loading to false BEFORE embedding so the container is visible
+      setEmbedLoading(false);
+      
+      // Small delay to ensure React has rendered the visible container
+      setTimeout(() => {
+        embedReport(data);
+      }, 100);
     } catch (error: any) {
       console.error("Error fetching embed token:", error);
       setEmbedError(error.message);
-    } finally {
       setEmbedLoading(false);
     }
   };
