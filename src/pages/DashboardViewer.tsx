@@ -222,19 +222,44 @@ const DashboardViewer = () => {
     <div className={`min-h-screen bg-background flex flex-col ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
       {/* Header */}
       {!isFullscreen && (
-        <header className="border-b border-border/50 bg-card/30 backdrop-blur">
-          <div className="container mx-auto px-6 py-4">
+        <header className="border-b border-border/50 bg-primary">
+          <div className="container mx-auto px-6 py-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" onClick={() => navigate("/dashboards")}>
+              <div className="flex items-center gap-6">
+                {/* Logo */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    <span className="text-primary-foreground font-bold text-lg tracking-tight">
+                      Care<span className="font-light">BI</span>
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Separator */}
+                <div className="h-6 w-px bg-primary-foreground/30" />
+                
+                {/* Dashboard name */}
+                <h1 className="text-lg font-medium text-primary-foreground">{dashboard.name}</h1>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate("/dashboards")}
+                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Voltar
                 </Button>
-                <h1 className="text-xl font-bold">{dashboard.name}</h1>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={toggleFullscreen}
+                  className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="outline" size="icon" onClick={toggleFullscreen}>
-                <Maximize2 className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </header>
