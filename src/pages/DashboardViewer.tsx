@@ -172,7 +172,18 @@ const DashboardViewer = () => {
           filters: { visible: false },
           pageNavigation: { visible: true },
         },
-        background: pbi.models.BackgroundType.Transparent,
+        // Use Default background to preserve all visual elements from the report
+        background: pbi.models.BackgroundType.Default,
+        // Ensure visual headers are visible (logos, titles, etc.)
+        visualSettings: {
+          visualHeaders: [
+            {
+              settings: {
+                visible: true,
+              },
+            },
+          ],
+        },
       },
     };
 
@@ -194,6 +205,10 @@ const DashboardViewer = () => {
 
     report.on("loaded", () => {
       console.log("Report loaded successfully");
+    });
+
+    report.on("rendered", () => {
+      console.log("Report rendered successfully");
     });
   };
 
