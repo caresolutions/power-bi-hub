@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, ArrowLeft, Send } from "lucide-react";
+import { Mail, ArrowLeft, Send, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -24,7 +24,16 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const [email, setEmail] = useState("");
   const [selectedDashboards, setSelectedDashboards] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+
+  // Filter dashboards based on search query
+  const filteredDashboards = useMemo(() => {
+    if (!searchQuery.trim()) return dashboards;
+    return dashboards.filter(dashboard =>
+      dashboard.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [dashboards, searchQuery]);
 
   const generateToken = () => {
     return Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -157,26 +166,52 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
                 Nenhum dashboard disponível. Crie um dashboard primeiro.
               </p>
             ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                {dashboards.map((dashboard) => (
-                  <div
-                    key={dashboard.id}
-                    className="flex items-center space-x-3 p-3 rounded-lg bg-background/30 hover:bg-background/50 transition-colors"
-                  >
-                    <Checkbox
-                      id={dashboard.id}
-                      checked={selectedDashboards.includes(dashboard.id)}
-                      onCheckedChange={() => handleDashboardToggle(dashboard.id)}
-                    />
-                    <label
-                      htmlFor={dashboard.id}
-                      className="text-sm font-medium leading-none cursor-pointer flex-1"
-                    >
-                      {dashboard.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
+              <>
+                {/* Search field */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar dashboard pelo nome..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-background/50"
+                  />
+                </div>
+
+                {/* Dashboard list */}
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                  {filteredDashboards.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhum dashboard encontrado para "{searchQuery}"
+                    </p>
+                  ) : (
+                    filteredDashboards.map((dashboard) => (
+                      <div
+                        key={dashboard.id}
+                        className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                          selectedDashboards.includes(dashboard.id)
+                            ? "bg-primary/20 border border-primary/30"
+                            : "bg-background/30 hover:bg-background/50"
+                        }`}
+                        onClick={() => handleDashboardToggle(dashboard.id)}
+                      >
+                        <Checkbox
+                          id={dashboard.id}
+                          checked={selectedDashboards.includes(dashboard.id)}
+                          onCheckedChange={() => handleDashboardToggle(dashboard.id)}
+                        />
+                        <label
+                          htmlFor={dashboard.id}
+                          className="text-sm font-medium leading-none cursor-pointer flex-1"
+                        >
+                          {dashboard.name}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
             )}
             
             {selectedDashboards.length > 0 && (
