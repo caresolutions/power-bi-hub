@@ -32,7 +32,7 @@ const DashboardViewer = () => {
   const [loading, setLoading] = useState(true);
   const [embedLoading, setEmbedLoading] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true); // Start in fullscreen mode
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
 
