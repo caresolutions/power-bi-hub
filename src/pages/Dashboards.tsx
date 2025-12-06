@@ -276,66 +276,73 @@ const Dashboards = () => {
                     transition={{ delay: index * 0.1 }}
                   >
                     <Card 
-                      className="glass p-6 border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer"
+                      className="glass border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer overflow-hidden"
                       onClick={() => navigate(`/dashboard/${dashboard.id}`)}
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="bg-accent/10 p-3 rounded-lg">
-                          <BarChart3 className="h-6 w-6 text-accent" />
-                        </div>
-                        {userRole === 'admin' && (
-                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setEditingDashboard(dashboard)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeletingId(dashboard.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                      {/* Thumbnail Preview */}
+                      <div className="relative h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+                        <BarChart3 className="h-12 w-12 text-primary/40" />
+                        {dashboard.embed_type === "public_link" && (
+                          <div className="absolute top-2 right-2">
+                            <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
+                              Link Público
+                            </span>
                           </div>
                         )}
                       </div>
                       
-                      <h3 className="text-xl font-bold mb-3">{dashboard.name}</h3>
-                      
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        {dashboard.embed_type === "public_link" ? (
-                          <p className="text-xs">
-                            <span className="bg-primary/20 text-primary px-2 py-1 rounded">Link Público</span>
-                          </p>
-                        ) : (
-                          <>
-                            <p className="truncate font-mono">WS: {dashboard.workspace_id}</p>
-                            <p className="truncate font-mono">ID: {dashboard.dashboard_id}</p>
-                          </>
-                        )}
-                        {userRole === 'admin' && dashboard.embed_type !== "public_link" && (
-                          <p className="text-xs mt-2">
-                            Credencial: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
-                          </p>
+                      <div className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-lg font-bold line-clamp-2">{dashboard.name}</h3>
+                          {userRole === 'admin' && (
+                            <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setEditingDashboard(dashboard)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setDeletingId(dashboard.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          {dashboard.embed_type !== "public_link" && (
+                            <p className="truncate font-mono">WS: {dashboard.workspace_id.substring(0, 12)}...</p>
+                          )}
+                          {userRole === 'admin' && dashboard.embed_type !== "public_link" && (
+                            <p>
+                              Credencial: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
+                            </p>
+                          )}
+                        </div>
+                        
+                        {userRole === 'admin' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-4"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/users?dashboard=${dashboard.id}`);
+                            }}
+                          >
+                            <Users className="mr-2 h-4 w-4" />
+                            Gerenciar Acesso
+                          </Button>
                         )}
                       </div>
-                      
-                      {userRole === 'admin' && (
-                        <Button
-                          variant="outline"
-                          className="w-full mt-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/users?dashboard=${dashboard.id}`);
-                          }}
-                        >
-                          <Users className="mr-2 h-4 w-4" />
-                          Gerenciar Acesso
-                        </Button>
-                      )}
                     </Card>
                   </motion.div>
                 ))}
