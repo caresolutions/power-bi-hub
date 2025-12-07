@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.manage-credentials]
 verify_jwt = true
+
+[functions.send-email]
+verify_jwt = true

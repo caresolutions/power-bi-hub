@@ -99,14 +99,55 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
       if (error) throw error;
 
-      // TODO: Send email with invitation link
-      // For now, just show success message with the link
+      // Get selected dashboard names for email
+      const selectedDashboardNames = dashboards
+        .filter(d => selectedDashboards.includes(d.id))
+        .map(d => d.name);
+
+      // Send invitation email
       const inviteLink = `${window.location.origin}/auth?invite=${token}`;
       
-      toast({
-        title: "Convite criado!",
-        description: `Link de convite: ${inviteLink}`,
+      const dashboardListHtml = selectedDashboardNames
+        .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
+        .join('');
+
+      const emailContent = `
+        <h2 style="color: #0891b2; margin-bottom: 24px;">Você foi convidado!</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+          Você recebeu um convite para acessar a plataforma Care BI.
+        </p>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+          <strong>Dashboards disponíveis para você:</strong>
+        </p>
+        <ul style="margin: 16px 0; padding-left: 24px;">
+          ${dashboardListHtml}
+        </ul>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+          Clique no botão abaixo para criar sua conta e acessar os dashboards:
+        </p>
+      `;
+
+      const { error: emailError } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: email,
+          subject: "Convite para acessar Care BI",
+          htmlContent: getEmailTemplate(emailContent, inviteLink, "Criar Conta"),
+        },
       });
+
+      if (emailError) {
+        console.error("Error sending email:", emailError);
+        toast({
+          title: "Convite criado",
+          description: `E-mail não pôde ser enviado. Link: ${inviteLink}`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Convite enviado!",
+          description: `E-mail de convite enviado para ${email}`,
+        });
+      }
 
       onSuccess();
     } catch (error: any) {
@@ -118,6 +159,56 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
     } finally {
       setLoading(false);
     }
+  };
+
+  const getEmailTemplate = (content: string, ctaUrl: string, ctaText: string): string => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Care BI</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Open Sans', Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f4;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Care BI</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              ${content}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 30px;">
+                <tr>
+                  <td align="center">
+                    <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">${ctaText}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #64748b; font-size: 14px;">
+                © ${new Date().getFullYear()} Care BI. Todos os direitos reservados.
+              </p>
+              <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 12px;">
+                Este e-mail foi enviado automaticamente. Por favor, não responda.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
   };
 
   return (
@@ -241,10 +332,9 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           </div>
         </form>
 
-        <div className="mt-6 p-4 bg-amber-500/10 rounded-lg border border-amber-500/20">
-          <p className="text-sm text-amber-500">
-            <strong>Nota:</strong> O envio de e-mail será configurado em breve. 
-            Por enquanto, copie o link de convite gerado e envie manualmente.
+        <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
+          <p className="text-sm text-primary">
+            <strong>Nota:</strong> O convite será enviado automaticamente por e-mail para o usuário.
           </p>
         </div>
       </Card>
