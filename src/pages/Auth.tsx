@@ -32,6 +32,7 @@ const signupSchema = z.object({
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -61,6 +62,45 @@ const Auth = () => {
     }
     
     return true;
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailValidation = z.string().trim().email("E-mail inválido").safeParse(email);
+    if (!emailValidation.success) {
+      setErrors({ email: emailValidation.error.errors[0].message });
+      return;
+    }
+    
+    setLoading(true);
+    setErrors({});
+
+    try {
+      const { data, error } = await supabase.functions.invoke("send-password-reset", {
+        body: {
+          email: email.trim(),
+          redirectUrl: `${window.location.origin}/auth?reset=true`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "E-mail enviado!",
+        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+      });
+      
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao enviar e-mail de recuperação",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,96 +186,162 @@ const Auth = () => {
               <ChevronRight className="h-5 w-5 text-primary -ml-3" />
             </div>
             <h1 className="text-2xl font-bold mb-2">
-              {isLogin ? "Bem-vindo de volta" : "Criar conta"}
+              {isForgotPassword 
+                ? "Recuperar senha" 
+                : isLogin 
+                  ? "Bem-vindo de volta" 
+                  : "Criar conta"}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {isLogin
-                ? "Entre com suas credenciais"
-                : "Comece sua jornada conosco"}
+              {isForgotPassword
+                ? "Digite seu e-mail para receber o link de recuperação"
+                : isLogin
+                  ? "Entre com suas credenciais"
+                  : "Comece sua jornada conosco"}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {!isLogin && (
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  E-mail
+                </Label>
                 <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Seu nome"
-                  className={`bg-background/50 ${errors.fullName ? 'border-destructive' : ''}`}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
                 />
-                {errors.fullName && (
-                  <p className="text-sm text-destructive">{errors.fullName}</p>
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
                 )}
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                E-mail
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 shadow-glow"
+                disabled={loading}
+              >
+                {loading ? "Enviando..." : "Enviar link de recuperação"}
+              </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Senha
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className={`bg-background/50 ${errors.password ? 'border-destructive' : ''}`}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-              {!isLogin && !errors.password && (
-                <p className="text-xs text-muted-foreground">
-                  Mínimo 8 caracteres, com maiúscula, minúscula e número
-                </p>
-              )}
-            </div>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setErrors({});
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Voltar para o login
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {!isLogin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nome completo</Label>
+                    <Input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Seu nome"
+                      className={`bg-background/50 ${errors.fullName ? 'border-destructive' : ''}`}
+                    />
+                    {errors.fullName && (
+                      <p className="text-sm text-destructive">{errors.fullName}</p>
+                    )}
+                  </div>
+                )}
 
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 shadow-glow"
-              disabled={loading}
-            >
-              {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
-            </Button>
-          </form>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    E-mail
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
+                </div>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin
-                ? "Não tem uma conta? Cadastre-se"
-                : "Já tem uma conta? Entre"}
-            </button>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Senha
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`bg-background/50 ${errors.password ? 'border-destructive' : ''}`}
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                  {!isLogin && !errors.password && (
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo 8 caracteres, com maiúscula, minúscula e número
+                    </p>
+                  )}
+                </div>
+
+                {isLogin && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setErrors({});
+                      }}
+                      className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Esqueceu sua senha?
+                    </button>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 shadow-glow"
+                  disabled={loading}
+                >
+                  {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setErrors({});
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isLogin
+                    ? "Não tem uma conta? Cadastre-se"
+                    : "Já tem uma conta? Entre"}
+                </button>
+              </div>
+            </>
+          )}
         </Card>
       </motion.div>
     </div>
