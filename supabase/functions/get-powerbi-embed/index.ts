@@ -34,8 +34,6 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   });
 
   console.log("Requesting Azure AD token using Master User auth...");
-  console.log("Username:", config.username);
-  console.log("Tenant:", config.tenant_id);
 
   const response = await fetch(tokenUrl, {
     method: "POST",
@@ -206,8 +204,7 @@ serve(async (req) => {
       throw new Error("Credenciais incompletas. Configure o Login e Senha da conta Power BI na página de Credenciais.");
     }
 
-    console.log("Using credential for tenant:", credential.tenant_id);
-    console.log("Username:", credential.username);
+    console.log("Processing credential for dashboard:", dashboardId);
 
     // Get Azure AD access token using Master User auth
     const accessToken = await getAzureAccessToken(credential as PowerBIConfig);
