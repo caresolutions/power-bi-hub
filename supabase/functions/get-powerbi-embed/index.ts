@@ -20,6 +20,40 @@ interface EmbedTokenResponse {
   expiration: string;
 }
 
+// Decrypt function for encrypted credentials
+async function decryptValue(ciphertext: string, keyString: string): Promise<string> {
+  if (!ciphertext) return "";
+  
+  try {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(keyString.padEnd(32, '0').slice(0, 32));
+    
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+    
+    const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error("Decryption failed - returning as-is for backward compatibility");
+    // Return as-is if decryption fails (for backward compatibility with unencrypted data)
+    return ciphertext;
+  }
+}
+
 // Master User authentication using ROPC flow
 async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   const tokenUrl = `https://login.microsoftonline.com/${config.tenant_id}/oauth2/v2.0/token`;
@@ -187,16 +221,47 @@ serve(async (req) => {
       throw new Error("Nenhuma credencial configurada para este dashboard. Configure uma credencial na página de Credenciais.");
     }
 
-    // Get Power BI credentials including username and password
-    const { data: credential, error: credError } = await supabase
-      .from("power_bi_configs")
-      .select("client_id, client_secret, tenant_id, username, password")
-      .eq("id", dashboard.credential_id)
-      .single();
+    console.log("Processing credential for dashboard:", dashboardId);
 
-    if (credError || !credential) {
-      console.error("Credential not found:", credError);
-      throw new Error("Credenciais do Power BI não encontradas");
+    // Get and decrypt credentials via the manage-credentials function
+    const encryptionKey = Deno.env.get("ENCRYPTION_KEY");
+    let credential: PowerBIConfig;
+
+    if (encryptionKey) {
+      // Use decryption for encrypted credentials
+      const { data: credData, error: credError } = await supabase
+        .from("power_bi_configs")
+        .select("client_id, client_secret, tenant_id, username, password")
+        .eq("id", dashboard.credential_id)
+        .single();
+
+      if (credError || !credData) {
+        console.error("Credential not found:", credError);
+        throw new Error("Credenciais do Power BI não encontradas");
+      }
+
+      // Decrypt sensitive fields
+      credential = {
+        client_id: credData.client_id,
+        client_secret: await decryptValue(credData.client_secret, encryptionKey),
+        tenant_id: credData.tenant_id,
+        username: credData.username,
+        password: await decryptValue(credData.password || "", encryptionKey),
+      };
+    } else {
+      // Fallback for unencrypted credentials (backward compatibility)
+      const { data: credData, error: credError } = await supabase
+        .from("power_bi_configs")
+        .select("client_id, client_secret, tenant_id, username, password")
+        .eq("id", dashboard.credential_id)
+        .single();
+
+      if (credError || !credData) {
+        console.error("Credential not found:", credError);
+        throw new Error("Credenciais do Power BI não encontradas");
+      }
+
+      credential = credData as PowerBIConfig;
     }
 
     // Validate required fields
@@ -204,10 +269,8 @@ serve(async (req) => {
       throw new Error("Credenciais incompletas. Configure o Login e Senha da conta Power BI na página de Credenciais.");
     }
 
-    console.log("Processing credential for dashboard:", dashboardId);
-
     // Get Azure AD access token using Master User auth
-    const accessToken = await getAzureAccessToken(credential as PowerBIConfig);
+    const accessToken = await getAzureAccessToken(credential);
 
     // Get embed token
     const embedData = await getReportEmbedToken(

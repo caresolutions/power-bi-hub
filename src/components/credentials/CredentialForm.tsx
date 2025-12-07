@@ -39,52 +39,51 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Usuário não autenticado");
 
       if (isEditing) {
-        // Update existing credential
-        const updateData: Record<string, string> = {
-          name,
-          client_id: clientId,
-          tenant_id: tenantId,
-          username,
-        };
-        
-        // Only update secrets if provided
-        if (clientSecret) {
-          updateData.client_secret = clientSecret;
-        }
-        if (password) {
-          updateData.password = password;
-        }
-
-        const { error } = await supabase
-          .from("power_bi_configs")
-          .update(updateData)
-          .eq("id", credential.id);
+        // Update existing credential via edge function (with encryption)
+        const { data, error } = await supabase.functions.invoke("manage-credentials", {
+          body: {
+            action: "update",
+            data: {
+              id: credential.id,
+              name,
+              client_id: clientId,
+              client_secret: clientSecret || undefined,
+              tenant_id: tenantId,
+              username,
+              password: password || undefined,
+            },
+          },
+        });
 
         if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || "Erro ao atualizar credencial");
 
         toast({
           title: "Sucesso",
           description: "Credencial atualizada com sucesso",
         });
       } else {
-        // Create new credential
-        const { error } = await supabase
-          .from("power_bi_configs")
-          .insert({
-            user_id: user.id,
-            name,
-            client_id: clientId,
-            client_secret: clientSecret,
-            tenant_id: tenantId,
-            username,
-            password,
-          });
+        // Create new credential via edge function (with encryption)
+        const { data, error } = await supabase.functions.invoke("manage-credentials", {
+          body: {
+            action: "create",
+            data: {
+              name,
+              client_id: clientId,
+              client_secret: clientSecret,
+              tenant_id: tenantId,
+              username,
+              password,
+            },
+          },
+        });
 
         if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || "Erro ao criar credencial");
 
         toast({
           title: "Sucesso",

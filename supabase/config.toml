@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.get-powerbi-embed]
 verify_jwt = false
+
+[functions.manage-credentials]
+verify_jwt = false
