@@ -290,14 +290,12 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
                         <Checkbox
                           id={dashboard.id}
                           checked={selectedDashboards.includes(dashboard.id)}
-                          onCheckedChange={() => handleDashboardToggle(dashboard.id)}
+                          onCheckedChange={() => {}}
+                          onClick={(e) => e.stopPropagation()}
                         />
-                        <label
-                          htmlFor={dashboard.id}
-                          className="text-sm font-medium leading-none cursor-pointer flex-1"
-                        >
+                        <span className="text-sm font-medium leading-none cursor-pointer flex-1">
                           {dashboard.name}
-                        </label>
+                        </span>
                       </div>
                     ))
                   )}
