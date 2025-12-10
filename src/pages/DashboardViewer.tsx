@@ -232,13 +232,14 @@ const DashboardViewer = () => {
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Back button */}
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-2 left-2 z-10">
         <Button 
           variant="outline" 
+          size="sm"
           onClick={() => navigate("/dashboards")} 
-          className="bg-background/80 backdrop-blur"
+          className="bg-background/80 backdrop-blur text-xs h-7 px-2"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="mr-1 h-3 w-3" />
           Voltar
         </Button>
       </div>
