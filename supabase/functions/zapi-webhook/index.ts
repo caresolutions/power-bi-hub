@@ -18,7 +18,22 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    const body = await req.json();
+    // Parse body with error handling for malformed JSON
+    let body;
+    try {
+      const rawText = await req.text();
+      // Remove control characters that might break JSON parsing
+      const cleanedText = rawText.replace(/[\x00-\x1F\x7F]/g, '');
+      body = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON payload', details: errorMessage }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     console.log('Z-API webhook received:', JSON.stringify(body, null, 2));
 
     // Ignore group messages - only process direct messages
