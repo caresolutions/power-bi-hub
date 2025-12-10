@@ -231,21 +231,22 @@ const DashboardViewer = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Back button */}
-      <div className="absolute top-2 left-2 z-10">
+      {/* Header with back button */}
+      <div className="flex-shrink-0 h-10 bg-background border-b border-border flex items-center px-2">
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="sm"
           onClick={() => navigate("/dashboards")} 
-          className="bg-background/80 backdrop-blur text-xs h-7 px-2"
+          className="text-xs h-7 px-2"
         >
           <ArrowLeft className="mr-1 h-3 w-3" />
           Voltar
         </Button>
+        <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
       </div>
 
       {/* Dashboard content */}
-      <div className="flex-1 w-full h-full">
+      <div className="flex-1 w-full overflow-hidden">
         {dashboard.embed_type === "public_link" && dashboard.public_link ? (
           <iframe
             src={dashboard.public_link}
