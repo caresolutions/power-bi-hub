@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, ArrowLeft, Send, Search } from "lucide-react";
+import { Mail, ArrowLeft, Send, Search, Shield, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -22,6 +28,7 @@ interface InviteUserFormProps {
 
 const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps) => {
   const [email, setEmail] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "user">("user");
   const [selectedDashboards, setSelectedDashboards] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,10 +59,11 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedDashboards.length === 0) {
+    // Only require dashboards for user role
+    if (selectedRole === "user" && selectedDashboards.length === 0) {
       toast({
         title: "Erro",
-        description: "Selecione pelo menos um dashboard",
+        description: "Selecione pelo menos um dashboard para usuários visualizadores",
         variant: "destructive",
       });
       return;
@@ -67,6 +75,17 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Get admin's company_id
+      const { data: adminProfile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!adminProfile?.company_id) {
+        throw new Error("Empresa não configurada");
+      }
+
       // Get selected dashboard names for email
       const selectedDashboardNames = dashboards
         .filter(d => selectedDashboards.includes(d.id))
@@ -75,6 +94,8 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
       const dashboardListHtml = selectedDashboardNames
         .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
         .join('');
+
+      const roleLabel = selectedRole === "admin" ? "Administrador" : "Visualizador";
 
       // Check if user already exists in profiles
       const { data: existingProfile } = await supabase
@@ -145,17 +166,13 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           </p>
         `;
 
-        const { error: emailError } = await supabase.functions.invoke("send-email", {
+        await supabase.functions.invoke("send-email", {
           body: {
             to: email,
             subject: "Novos dashboards disponíveis - Care BI",
             htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
           },
         });
-
-        if (emailError) {
-          console.error("Error sending email:", emailError);
-        }
 
         toast({
           title: "Acesso concedido!",
@@ -184,15 +201,17 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           return;
         }
 
-        // Create invitation
+        // Create invitation with role and company
         const token = generateToken();
         const { error } = await supabase
           .from("user_invitations")
           .insert({
             email,
             invited_by: user.id,
-            dashboard_ids: selectedDashboards,
+            dashboard_ids: selectedRole === "user" ? selectedDashboards : [],
             token,
+            company_id: adminProfile.company_id,
+            invited_role: selectedRole,
           });
 
         if (error) throw error;
@@ -200,19 +219,32 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
         // Send invitation email
         const inviteLink = `${window.location.origin}/auth?invite=${token}`;
 
+        const roleDescription = selectedRole === "admin" 
+          ? "Como administrador, você terá acesso completo para gerenciar dashboards, credenciais e usuários."
+          : "Como visualizador, você terá acesso aos dashboards selecionados abaixo:";
+
+        const dashboardSection = selectedRole === "user" && selectedDashboards.length > 0 
+          ? `
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+              <strong>Dashboards disponíveis para você:</strong>
+            </p>
+            <ul style="margin: 16px 0; padding-left: 24px;">
+              ${dashboardListHtml}
+            </ul>
+          ` 
+          : "";
+
         const emailContent = `
           <h2 style="color: #0891b2; margin-bottom: 24px;">Você foi convidado!</h2>
           <p style="color: #334155; font-size: 16px; line-height: 1.6;">
-            Você recebeu um convite para acessar a plataforma Care BI.
+            Você recebeu um convite para acessar a plataforma Care BI como <strong>${roleLabel}</strong>.
           </p>
           <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-            <strong>Dashboards disponíveis para você:</strong>
+            ${roleDescription}
           </p>
-          <ul style="margin: 16px 0; padding-left: 24px;">
-            ${dashboardListHtml}
-          </ul>
+          ${dashboardSection}
           <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
-            Clique no botão abaixo para criar sua conta e acessar os dashboards:
+            Clique no botão abaixo para criar sua conta:
           </p>
         `;
 
@@ -339,10 +371,41 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
             />
           </div>
 
-          <div className="space-y-4">
-            <Label>Dashboards com acesso</Label>
-            
-            {dashboards.length === 0 ? (
+          <div className="space-y-2">
+            <Label>Tipo de acesso</Label>
+            <Select value={selectedRole} onValueChange={(value: "admin" | "user") => setSelectedRole(value)}>
+              <SelectTrigger className="bg-background/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <span>Administrador</span>
+                    <span className="text-xs text-muted-foreground">(acesso total)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="user">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span>Visualizador</span>
+                    <span className="text-xs text-muted-foreground">(apenas dashboards)</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {selectedRole === "admin" 
+                ? "Administradores podem criar dashboards, gerenciar credenciais e convidar usuários."
+                : "Visualizadores só podem acessar os dashboards selecionados abaixo."}
+            </p>
+          </div>
+
+          {selectedRole === "user" && (
+            <div className="space-y-4">
+              <Label>Dashboards com acesso</Label>
+              
+              {dashboards.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nenhum dashboard disponível. Crie um dashboard primeiro.
               </p>
@@ -400,12 +463,13 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
               </>
             )}
             
-            {selectedDashboards.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                {selectedDashboards.length} dashboard(s) selecionado(s)
-              </p>
-            )}
-          </div>
+              {selectedDashboards.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedDashboards.length} dashboard(s) selecionado(s)
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-4">
             <Button
@@ -419,7 +483,7 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
             <Button
               type="submit"
               className="flex-1 bg-primary hover:bg-primary/90 shadow-glow"
-              disabled={loading || dashboards.length === 0}
+              disabled={loading || (selectedRole === "user" && dashboards.length === 0)}
             >
               <Send className="mr-2 h-4 w-4" />
               {loading ? "Enviando..." : "Enviar Convite"}
