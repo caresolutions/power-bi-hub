@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { useToast } from "@/components/ui/use-toast";
 import { Mail, ArrowLeft, Send, Search } from "lucide-react";
 import { motion } from "framer-motion";
@@ -287,11 +287,19 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
                         }`}
                         onClick={() => handleDashboardToggle(dashboard.id)}
                       >
-                        <Checkbox
-                          id={dashboard.id}
-                          checked={selectedDashboards.includes(dashboard.id)}
-                          className="pointer-events-none"
-                        />
+                        <div 
+                          className={`w-4 h-4 rounded-sm border flex items-center justify-center ${
+                            selectedDashboards.includes(dashboard.id)
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-primary"
+                          }`}
+                        >
+                          {selectedDashboards.includes(dashboard.id) && (
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                         <span className="text-sm font-medium leading-none cursor-pointer flex-1">
                           {dashboard.name}
                         </span>
