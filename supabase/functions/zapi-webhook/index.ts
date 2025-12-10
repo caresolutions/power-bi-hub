@@ -31,19 +31,19 @@ serve(async (req) => {
     }
 
     // Handle incoming message from support (direct message)
+    // fromMe: true means message was SENT from the connected phone (support)
+    // fromMe: false means message was RECEIVED by the connected phone
     if (body.type === 'ReceivedCallback' && body.text?.message) {
-      const senderPhone = body.phone?.replace(/\D/g, ''); // Remove non-digits
-      const supportPhone = SUPPORT_WHATSAPP_NUMBER?.replace(/\D/g, '');
       const messageText = body.text.message;
       const messageId = body.messageId;
+      const isFromSupport = body.fromMe === true;
 
-      console.log('Processing direct message from:', senderPhone);
-      console.log('Support phone configured:', supportPhone);
+      console.log('Processing message, fromMe:', body.fromMe);
       console.log('Message text:', messageText);
 
-      // Check if message is from support number (response to user)
-      if (senderPhone === supportPhone) {
-        console.log('Message is from support number, processing...');
+      // Check if message is from support (sent from connected phone)
+      if (isFromSupport) {
+        console.log('Message is from support (fromMe=true), processing...');
         
         // Parse the response to find which user it's for
         // Support should reply with format: "@email@example.com Resposta aqui"
