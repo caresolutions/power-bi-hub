@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import {
@@ -44,8 +45,17 @@ const Dashboards = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Filter dashboards based on search query
+  const filteredDashboards = useMemo(() => {
+    if (!searchQuery.trim()) return dashboards;
+    return dashboards.filter(dashboard =>
+      dashboard.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [dashboards, searchQuery]);
 
   useEffect(() => {
     checkAuthAndRole();
@@ -243,6 +253,20 @@ const Dashboards = () => {
               </p>
             </div>
 
+            {/* Search field */}
+            {!loading && dashboards.length > 0 && (
+              <div className="relative mb-6 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar dashboard pelo nome..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-background/50"
+                />
+              </div>
+            )}
+
             {loading ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Carregando...</p>
@@ -266,9 +290,17 @@ const Dashboards = () => {
                   </Button>
                 )}
               </Card>
+            ) : filteredDashboards.length === 0 ? (
+              <Card className="glass p-12 text-center border-border/50">
+                <Search className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-2xl font-bold mb-2">Nenhum dashboard encontrado</h3>
+                <p className="text-muted-foreground">
+                  Nenhum dashboard corresponde à busca "{searchQuery}"
+                </p>
+              </Card>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {dashboards.map((dashboard, index) => (
+                {filteredDashboards.map((dashboard, index) => (
                   <motion.div
                     key={dashboard.id}
                     initial={{ opacity: 0, y: 20 }}
