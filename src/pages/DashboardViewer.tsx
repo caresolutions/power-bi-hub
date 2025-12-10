@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Maximize2, Minimize2, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import * as pbi from "powerbi-client";
 
@@ -32,7 +32,7 @@ const DashboardViewer = () => {
   const [loading, setLoading] = useState(true);
   const [embedLoading, setEmbedLoading] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(true); // Start in fullscreen mode
+  
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
 
@@ -212,10 +212,6 @@ const DashboardViewer = () => {
     });
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -234,67 +230,25 @@ const DashboardViewer = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-background flex flex-col ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      {/* Header */}
-      {!isFullscreen && (
-        <header className="border-b border-border/50 bg-primary">
-          <div className="container mx-auto px-6 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                {/* Logo */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center">
-                    <span className="text-primary-foreground font-bold text-lg tracking-tight">
-                      Care<span className="font-light">BI</span>
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Separator */}
-                <div className="h-6 w-px bg-primary-foreground/30" />
-                
-                {/* Dashboard name */}
-                <h1 className="text-lg font-medium text-primary-foreground">{dashboard.name}</h1>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => navigate("/dashboards")}
-                  className="text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Voltar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={toggleFullscreen}
-                  className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-      )}
-
-      {/* Fullscreen header */}
-      {isFullscreen && (
-        <div className="absolute top-4 right-4 z-10">
-          <Button variant="outline" size="icon" onClick={toggleFullscreen} className="bg-background/80 backdrop-blur">
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Back button */}
+      <div className="absolute top-4 left-4 z-10">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/dashboards")} 
+          className="bg-background/80 backdrop-blur"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
 
       {/* Dashboard content */}
-      <div className="flex-1">
+      <div className="flex-1 w-full h-full">
         {dashboard.embed_type === "public_link" && dashboard.public_link ? (
           <iframe
             src={dashboard.public_link}
-            className="w-full h-full min-h-[calc(100vh-80px)]"
+            className="w-full h-full"
             style={{ border: "none" }}
             allowFullScreen
             title={dashboard.name}
@@ -302,13 +256,13 @@ const DashboardViewer = () => {
         ) : dashboard.embed_type === "workspace_id" && dashboard.credential_id ? (
           <>
             {embedLoading && (
-              <div className="flex items-center justify-center h-full min-h-[calc(100vh-80px)]">
+              <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-3 text-muted-foreground">Conectando ao Power BI...</p>
               </div>
             )}
             {embedError && (
-              <div className="flex items-center justify-center h-full min-h-[calc(100vh-80px)]">
+              <div className="flex items-center justify-center h-full">
                 <div className="text-center p-8">
                   <p className="text-destructive mb-4">{embedError}</p>
                   <Button onClick={() => fetchEmbedToken(dashboard.id)}>
@@ -319,11 +273,11 @@ const DashboardViewer = () => {
             )}
             <div
               ref={embedContainerRef}
-              className={`w-full h-full min-h-[calc(100vh-80px)] ${embedLoading || embedError ? 'hidden' : ''}`}
+              className={`w-full h-full ${embedLoading || embedError ? 'hidden' : ''}`}
             />
           </>
         ) : (
-          <div className="flex items-center justify-center h-full min-h-[calc(100vh-80px)]">
+          <div className="flex items-center justify-center h-full">
             <div className="text-center p-8">
               <p className="text-muted-foreground mb-4">
                 Este dashboard requer configuração de credenciais.
