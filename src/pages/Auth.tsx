@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, ChevronRight } from "lucide-react";
 import { z } from "zod";
+import CompanyRegistrationForm from "@/components/company/CompanyRegistrationForm";
 
 const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
@@ -33,13 +34,59 @@ const signupSchema = z.object({
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [needsCompanyRegistration, setNeedsCompanyRegistration] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    checkAuthAndCompany();
+  }, []);
+
+  const checkAuthAndCompany = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is admin and needs company registration
+        const { data: role } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (role?.role === 'admin') {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("company_id")
+            .eq("id", user.id)
+            .single();
+
+          if (!profile?.company_id) {
+            setNeedsCompanyRegistration(true);
+            setCheckingAuth(false);
+            return;
+          }
+        }
+        
+        navigate("/home");
+      }
+    } catch (error) {
+      console.error("Error checking auth:", error);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  const handleCompanyRegistrationSuccess = () => {
+    setNeedsCompanyRegistration(false);
+    navigate("/home");
+  };
 
   const validateForm = () => {
     setErrors({});
@@ -114,12 +161,35 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
 
         if (error) throw error;
+
+        // Check if admin needs company registration
+        if (authData.user) {
+          const { data: role } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", authData.user.id)
+            .single();
+
+          if (role?.role === 'admin') {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("company_id")
+              .eq("id", authData.user.id)
+              .single();
+
+            if (!profile?.company_id) {
+              setNeedsCompanyRegistration(true);
+              setLoading(false);
+              return;
+            }
+          }
+        }
 
         toast({
           title: "Login realizado!",
@@ -132,7 +202,7 @@ const Auth = () => {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/auth`,
             data: {
               full_name: fullName.trim(),
             },
@@ -143,10 +213,11 @@ const Auth = () => {
 
         toast({
           title: "Conta criada!",
-          description: "Você será redirecionado para o onboarding...",
+          description: "Complete o cadastro da sua empresa...",
         });
         
-        navigate("/home");
+        // New admin needs to register company
+        setNeedsCompanyRegistration(true);
       }
     } catch (error: any) {
       toast({
@@ -158,6 +229,25 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (needsCompanyRegistration) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        <div className="relative z-10 w-full">
+          <CompanyRegistrationForm onSuccess={handleCompanyRegistrationSuccess} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">

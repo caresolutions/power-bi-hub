@@ -14,8 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          cnpj: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboards: {
         Row: {
+          company_id: string | null
           created_at: string
           credential_id: string | null
           dashboard_id: string
@@ -29,6 +54,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           credential_id?: string | null
           dashboard_id: string
@@ -42,6 +68,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           credential_id?: string | null
           dashboard_id?: string
@@ -55,6 +82,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dashboards_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dashboards_credential_id_fkey"
             columns: ["credential_id"]
@@ -75,6 +109,7 @@ export type Database = {
         Row: {
           client_id: string
           client_secret: string
+          company_id: string | null
           created_at: string
           id: string
           name: string
@@ -87,6 +122,7 @@ export type Database = {
         Insert: {
           client_id: string
           client_secret: string
+          company_id?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -99,6 +135,7 @@ export type Database = {
         Update: {
           client_id?: string
           client_secret?: string
+          company_id?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -110,6 +147,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "power_bi_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "power_bi_configs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -120,6 +164,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company_id: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -127,6 +172,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -134,13 +180,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -230,35 +285,49 @@ export type Database = {
       user_invitations: {
         Row: {
           accepted_at: string | null
+          company_id: string | null
           created_at: string
           dashboard_ids: string[]
           email: string
           expires_at: string
           id: string
           invited_by: string
+          invited_role: string
           token: string
         }
         Insert: {
           accepted_at?: string | null
+          company_id?: string | null
           created_at?: string
           dashboard_ids?: string[]
           email: string
           expires_at?: string
           id?: string
           invited_by: string
+          invited_role?: string
           token: string
         }
         Update: {
           accepted_at?: string | null
+          company_id?: string | null
           created_at?: string
           dashboard_ids?: string[]
           email?: string
           expires_at?: string
           id?: string
           invited_by?: string
+          invited_role?: string
           token?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

@@ -115,6 +115,17 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        throw new Error("Empresa não configurada");
+      }
+
       if (isEditing) {
         const { error } = await supabase
           .from("dashboards")
@@ -147,6 +158,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             dashboard_id: embedType === "public_link" ? "public" : dashboardId,
             report_section: reportSection || null,
             credential_id: embedType === "public_link" ? null : (credentialId || null),
+            company_id: profile.company_id,
           });
 
         if (error) throw error;

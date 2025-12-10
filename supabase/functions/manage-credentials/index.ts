@@ -97,6 +97,17 @@ serve(async (req) => {
     const { action, data } = await req.json();
 
     if (action === "create") {
+      // Get user's company_id
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileErr || !profile?.company_id) {
+        throw new Error("Company not configured for user");
+      }
+
       // Encrypt sensitive fields before storing
       const encryptedClientSecret = await encrypt(data.client_secret);
       const encryptedPassword = data.password ? await encrypt(data.password) : null;
@@ -111,6 +122,7 @@ serve(async (req) => {
           tenant_id: data.tenant_id,
           username: data.username,
           password: encryptedPassword,
+          company_id: profile.company_id,
         })
         .select("id, name, client_id, tenant_id, username, created_at")
         .single();
