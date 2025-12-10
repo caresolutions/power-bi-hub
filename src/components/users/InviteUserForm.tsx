@@ -106,6 +106,37 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
       if (existingProfile) {
         // User already exists - grant access immediately
+        // First, get existing profile's company to check if it's from the same company or needs to be set
+        const { data: existingProfileFull } = await supabase
+          .from("profiles")
+          .select("id, company_id")
+          .eq("id", existingProfile.id)
+          .single();
+
+        // If user has no company, set it to admin's company
+        // If user has a different company, show error
+        if (existingProfileFull?.company_id && existingProfileFull.company_id !== adminProfile.company_id) {
+          toast({
+            title: "Erro",
+            description: "Este usuário pertence a outra empresa e não pode receber acesso.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Update user's company_id if not set
+        if (!existingProfileFull?.company_id) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({ company_id: adminProfile.company_id })
+            .eq("id", existingProfile.id);
+
+          if (updateError) {
+            console.error("Error updating profile company:", updateError);
+          }
+        }
+
         // Check which dashboards user already has access to
         const { data: existingAccess } = await supabase
           .from("user_dashboard_access")
