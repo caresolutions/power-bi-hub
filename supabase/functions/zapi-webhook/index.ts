@@ -37,17 +37,22 @@ serve(async (req) => {
       const messageText = body.text.message;
       const messageId = body.messageId;
       const isFromSupport = body.fromMe === true;
+      const senderPhone = body.phone;
+      const connectedPhone = body.connectedPhone;
 
-      console.log('Processing message, fromMe:', body.fromMe);
-      console.log('Message text:', messageText);
+      console.log('=== Processing ReceivedCallback ===');
+      console.log('fromMe:', body.fromMe);
+      console.log('senderPhone:', senderPhone);
+      console.log('connectedPhone:', connectedPhone);
+      console.log('messageText:', messageText);
+      console.log('messageId:', messageId);
 
-      // Check if message is from support (sent from connected phone)
-      if (isFromSupport) {
-        console.log('Message is from support (fromMe=true), processing...');
-        
-        // Parse the response to find which user it's for
-        // Support should reply with format: "@email@example.com Resposta aqui"
-        const emailMatch = messageText.match(/@([\w.-]+@[\w.-]+\.\w+)/);
+      // Check if message contains email pattern (support response format)
+      const emailMatch = messageText.match(/@([\w.-]+@[\w.-]+\.\w+)/);
+      
+      // Process as support message if: fromMe=true OR contains email pattern
+      if (isFromSupport || emailMatch) {
+        console.log('Processing as potential support response...');
         
         if (emailMatch) {
           const userEmail = emailMatch[1];
@@ -69,7 +74,7 @@ serve(async (req) => {
 
           if (profile) {
             // Save support response
-            const { error: insertError } = await supabase
+            const { data: insertData, error: insertError } = await supabase
               .from('support_messages')
               .insert({
                 user_id: profile.id,
@@ -78,21 +83,23 @@ serve(async (req) => {
                 sender_type: 'support',
                 whatsapp_message_id: messageId,
                 status: 'delivered',
-              });
+              })
+              .select()
+              .single();
 
             if (insertError) {
               console.error('Error saving support message:', insertError);
             } else {
-              console.log('Support message saved for user:', userEmail);
+              console.log('Support message saved successfully:', insertData);
             }
           } else {
             console.log('User not found for email:', userEmail);
           }
         } else {
-          console.log('No email pattern found in message. Expected format: @email@example.com Response');
+          console.log('fromMe=true but no email pattern found. Expected format: @email@example.com Response');
         }
       } else {
-        console.log('Message is not from support number, ignoring');
+        console.log('Message does not match support response pattern, skipping...');
       }
     }
 
