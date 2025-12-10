@@ -67,89 +67,179 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Check if invitation already exists
-      const { data: existingInvite } = await supabase
-        .from("user_invitations")
-        .select("id")
-        .eq("email", email)
-        .is("accepted_at", null)
-        .gt("expires_at", new Date().toISOString())
-        .single();
-
-      if (existingInvite) {
-        toast({
-          title: "Aviso",
-          description: "Já existe um convite pendente para este e-mail",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Create invitation
-      const token = generateToken();
-      const { error } = await supabase
-        .from("user_invitations")
-        .insert({
-          email,
-          invited_by: user.id,
-          dashboard_ids: selectedDashboards,
-          token,
-        });
-
-      if (error) throw error;
-
       // Get selected dashboard names for email
       const selectedDashboardNames = dashboards
         .filter(d => selectedDashboards.includes(d.id))
         .map(d => d.name);
 
-      // Send invitation email
-      const inviteLink = `${window.location.origin}/auth?invite=${token}`;
-      
       const dashboardListHtml = selectedDashboardNames
         .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
         .join('');
 
-      const emailContent = `
-        <h2 style="color: #0891b2; margin-bottom: 24px;">Você foi convidado!</h2>
-        <p style="color: #334155; font-size: 16px; line-height: 1.6;">
-          Você recebeu um convite para acessar a plataforma Care BI.
-        </p>
-        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-          <strong>Dashboards disponíveis para você:</strong>
-        </p>
-        <ul style="margin: 16px 0; padding-left: 24px;">
-          ${dashboardListHtml}
-        </ul>
-        <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
-          Clique no botão abaixo para criar sua conta e acessar os dashboards:
-        </p>
-      `;
+      // Check if user already exists in profiles
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle();
 
-      const { error: emailError } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: email,
-          subject: "Convite para acessar Care BI",
-          htmlContent: getEmailTemplate(emailContent, inviteLink, "Criar Conta"),
-        },
-      });
+      if (existingProfile) {
+        // User already exists - grant access immediately
+        // Check which dashboards user already has access to
+        const { data: existingAccess } = await supabase
+          .from("user_dashboard_access")
+          .select("dashboard_id")
+          .eq("user_id", existingProfile.id);
 
-      if (emailError) {
-        console.error("Error sending email:", emailError);
-        toast({
-          title: "Convite criado",
-          description: `E-mail não pôde ser enviado. Link: ${inviteLink}`,
-          variant: "default",
+        const existingDashboardIds = existingAccess?.map(a => a.dashboard_id) || [];
+        const newDashboardIds = selectedDashboards.filter(id => !existingDashboardIds.includes(id));
+
+        if (newDashboardIds.length === 0) {
+          toast({
+            title: "Aviso",
+            description: "O usuário já possui acesso a todos os dashboards selecionados",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Grant access to new dashboards
+        const accessEntries = newDashboardIds.map(dashboardId => ({
+          dashboard_id: dashboardId,
+          user_id: existingProfile.id,
+          granted_by: user.id,
+        }));
+
+        const { error: accessError } = await supabase
+          .from("user_dashboard_access")
+          .insert(accessEntries);
+
+        if (accessError) throw accessError;
+
+        // Get names of newly granted dashboards
+        const newDashboardNames = dashboards
+          .filter(d => newDashboardIds.includes(d.id))
+          .map(d => d.name);
+
+        const newDashboardListHtml = newDashboardNames
+          .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
+          .join('');
+
+        // Send email informing about new dashboard access
+        const loginLink = `${window.location.origin}/auth`;
+        
+        const emailContent = `
+          <h2 style="color: #0891b2; margin-bottom: 24px;">Novos dashboards disponíveis!</h2>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+            Você recebeu acesso a novos dashboards na plataforma Care BI.
+          </p>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+            <strong>Dashboards liberados:</strong>
+          </p>
+          <ul style="margin: 16px 0; padding-left: 24px;">
+            ${newDashboardListHtml}
+          </ul>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+            Clique no botão abaixo para acessar a plataforma:
+          </p>
+        `;
+
+        const { error: emailError } = await supabase.functions.invoke("send-email", {
+          body: {
+            to: email,
+            subject: "Novos dashboards disponíveis - Care BI",
+            htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
+          },
         });
+
+        if (emailError) {
+          console.error("Error sending email:", emailError);
+        }
+
+        toast({
+          title: "Acesso concedido!",
+          description: `${newDashboardIds.length} dashboard(s) liberado(s) para ${email}`,
+        });
+
+        onSuccess();
       } else {
-        toast({
-          title: "Convite enviado!",
-          description: `E-mail de convite enviado para ${email}`,
-        });
-      }
+        // User doesn't exist - create invitation
+        // Check if invitation already exists
+        const { data: existingInvite } = await supabase
+          .from("user_invitations")
+          .select("id")
+          .eq("email", email)
+          .is("accepted_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .maybeSingle();
 
-      onSuccess();
+        if (existingInvite) {
+          toast({
+            title: "Aviso",
+            description: "Já existe um convite pendente para este e-mail",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Create invitation
+        const token = generateToken();
+        const { error } = await supabase
+          .from("user_invitations")
+          .insert({
+            email,
+            invited_by: user.id,
+            dashboard_ids: selectedDashboards,
+            token,
+          });
+
+        if (error) throw error;
+
+        // Send invitation email
+        const inviteLink = `${window.location.origin}/auth?invite=${token}`;
+
+        const emailContent = `
+          <h2 style="color: #0891b2; margin-bottom: 24px;">Você foi convidado!</h2>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+            Você recebeu um convite para acessar a plataforma Care BI.
+          </p>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+            <strong>Dashboards disponíveis para você:</strong>
+          </p>
+          <ul style="margin: 16px 0; padding-left: 24px;">
+            ${dashboardListHtml}
+          </ul>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+            Clique no botão abaixo para criar sua conta e acessar os dashboards:
+          </p>
+        `;
+
+        const { error: emailError } = await supabase.functions.invoke("send-email", {
+          body: {
+            to: email,
+            subject: "Convite para acessar Care BI",
+            htmlContent: getEmailTemplate(emailContent, inviteLink, "Criar Conta"),
+          },
+        });
+
+        if (emailError) {
+          console.error("Error sending email:", emailError);
+          toast({
+            title: "Convite criado",
+            description: `E-mail não pôde ser enviado. Link: ${inviteLink}`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Convite enviado!",
+            description: `E-mail de convite enviado para ${email}`,
+          });
+        }
+
+        onSuccess();
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
