@@ -236,6 +236,39 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          message: string
+          sender_type: string
+          status: string | null
+          user_id: string
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          sender_type: string
+          status?: string | null
+          user_id: string
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          sender_type?: string
+          status?: string | null
+          user_id?: string
+          whatsapp_message_id?: string | null
+        }
+        Relationships: []
+      }
       user_dashboard_access: {
         Row: {
           created_at: string

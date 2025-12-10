@@ -12,6 +12,7 @@ import DashboardViewer from "./pages/DashboardViewer";
 import UsersManagement from "./pages/UsersManagement";
 import Subscription from "./pages/Subscription";
 import NotFound from "./pages/NotFound";
+import { SupportChat } from "./components/support/SupportChat";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <SupportChat />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
