@@ -21,14 +21,30 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Z-API webhook received:', JSON.stringify(body, null, 2));
 
-    // Handle incoming message from support
+    // Ignore group messages - only process direct messages
+    if (body.isGroup) {
+      console.log('Ignoring group message');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Group message ignored' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle incoming message from support (direct message)
     if (body.type === 'ReceivedCallback' && body.text?.message) {
-      const senderPhone = body.phone;
+      const senderPhone = body.phone?.replace(/\D/g, ''); // Remove non-digits
+      const supportPhone = SUPPORT_WHATSAPP_NUMBER?.replace(/\D/g, '');
       const messageText = body.text.message;
       const messageId = body.messageId;
 
+      console.log('Processing direct message from:', senderPhone);
+      console.log('Support phone configured:', supportPhone);
+      console.log('Message text:', messageText);
+
       // Check if message is from support number (response to user)
-      if (senderPhone === SUPPORT_WHATSAPP_NUMBER) {
+      if (senderPhone === supportPhone) {
+        console.log('Message is from support number, processing...');
+        
         // Parse the response to find which user it's for
         // Support should reply with format: "@email@example.com Resposta aqui"
         const emailMatch = messageText.match(/@([\w.-]+@[\w.-]+\.\w+)/);
@@ -37,16 +53,23 @@ serve(async (req) => {
           const userEmail = emailMatch[1];
           const responseMessage = messageText.replace(/@[\w.-]+@[\w.-]+\.\w+\s*/, '').trim();
 
+          console.log('Parsed email:', userEmail);
+          console.log('Response message:', responseMessage);
+
           // Find user by email
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('id, company_id')
             .eq('email', userEmail)
             .single();
 
+          if (profileError) {
+            console.error('Error finding profile:', profileError);
+          }
+
           if (profile) {
             // Save support response
-            await supabase
+            const { error: insertError } = await supabase
               .from('support_messages')
               .insert({
                 user_id: profile.id,
@@ -57,11 +80,19 @@ serve(async (req) => {
                 status: 'delivered',
               });
 
-            console.log('Support message saved for user:', userEmail);
+            if (insertError) {
+              console.error('Error saving support message:', insertError);
+            } else {
+              console.log('Support message saved for user:', userEmail);
+            }
           } else {
             console.log('User not found for email:', userEmail);
           }
+        } else {
+          console.log('No email pattern found in message. Expected format: @email@example.com Response');
         }
+      } else {
+        console.log('Message is not from support number, ignoring');
       }
     }
 
