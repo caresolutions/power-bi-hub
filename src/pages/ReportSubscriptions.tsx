@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Mail, Clock, Calendar, Trash2, Pencil, Play, Pause } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Clock, Calendar, Trash2, Pencil, Play, Pause, Send, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { SubscriptionForm } from "@/components/subscriptions/SubscriptionForm";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
@@ -49,6 +49,7 @@ const ReportSubscriptions = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   useCompanyCustomization();
@@ -189,6 +190,37 @@ const ReportSubscriptions = () => {
       fetchSubscriptions();
     }
     setDeletingId(null);
+  };
+
+  const handleSendNow = async (subscriptionId: string) => {
+    setSendingId(subscriptionId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('export-report', {
+        body: { subscriptionId },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Sucesso",
+          description: "Relatório enviado com sucesso!",
+        });
+        fetchSubscriptions();
+      } else {
+        throw new Error(data?.error || 'Erro desconhecido');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar relatório';
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingId(null);
+    }
   };
 
   const getFrequencyLabel = (sub: Subscription) => {
@@ -361,10 +393,28 @@ const ReportSubscriptions = () => {
                       )}
                     </div>
                     {subscription.recipients.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
+                      <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">
                           Destinatários: {subscription.recipients.map(r => r.email).join(', ')}
                         </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendNow(subscription.id)}
+                          disabled={sendingId === subscription.id}
+                        >
+                          {sendingId === subscription.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Enviar Agora
+                            </>
+                          )}
+                        </Button>
                       </div>
                     )}
                   </CardContent>

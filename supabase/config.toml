@@ -26,3 +26,9 @@ verify_jwt = true
 
 [functions.zapi-webhook]
 verify_jwt = false
+
+[functions.export-report]
+verify_jwt = true
+
+[functions.process-subscriptions]
+verify_jwt = false
