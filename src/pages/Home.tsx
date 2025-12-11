@@ -14,6 +14,7 @@ import {
   Cog
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 
 type UserRole = 'admin' | 'user';
 
@@ -21,6 +22,7 @@ const Home = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { customization } = useCompanyCustomization();
 
   useEffect(() => {
     checkAuthAndRole();
@@ -111,10 +113,20 @@ const Home = () => {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-foreground">care</span>
-              <ChevronRight className="h-5 w-5 text-primary" />
-              <ChevronRight className="h-5 w-5 text-primary -ml-3" />
-              <span className="text-lg font-medium text-muted-foreground ml-2">BI</span>
+              {customization?.logo_url ? (
+                <img 
+                  src={customization.logo_url} 
+                  alt="Logo" 
+                  className="h-10 w-auto max-w-[150px] object-contain"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl font-bold text-foreground">care</span>
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                  <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+                  <span className="text-lg font-medium text-muted-foreground ml-2">BI</span>
+                </>
+              )}
             </div>
             
             <div className="flex items-center gap-4">

@@ -8,11 +8,13 @@ import { ArrowLeft, Building2, Users, Palette } from "lucide-react";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UsersSettings } from "@/components/settings/UsersSettings";
 import { CustomizationSettings } from "@/components/settings/CustomizationSettings";
+import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+  useCompanyCustomization();
 
   useEffect(() => {
     checkAuth();
