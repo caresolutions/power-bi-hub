@@ -20,6 +20,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -27,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Pencil, Save, Shield, User } from "lucide-react";
+import { Users, Pencil, Save, Shield, User, Trash2 } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -39,9 +49,12 @@ interface UserProfile {
 export const UsersSettings = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", role: "" });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,6 +64,8 @@ export const UsersSettings = () => {
   const fetchUsers = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    setCurrentUserId(user.id);
 
     // Get current user's company_id
     const { data: profile } = await supabase
@@ -152,6 +167,47 @@ export const UsersSettings = () => {
     fetchUsers();
   };
 
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    
+    setDeleting(true);
+    
+    // Delete user role first
+    await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", deletingUser.id);
+
+    // Delete user dashboard access
+    await supabase
+      .from("user_dashboard_access")
+      .delete()
+      .eq("user_id", deletingUser.id);
+
+    // Delete profile (this won't delete auth.users, but removes from company)
+    const { error } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", deletingUser.id);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o usuário",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Sucesso",
+        description: "Usuário removido com sucesso",
+      });
+    }
+    
+    setDeletingUser(null);
+    setDeleting(false);
+    fetchUsers();
+  };
+
   if (loading) {
     return <div className="text-muted-foreground">Carregando...</div>;
   }
@@ -165,7 +221,7 @@ export const UsersSettings = () => {
             <CardTitle>Usuários da Empresa</CardTitle>
           </div>
           <CardDescription>
-            Visualize e edite os usuários cadastrados na sua empresa
+            Visualize, edite ou remova os usuários cadastrados na sua empresa
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,7 +235,7 @@ export const UsersSettings = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="w-[120px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -200,13 +256,25 @@ export const UsersSettings = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(user)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {user.id !== currentUserId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingUser(user)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -217,6 +285,7 @@ export const UsersSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
         <DialogContent>
           <DialogHeader>
@@ -270,6 +339,29 @@ export const UsersSettings = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover <strong>{deletingUser?.email}</strong> da empresa? 
+              Esta ação não pode ser desfeita e o usuário perderá acesso a todos os dashboards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Removendo..." : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
