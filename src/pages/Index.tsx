@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Lock, Users, Zap, ChevronRight } from "lucide-react";
@@ -5,6 +6,16 @@ import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const navigate = useNavigate();
+
+  // Reset to default colors on landing page
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.removeProperty("--primary");
+    root.style.removeProperty("--ring");
+    root.style.removeProperty("--sidebar-primary");
+    root.style.removeProperty("--sidebar-ring");
+    root.style.removeProperty("--accent");
+  }, []);
 
   const features = [
     {
