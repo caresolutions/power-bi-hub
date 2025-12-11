@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import {
@@ -361,18 +361,32 @@ const Dashboards = () => {
                         </div>
                         
                         {userRole === 'admin' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full mt-4"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/users?dashboard=${dashboard.id}`);
-                            }}
-                          >
-                            <Users className="mr-2 h-4 w-4" />
-                            Gerenciar Acesso
-                          </Button>
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/users?dashboard=${dashboard.id}`);
+                              }}
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              Acesso
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/${dashboard.id}/subscriptions`);
+                              }}
+                            >
+                              <Mail className="mr-2 h-4 w-4" />
+                              Assinaturas
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </Card>
