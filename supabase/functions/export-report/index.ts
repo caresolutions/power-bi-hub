@@ -8,49 +8,9 @@ const corsHeaders = {
 
 const MAILJET_API_KEY = Deno.env.get('MAILJET_API_KEY');
 const MAILJET_SECRET_KEY = Deno.env.get('MAILJET_SECRET_KEY');
-const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
 
 interface ExportRequest {
   subscriptionId: string;
-}
-
-// Get encryption key matching manage-credentials function
-async function getEncryptionKey(keyString: string): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(keyString.padEnd(32, '0').slice(0, 32));
-  
-  return await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "AES-GCM" },
-    false,
-    ["decrypt"]
-  );
-}
-
-// Decryption function matching manage-credentials
-async function decryptValue(ciphertext: string, keyString: string): Promise<string> {
-  if (!ciphertext) return "";
-  
-  try {
-    const key = await getEncryptionKey(keyString);
-    const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
-    
-    const iv = combined.slice(0, 12);
-    const data = combined.slice(12);
-    
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      key,
-      data
-    );
-    
-    return new TextDecoder().decode(decrypted);
-  } catch (error) {
-    console.error("Decryption failed - data may not be encrypted or key mismatch:", error);
-    // Return as-is if decryption fails (for backward compatibility with unencrypted data)
-    return ciphertext;
-  }
 }
 
 serve(async (req) => {
@@ -76,14 +36,12 @@ serve(async (req) => {
           name,
           workspace_id,
           dashboard_id,
-          credential_id,
-          power_bi_configs (
-            client_id,
-            client_secret,
-            tenant_id,
-            username,
-            password
-          )
+          public_link,
+          embed_type
+        ),
+        companies:company_id (
+          name,
+          primary_color
         )
       `)
       .eq('id', subscriptionId)
@@ -99,7 +57,7 @@ serve(async (req) => {
       .from('subscription_logs')
       .insert({
         subscription_id: subscriptionId,
-        status: 'exporting',
+        status: 'sending',
       })
       .select()
       .single();
@@ -115,155 +73,29 @@ serve(async (req) => {
     }
 
     const dashboard = subscription.dashboards;
-    const credentials = dashboard?.power_bi_configs;
+    const company = subscription.companies;
 
-    if (!credentials) {
-      throw new Error('Power BI credentials not configured for this dashboard');
+    if (!dashboard) {
+      throw new Error('Dashboard not found');
     }
 
-    // Decrypt sensitive credentials
-    let decryptedClientSecret = credentials.client_secret;
-    let decryptedPassword = credentials.password || '';
-
-    if (ENCRYPTION_KEY) {
-      console.log('Decrypting credentials...');
-      if (credentials.client_secret) {
-        decryptedClientSecret = await decryptValue(credentials.client_secret, ENCRYPTION_KEY);
-      }
-      if (credentials.password) {
-        decryptedPassword = await decryptValue(credentials.password, ENCRYPTION_KEY);
-      }
-      console.log('Credentials decrypted successfully');
+    // Build dashboard link - use app URL with dashboard viewer
+    const appBaseUrl = 'https://28dee854-2d52-4030-99a6-3f96767762b3.lovableproject.com';
+    const dashboardLink = `${appBaseUrl}/dashboard/${dashboard.id}`;
+    
+    // Also include Power BI direct link if available
+    let powerBiDirectLink = '';
+    if (dashboard.embed_type === 'public_link' && dashboard.public_link) {
+      powerBiDirectLink = dashboard.public_link;
     } else {
-      console.warn('ENCRYPTION_KEY not set, using credentials as-is');
+      powerBiDirectLink = `https://app.powerbi.com/groups/${dashboard.workspace_id}/reports/${dashboard.dashboard_id}`;
     }
 
-    // Get Power BI access token
-    console.log('Getting Power BI access token...');
-    const tokenResponse = await fetch(
-      `https://login.microsoftonline.com/${credentials.tenant_id}/oauth2/v2.0/token`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'password',
-          client_id: credentials.client_id,
-          client_secret: decryptedClientSecret,
-          scope: 'https://analysis.windows.net/powerbi/api/.default',
-          username: credentials.username || '',
-          password: decryptedPassword,
-        }),
-      }
-    );
+    const primaryColor = company?.primary_color || '#0891b2';
+    const companyName = company?.name || 'Care BI';
 
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Token error:', errorText);
-      throw new Error(`Failed to get Power BI token: ${errorText}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
-
-    // Start export job
-    console.log('Starting export job...');
-    const exportFormat = subscription.export_format === 'pptx' ? 'PPTX' : 'PDF';
-    
-    const exportBody: Record<string, unknown> = {
-      format: exportFormat,
-    };
-
-    // Add specific page if configured
-    if (subscription.report_page) {
-      exportBody.pages = [{ pageName: subscription.report_page }];
-    }
-
-    const exportResponse = await fetch(
-      `https://api.powerbi.com/v1.0/myorg/groups/${dashboard.workspace_id}/reports/${dashboard.dashboard_id}/ExportTo`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(exportBody),
-      }
-    );
-
-    if (!exportResponse.ok) {
-      const errorText = await exportResponse.text();
-      console.error('Export start error:', errorText);
-      throw new Error(`Failed to start export: ${errorText}`);
-    }
-
-    const exportData = await exportResponse.json();
-    const exportId = exportData.id;
-    console.log(`Export started with ID: ${exportId}`);
-
-    // Poll for export completion (max 5 minutes)
-    let exportStatus = 'Running';
-    let fileUrl = '';
-    const maxAttempts = 30;
-    let attempts = 0;
-
-    while (exportStatus === 'Running' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
-      attempts++;
-
-      const statusResponse = await fetch(
-        `https://api.powerbi.com/v1.0/myorg/groups/${dashboard.workspace_id}/reports/${dashboard.dashboard_id}/exports/${exportId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!statusResponse.ok) {
-        console.error('Status check failed');
-        continue;
-      }
-
-      const statusData = await statusResponse.json();
-      exportStatus = statusData.status;
-      console.log(`Export status: ${exportStatus} (attempt ${attempts})`);
-
-      if (exportStatus === 'Succeeded') {
-        fileUrl = statusData.resourceLocation;
-      } else if (exportStatus === 'Failed') {
-        throw new Error('Export failed: ' + (statusData.error?.message || 'Unknown error'));
-      }
-    }
-
-    if (exportStatus !== 'Succeeded') {
-      throw new Error('Export timed out');
-    }
-
-    // Download the exported file
-    console.log('Downloading exported file...');
-    const fileResponse = await fetch(fileUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!fileResponse.ok) {
-      throw new Error('Failed to download exported file');
-    }
-
-    const fileBuffer = await fileResponse.arrayBuffer();
-    const base64File = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
-    
-    const fileExtension = subscription.export_format === 'pptx' ? 'pptx' : 'pdf';
-    const mimeType = subscription.export_format === 'pptx' 
-      ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-      : 'application/pdf';
-    const fileName = `${dashboard.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.${fileExtension}`;
-
-    // Send email to all recipients
-    console.log(`Sending email to ${recipients.length} recipients...`);
+    // Send email to all recipients with link
+    console.log(`Sending email with dashboard link to ${recipients.length} recipients...`);
     
     for (const recipient of recipients) {
       const emailPayload = {
@@ -276,20 +108,119 @@ serve(async (req) => {
             Email: recipient.email,
             Name: recipient.name || recipient.email
           }],
-          Subject: `Relatório: ${dashboard.name}`,
+          Subject: `📊 Relatório: ${dashboard.name}`,
           HTMLPart: `
-            <h2>Relatório Power BI</h2>
-            <p>Olá${recipient.name ? ` ${recipient.name}` : ''},</p>
-            <p>Segue em anexo o relatório <strong>${dashboard.name}</strong> conforme programado.</p>
-            <p>Este é um envio automático configurado no Care BI.</p>
-            <br>
-            <p>Atenciosamente,<br>Care BI</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f5;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+                <tr>
+                  <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                      <!-- Header -->
+                      <tr>
+                        <td style="background: linear-gradient(135deg, ${primaryColor} 0%, #0e7490 100%); padding: 30px 40px; text-align: center;">
+                          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">
+                            ${companyName}
+                          </h1>
+                        </td>
+                      </tr>
+                      
+                      <!-- Content -->
+                      <tr>
+                        <td style="padding: 40px;">
+                          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                            Olá${recipient.name ? ` <strong>${recipient.name}</strong>` : ''},
+                          </p>
+                          
+                          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                            Seu relatório <strong>"${dashboard.name}"</strong> está disponível para visualização.
+                          </p>
+                          
+                          <!-- Dashboard Card -->
+                          <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%); border-radius: 8px; margin-bottom: 30px;">
+                            <tr>
+                              <td style="padding: 25px;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                  <tr>
+                                    <td>
+                                      <p style="color: #0891b2; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">
+                                        📊 Dashboard
+                                      </p>
+                                      <p style="color: #0f172a; font-size: 20px; font-weight: 600; margin: 0;">
+                                        ${dashboard.name}
+                                      </p>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <!-- CTA Button -->
+                          <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td align="center" style="padding-bottom: 20px;">
+                                <a href="${dashboardLink}" 
+                                   style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, #0e7490 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(8, 145, 178, 0.4);">
+                                  Abrir Dashboard
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <!-- Alternative Link -->
+                          <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0 0 10px 0;">
+                            Ou acesse diretamente no Power BI:
+                          </p>
+                          <p style="text-align: center; margin: 0 0 30px 0;">
+                            <a href="${powerBiDirectLink}" style="color: ${primaryColor}; font-size: 14px; word-break: break-all;">
+                              ${powerBiDirectLink}
+                            </a>
+                          </p>
+                          
+                          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+                          
+                          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5; margin: 0;">
+                            Este é um envio automático configurado no ${companyName}. 
+                            Se você não reconhece este email, por favor ignore-o.
+                          </p>
+                        </td>
+                      </tr>
+                      
+                      <!-- Footer -->
+                      <tr>
+                        <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                            © ${new Date().getFullYear()} ${companyName}. Todos os direitos reservados.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
           `,
-          Attachments: [{
-            ContentType: mimeType,
-            Filename: fileName,
-            Base64Content: base64File
-          }]
+          TextPart: `
+Olá${recipient.name ? ` ${recipient.name}` : ''},
+
+Seu relatório "${dashboard.name}" está disponível para visualização.
+
+Acesse o dashboard: ${dashboardLink}
+
+Ou acesse diretamente no Power BI: ${powerBiDirectLink}
+
+Este é um envio automático configurado no ${companyName}.
+
+Atenciosamente,
+${companyName}
+          `
         }]
       };
 
@@ -328,10 +259,10 @@ serve(async (req) => {
       })
       .eq('id', subscriptionId);
 
-    console.log('Export and send completed successfully');
+    console.log('Email with dashboard link sent successfully');
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Report sent successfully' }),
+      JSON.stringify({ success: true, message: 'Report link sent successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
