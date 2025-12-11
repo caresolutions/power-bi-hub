@@ -12,6 +12,7 @@ import DashboardViewer from "./pages/DashboardViewer";
 import UsersManagement from "./pages/UsersManagement";
 import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
+import ReportSubscriptions from "./pages/ReportSubscriptions";
 import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/credentials" element={<Credentials />} />
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/dashboard/:id" element={<DashboardViewer />} />
+          <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
           <Route path="/users" element={<UsersManagement />} />
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/settings" element={<Settings />} />

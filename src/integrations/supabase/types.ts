@@ -206,6 +206,171 @@ export type Database = {
           },
         ]
       }
+      report_subscriptions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          dashboard_id: string
+          export_format: Database["public"]["Enums"]["export_format"]
+          frequency: Database["public"]["Enums"]["schedule_frequency"]
+          id: string
+          is_active: boolean
+          last_sent_at: string | null
+          name: string
+          next_send_at: string | null
+          report_page: string | null
+          schedule_day_of_month: number | null
+          schedule_days_of_week: number[] | null
+          schedule_interval_hours: number | null
+          schedule_time: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          dashboard_id: string
+          export_format?: Database["public"]["Enums"]["export_format"]
+          frequency?: Database["public"]["Enums"]["schedule_frequency"]
+          id?: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          name: string
+          next_send_at?: string | null
+          report_page?: string | null
+          schedule_day_of_month?: number | null
+          schedule_days_of_week?: number[] | null
+          schedule_interval_hours?: number | null
+          schedule_time?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          dashboard_id?: string
+          export_format?: Database["public"]["Enums"]["export_format"]
+          frequency?: Database["public"]["Enums"]["schedule_frequency"]
+          id?: string
+          is_active?: boolean
+          last_sent_at?: string | null
+          name?: string
+          next_send_at?: string | null
+          report_page?: string | null
+          schedule_day_of_month?: number | null
+          schedule_days_of_week?: number[] | null
+          schedule_interval_hours?: number | null
+          schedule_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_subscriptions_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          recipients_count: number | null
+          started_at: string
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          recipients_count?: number | null
+          started_at?: string
+          status: string
+          subscription_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          recipients_count?: number | null
+          started_at?: string
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_logs_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "report_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_recipients: {
+        Row: {
+          apply_rls: boolean
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          rls_user_id: string | null
+          subscription_id: string
+        }
+        Insert: {
+          apply_rls?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+          rls_user_id?: string | null
+          subscription_id: string
+        }
+        Update: {
+          apply_rls?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          rls_user_id?: string | null
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_recipients_rls_user_id_fkey"
+            columns: ["rls_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_recipients_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "report_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -407,6 +572,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      export_format: "pdf" | "pptx"
+      schedule_frequency: "once" | "daily" | "weekly" | "monthly" | "interval"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -535,6 +702,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      export_format: ["pdf", "pptx"],
+      schedule_frequency: ["once", "daily", "weekly", "monthly", "interval"],
     },
   },
 } as const
