@@ -10,7 +10,8 @@ import {
   LogOut,
   CreditCard,
   Shield,
-  ChevronRight
+  ChevronRight,
+  Cog
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -121,6 +122,13 @@ const Home = () => {
                 <Shield className="h-4 w-4" />
                 <span className="capitalize">{userRole}</span>
               </div>
+              
+              {userRole === 'admin' && (
+                <Button variant="ghost" onClick={() => navigate("/settings")}>
+                  <Cog className="mr-2 h-4 w-4" />
+                  Configurações
+                </Button>
+              )}
               
               <Button variant="ghost" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

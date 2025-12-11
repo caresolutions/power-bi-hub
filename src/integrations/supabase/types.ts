@@ -19,21 +19,30 @@ export type Database = {
           cnpj: string
           created_at: string
           id: string
+          logo_url: string | null
           name: string
+          primary_color: string | null
+          secondary_color: string | null
           updated_at: string
         }
         Insert: {
           cnpj: string
           created_at?: string
           id?: string
+          logo_url?: string | null
           name: string
+          primary_color?: string | null
+          secondary_color?: string | null
           updated_at?: string
         }
         Update: {
           cnpj?: string
           created_at?: string
           id?: string
+          logo_url?: string | null
           name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
           updated_at?: string
         }
         Relationships: []
