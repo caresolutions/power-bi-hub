@@ -8,9 +8,39 @@ const corsHeaders = {
 
 const MAILJET_API_KEY = Deno.env.get('MAILJET_API_KEY');
 const MAILJET_SECRET_KEY = Deno.env.get('MAILJET_SECRET_KEY');
+const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY');
 
 interface ExportRequest {
   subscriptionId: string;
+}
+
+// Decryption function for encrypted credentials
+async function decryptValue(ciphertext: string, keyString: string): Promise<string> {
+  try {
+    const keyData = Uint8Array.from(atob(keyString), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+
+    const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const encrypted = combined.slice(12);
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted
+    );
+
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error('Decryption error:', error);
+    throw new Error('Failed to decrypt credential');
+  }
 }
 
 serve(async (req) => {
@@ -81,6 +111,28 @@ serve(async (req) => {
       throw new Error('Power BI credentials not configured for this dashboard');
     }
 
+    // Decrypt sensitive credentials
+    let decryptedClientSecret = credentials.client_secret;
+    let decryptedPassword = credentials.password || '';
+
+    if (ENCRYPTION_KEY) {
+      console.log('Decrypting credentials...');
+      try {
+        if (credentials.client_secret) {
+          decryptedClientSecret = await decryptValue(credentials.client_secret, ENCRYPTION_KEY);
+        }
+        if (credentials.password) {
+          decryptedPassword = await decryptValue(credentials.password, ENCRYPTION_KEY);
+        }
+        console.log('Credentials decrypted successfully');
+      } catch (decryptError) {
+        console.error('Failed to decrypt credentials:', decryptError);
+        throw new Error('Failed to decrypt Power BI credentials');
+      }
+    } else {
+      console.warn('ENCRYPTION_KEY not set, using credentials as-is');
+    }
+
     // Get Power BI access token
     console.log('Getting Power BI access token...');
     const tokenResponse = await fetch(
@@ -93,10 +145,10 @@ serve(async (req) => {
         body: new URLSearchParams({
           grant_type: 'password',
           client_id: credentials.client_id,
-          client_secret: credentials.client_secret,
+          client_secret: decryptedClientSecret,
           scope: 'https://analysis.windows.net/powerbi/api/.default',
           username: credentials.username || '',
-          password: credentials.password || '',
+          password: decryptedPassword,
         }),
       }
     );
