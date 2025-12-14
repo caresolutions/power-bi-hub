@@ -47,6 +47,47 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_refresh_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          dashboard_id: string
+          error_message: string | null
+          id: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          dashboard_id: string
+          error_message?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          dashboard_id?: string
+          error_message?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_refresh_history_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboards: {
         Row: {
           company_id: string | null

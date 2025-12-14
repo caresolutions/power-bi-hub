@@ -2,8 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 
 interface Dashboard {
@@ -24,6 +27,11 @@ interface EmbedData {
   reportSection: string | null;
 }
 
+interface LastRefresh {
+  started_at: string;
+  status: string;
+}
+
 const DashboardViewer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -34,6 +42,8 @@ const DashboardViewer = () => {
   const [embedError, setEmbedError] = useState<string | null>(null);
   const [canRefresh, setCanRefresh] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<LastRefresh | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
@@ -63,6 +73,7 @@ const DashboardViewer = () => {
       if (id) {
         fetchDashboard(id, user.id);
         checkRefreshPermission(id, user.id);
+        fetchLastRefresh(id);
       }
     };
 
@@ -78,6 +89,20 @@ const DashboardViewer = () => {
       .maybeSingle();
 
     setCanRefresh(!!data);
+  };
+
+  const fetchLastRefresh = async (dashboardId: string) => {
+    const { data } = await supabase
+      .from("dashboard_refresh_history")
+      .select("started_at, status")
+      .eq("dashboard_id", dashboardId)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setLastRefresh(data);
+    }
   };
 
   const handleRefresh = async () => {
@@ -103,6 +128,11 @@ const DashboardViewer = () => {
         title: "Sucesso",
         description: data.message || "Atualização do dataset iniciada",
       });
+
+      // Refresh last update info
+      if (id) {
+        fetchLastRefresh(id);
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -292,21 +322,46 @@ const DashboardViewer = () => {
             Voltar
           </Button>
           <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
+          
+          {lastRefresh && (
+            <span className="ml-4 text-xs text-muted-foreground hidden sm:inline">
+              Última atualização: {format(new Date(lastRefresh.started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+            </span>
+          )}
         </div>
         
         {canRefresh && dashboard.embed_type === "workspace_id" && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="text-xs h-7 px-3"
-          >
-            <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Atualizando..." : "Atualizar Dados"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistoryOpen(true)}
+              className="text-xs h-7 px-2"
+            >
+              <History className="h-3 w-3" />
+              <span className="ml-1 hidden sm:inline">Histórico</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-xs h-7 px-3"
+            >
+              <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Atualizando..." : "Atualizar Dados"}
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Refresh History Dialog */}
+      <RefreshHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
+      />
 
       {/* Dashboard content */}
       <div className="flex-1 w-full overflow-hidden">

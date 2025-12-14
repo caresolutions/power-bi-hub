@@ -153,11 +153,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
+  let historyId: string | null = null;
+
+  try {
     // Get authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -196,6 +198,23 @@ serve(async (req) => {
 
     if (!permission) {
       throw new Error("Você não tem permissão para atualizar este dashboard");
+    }
+
+    // Create history entry
+    const { data: historyEntry, error: historyError } = await supabase
+      .from("dashboard_refresh_history")
+      .insert({
+        dashboard_id: dashboardId,
+        user_id: user.id,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (historyError) {
+      console.error("Error creating history entry:", historyError);
+    } else {
+      historyId = historyEntry.id;
     }
 
     // Get dashboard with credential
@@ -265,6 +284,17 @@ serve(async (req) => {
 
     console.log("Dataset refresh completed successfully");
 
+    // Update history entry as completed
+    if (historyId) {
+      await supabase
+        .from("dashboard_refresh_history")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", historyId);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -276,6 +306,19 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Error in refresh-dataset:", error.message);
+
+    // Update history entry as failed
+    if (historyId) {
+      await supabase
+        .from("dashboard_refresh_history")
+        .update({
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          error_message: error.message,
+        })
+        .eq("id", historyId);
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
