@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search, Mail } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search, Mail, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
+import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ const Dashboards = () => {
   const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -361,7 +363,7 @@ const Dashboards = () => {
                         </div>
                         
                         {userRole === 'admin' && (
-                          <div className="flex gap-2 mt-4">
+                          <div className="flex flex-wrap gap-2 mt-4">
                             <Button
                               variant="outline"
                               size="sm"
@@ -386,6 +388,20 @@ const Dashboards = () => {
                               <Mail className="mr-2 h-4 w-4" />
                               Assinaturas
                             </Button>
+                            {dashboard.embed_type === "workspace_id" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRefreshPermsDashboard(dashboard);
+                                }}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Atualizar
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -415,6 +431,16 @@ const Dashboards = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Refresh Permissions Dialog */}
+      {refreshPermsDashboard && (
+        <RefreshPermissionsDialog
+          dashboardId={refreshPermsDashboard.id}
+          dashboardName={refreshPermsDashboard.name}
+          open={!!refreshPermsDashboard}
+          onOpenChange={(open) => !open && setRefreshPermsDashboard(null)}
+        />
+      )}
     </div>
   );
 };

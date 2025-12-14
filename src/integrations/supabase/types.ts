@@ -53,6 +53,7 @@ export type Database = {
           created_at: string
           credential_id: string | null
           dashboard_id: string
+          dataset_id: string | null
           embed_type: string
           id: string
           name: string
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string
           credential_id?: string | null
           dashboard_id: string
+          dataset_id?: string | null
           embed_type?: string
           id?: string
           name: string
@@ -81,6 +83,7 @@ export type Database = {
           created_at?: string
           credential_id?: string | null
           dashboard_id?: string
+          dataset_id?: string | null
           embed_type?: string
           id?: string
           name?: string
@@ -485,6 +488,38 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dashboard_refresh_permissions: {
+        Row: {
+          created_at: string
+          dashboard_id: string
+          granted_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dashboard_id: string
+          granted_by: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dashboard_id?: string
+          granted_by?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_refresh_permissions_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
             referencedColumns: ["id"]
           },
         ]

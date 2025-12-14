@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import * as pbi from "powerbi-client";
 
@@ -32,6 +32,8 @@ const DashboardViewer = () => {
   const [loading, setLoading] = useState(true);
   const [embedLoading, setEmbedLoading] = useState(false);
   const [embedError, setEmbedError] = useState<string | null>(null);
+  const [canRefresh, setCanRefresh] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
@@ -60,11 +62,57 @@ const DashboardViewer = () => {
 
       if (id) {
         fetchDashboard(id, user.id);
+        checkRefreshPermission(id, user.id);
       }
     };
 
     checkAuthAndFetchDashboard();
   }, [id, navigate]);
+
+  const checkRefreshPermission = async (dashboardId: string, userId: string) => {
+    const { data } = await supabase
+      .from("user_dashboard_refresh_permissions")
+      .select("id")
+      .eq("dashboard_id", dashboardId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    setCanRefresh(!!data);
+  };
+
+  const handleRefresh = async () => {
+    if (!dashboard) return;
+    
+    setRefreshing(true);
+    try {
+      const response = await supabase.functions.invoke("refresh-dataset", {
+        body: { dashboardId: dashboard.id },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const data = response.data as { success: boolean; error?: string; message?: string };
+
+      if (!data.success) {
+        throw new Error(data.error || "Falha ao atualizar");
+      }
+
+      toast({
+        title: "Sucesso",
+        description: data.message || "Atualização do dataset iniciada",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fetchDashboard = async (dashboardId: string, userId: string) => {
     try {
@@ -232,17 +280,32 @@ const DashboardViewer = () => {
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header with back button */}
-      <div className="flex-shrink-0 h-10 bg-background border-b border-border flex items-center px-2">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => navigate("/dashboards")} 
-          className="text-xs h-7 px-2"
-        >
-          <ArrowLeft className="mr-1 h-3 w-3" />
-          Voltar
-        </Button>
-        <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
+      <div className="flex-shrink-0 h-10 bg-background border-b border-border flex items-center justify-between px-2">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate("/dashboards")} 
+            className="text-xs h-7 px-2"
+          >
+            <ArrowLeft className="mr-1 h-3 w-3" />
+            Voltar
+          </Button>
+          <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
+        </div>
+        
+        {canRefresh && dashboard.embed_type === "workspace_id" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="text-xs h-7 px-3"
+          >
+            <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Atualizando..." : "Atualizar Dados"}
+          </Button>
+        )}
       </div>
 
       {/* Dashboard content */}
