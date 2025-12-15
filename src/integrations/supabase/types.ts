@@ -90,50 +90,59 @@ export type Database = {
       }
       dashboards: {
         Row: {
+          category: string | null
           company_id: string | null
           created_at: string
           credential_id: string | null
           dashboard_id: string
           dataset_id: string | null
           dataset_schema: string | null
+          description: string | null
           embed_type: string
           id: string
           name: string
           owner_id: string
           public_link: string | null
           report_section: string | null
+          tags: string[] | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          category?: string | null
           company_id?: string | null
           created_at?: string
           credential_id?: string | null
           dashboard_id: string
           dataset_id?: string | null
           dataset_schema?: string | null
+          description?: string | null
           embed_type?: string
           id?: string
           name: string
           owner_id: string
           public_link?: string | null
           report_section?: string | null
+          tags?: string[] | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          category?: string | null
           company_id?: string | null
           created_at?: string
           credential_id?: string | null
           dashboard_id?: string
           dataset_id?: string | null
           dataset_schema?: string | null
+          description?: string | null
           embed_type?: string
           id?: string
           name?: string
           owner_id?: string
           public_link?: string | null
           report_section?: string | null
+          tags?: string[] | null
           updated_at?: string
           workspace_id?: string
         }
