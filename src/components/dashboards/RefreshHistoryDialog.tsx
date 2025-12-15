@@ -44,12 +44,17 @@ export function RefreshHistoryDialog({
   const fetchHistory = async () => {
     setLoading(true);
     try {
+      // Calculate 72 hours ago
+      const cutoffDate = new Date();
+      cutoffDate.setHours(cutoffDate.getHours() - 72);
+
       const { data, error } = await supabase
         .from("dashboard_refresh_history")
         .select("*")
         .eq("dashboard_id", dashboardId)
+        .gte("started_at", cutoffDate.toISOString())
         .order("started_at", { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
       setHistory(data || []);
