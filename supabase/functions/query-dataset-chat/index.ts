@@ -111,6 +111,62 @@ async function executeDaxQuery(accessToken: string, datasetId: string, daxQuery:
   return await response.json();
 }
 
+// Fetch dataset schema using DMV queries
+async function getDatasetSchema(accessToken: string, datasetId: string): Promise<string> {
+  try {
+    // Query to get tables info
+    const tablesQuery = `
+      EVALUATE
+      SELECTCOLUMNS(
+        INFO.TABLES(),
+        "TableName", [Name],
+        "IsHidden", [IsHidden]
+      )
+    `;
+    
+    const tablesResult = await executeDaxQuery(accessToken, datasetId, tablesQuery);
+    const tables = tablesResult?.results?.[0]?.tables?.[0]?.rows || [];
+    
+    // Query to get columns info
+    const columnsQuery = `
+      EVALUATE
+      SELECTCOLUMNS(
+        INFO.COLUMNS(),
+        "TableName", [TableName],
+        "ColumnName", [ExplicitName],
+        "DataType", [DataType],
+        "IsHidden", [IsHidden]
+      )
+    `;
+    
+    const columnsResult = await executeDaxQuery(accessToken, datasetId, columnsQuery);
+    const columns = columnsResult?.results?.[0]?.tables?.[0]?.rows || [];
+    
+    // Build schema string
+    let schema = "TABELAS DISPONÍVEIS:\n\n";
+    
+    for (const table of tables) {
+      const tableName = table["[TableName]"];
+      if (table["[IsHidden]"]) continue; // Skip hidden tables
+      
+      schema += `Tabela: '${tableName}'\n`;
+      schema += "Colunas:\n";
+      
+      const tableColumns = columns.filter((c: any) => c["[TableName]"] === tableName && !c["[IsHidden]"]);
+      for (const col of tableColumns) {
+        schema += `  - '${tableName}'[${col["[ColumnName]"]}] (${col["[DataType]"]})\n`;
+      }
+      schema += "\n";
+    }
+    
+    console.log("Dataset schema discovered:", schema.substring(0, 500));
+    return schema;
+  } catch (error) {
+    console.error("Failed to get schema:", error);
+    return "Não foi possível obter o esquema do dataset";
+  }
+}
+
 // Use Lovable AI to generate DAX query from natural language
 async function generateDaxQuery(question: string, tableSchema: string): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -123,15 +179,17 @@ REGRAS IMPORTANTES:
 1. Sempre use EVALUATE no início da query
 2. Use TOPN para limitar resultados (máximo 100 linhas)
 3. Use SUMMARIZECOLUMNS para agregações
-4. Retorne APENAS a query DAX, sem explicações
-5. Se não conseguir gerar uma query válida, retorne: EVALUATE ROW("Erro", "Não foi possível interpretar a pergunta")
+4. Retorne APENAS a query DAX, sem explicações ou markdown
+5. Use EXATAMENTE os nomes de tabelas e colunas fornecidos no esquema
+6. Nomes de tabelas devem estar entre aspas simples: 'NomeTabela'
+7. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColunas]
 
-Esquema das tabelas disponíveis:
-${tableSchema || "Esquema não disponível - tente inferir das tabelas comuns de BI"}
+${tableSchema}
 
-Exemplos:
-- "Top 10 empresas por vendas" -> EVALUATE TOPN(10, SUMMARIZECOLUMNS('Empresa'[Nome], "Total", SUM('Vendas'[Valor])), [Total], DESC)
-- "Total de vendas" -> EVALUATE ROW("Total Vendas", SUM('Vendas'[Valor]))`;
+Exemplos de sintaxe correta:
+- EVALUATE TOPN(10, SUMMARIZECOLUMNS('Vendas'[Cliente], "Total", SUM('Vendas'[Valor])), [Total], DESC)
+- EVALUATE ROW("Total", SUM('Vendas'[Valor]))
+- EVALUATE FILTER('Clientes', 'Clientes'[Status] = "Ativo")`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -145,7 +203,6 @@ Exemplos:
         { role: "system", content: systemPrompt },
         { role: "user", content: question },
       ],
-      temperature: 0.1,
     }),
   });
 
@@ -156,7 +213,12 @@ Exemplos:
   }
 
   const data = await response.json();
-  return data.choices[0].message.content.trim();
+  let daxQuery = data.choices[0].message.content.trim();
+  
+  // Clean up any markdown formatting
+  daxQuery = daxQuery.replace(/```dax\n?/gi, '').replace(/```\n?/g, '').trim();
+  
+  return daxQuery;
 }
 
 // Use Lovable AI to format the response
@@ -263,14 +325,18 @@ serve(async (req) => {
       password: credential.password ? await decryptValue(credential.password) : "",
     };
 
-    // Generate DAX query using AI
-    console.log("Generating DAX query...");
-    const daxQuery = await generateDaxQuery(question, "");
-    console.log("Generated DAX:", daxQuery);
-
     // Get access token
     console.log("Getting access token...");
     const accessToken = await getAzureAccessToken(config);
+
+    // Discover dataset schema
+    console.log("Discovering dataset schema...");
+    const schema = await getDatasetSchema(accessToken, dashboard.dataset_id);
+
+    // Generate DAX query using AI
+    console.log("Generating DAX query...");
+    const daxQuery = await generateDaxQuery(question, schema);
+    console.log("Generated DAX:", daxQuery);
 
     // Execute DAX query
     console.log("Executing DAX query...");
