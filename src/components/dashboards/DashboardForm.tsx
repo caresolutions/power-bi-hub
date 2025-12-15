@@ -29,6 +29,8 @@ interface Dashboard {
   description?: string | null;
   category?: string | null;
   tags?: string[] | null;
+  dataset_id?: string | null;
+  dataset_schema?: string | null;
 }
 
 interface Credential {
@@ -56,6 +58,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
   const [category, setCategory] = useState(dashboard?.category || "");
   const [tags, setTags] = useState<string[]>(dashboard?.tags || []);
   const [tagInput, setTagInput] = useState("");
+  const [datasetSchema, setDatasetSchema] = useState(dashboard?.dataset_schema || "");
   const [loading, setLoading] = useState(false);
   const [urlParsed, setUrlParsed] = useState(false);
   const { toast } = useToast();
@@ -180,6 +183,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             description: description || null,
             category: category || null,
             tags: tags.length > 0 ? tags : null,
+            dataset_schema: datasetSchema || null,
           })
           .eq("id", dashboard.id);
 
@@ -205,6 +209,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             description: description || null,
             category: category || null,
             tags: tags.length > 0 ? tags : null,
+            dataset_schema: datasetSchema || null,
           });
 
         if (error) throw error;
@@ -495,6 +500,30 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
               </p>
             </div>
           </div>
+
+          {/* AI Chat Schema Section - Only for workspace_id type with dataset */}
+          {embedType === "workspace_id" && (
+            <div className="space-y-4 p-4 rounded-lg bg-accent/5 border border-accent/20">
+              <div className="flex items-center gap-2 text-sm font-medium text-accent">
+                <Sparkles className="h-4 w-4" />
+                Schema do Dataset (Chat IA)
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="datasetSchema">Tabelas e Colunas</Label>
+                <Textarea
+                  id="datasetSchema"
+                  value={datasetSchema}
+                  onChange={(e) => setDatasetSchema(e.target.value)}
+                  placeholder="Chamados: ID, Status, DataAbertura, Cliente | Clientes: ID, Nome, CNPJ"
+                  className="bg-background/50 min-h-[100px] resize-none font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Informe as tabelas e colunas do dataset para habilitar o Chat IA. 
+                  Formato: <code className="bg-muted px-1 rounded">Tabela: Col1, Col2 | Tabela2: Col1, Col2</code>
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <Button
