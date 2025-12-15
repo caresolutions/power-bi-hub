@@ -111,55 +111,40 @@ async function executeDaxQuery(accessToken: string, datasetId: string, daxQuery:
   return await response.json();
 }
 
-// Fetch dataset schema using DMV queries
+// Fetch dataset schema using REST API
 async function getDatasetSchema(accessToken: string, datasetId: string): Promise<string> {
   try {
-    // Query to get tables info
-    const tablesQuery = `
-      EVALUATE
-      SELECTCOLUMNS(
-        INFO.TABLES(),
-        "TableName", [Name],
-        "IsHidden", [IsHidden]
-      )
-    `;
+    // Get tables from REST API
+    const tablesUrl = `https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/tables`;
+    const tablesResponse = await fetch(tablesUrl, {
+      headers: { "Authorization": `Bearer ${accessToken}` },
+    });
     
-    const tablesResult = await executeDaxQuery(accessToken, datasetId, tablesQuery);
-    const tables = tablesResult?.results?.[0]?.tables?.[0]?.rows || [];
+    if (!tablesResponse.ok) {
+      console.error("Failed to get tables from REST API:", await tablesResponse.text());
+      return "Não foi possível obter o esquema do dataset via REST API";
+    }
     
-    // Query to get columns info
-    const columnsQuery = `
-      EVALUATE
-      SELECTCOLUMNS(
-        INFO.COLUMNS(),
-        "TableName", [TableName],
-        "ColumnName", [ExplicitName],
-        "DataType", [DataType],
-        "IsHidden", [IsHidden]
-      )
-    `;
-    
-    const columnsResult = await executeDaxQuery(accessToken, datasetId, columnsQuery);
-    const columns = columnsResult?.results?.[0]?.tables?.[0]?.rows || [];
+    const tablesData = await tablesResponse.json();
+    const tables = tablesData.value || [];
     
     // Build schema string
-    let schema = "TABELAS DISPONÍVEIS:\n\n";
+    let schema = "TABELAS E COLUNAS DISPONÍVEIS:\n\n";
     
     for (const table of tables) {
-      const tableName = table["[TableName]"];
-      if (table["[IsHidden]"]) continue; // Skip hidden tables
-      
+      const tableName = table.name;
       schema += `Tabela: '${tableName}'\n`;
       schema += "Colunas:\n";
       
-      const tableColumns = columns.filter((c: any) => c["[TableName]"] === tableName && !c["[IsHidden]"]);
-      for (const col of tableColumns) {
-        schema += `  - '${tableName}'[${col["[ColumnName]"]}] (${col["[DataType]"]})\n`;
+      if (table.columns) {
+        for (const col of table.columns) {
+          schema += `  - '${tableName}'[${col.name}] (${col.dataType})\n`;
+        }
       }
       schema += "\n";
     }
     
-    console.log("Dataset schema discovered:", schema.substring(0, 500));
+    console.log("Dataset schema discovered:", schema.substring(0, 1000));
     return schema;
   } catch (error) {
     console.error("Failed to get schema:", error);
