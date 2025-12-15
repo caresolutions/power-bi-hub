@@ -12,12 +12,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ChatDataChart, ChartType } from "./ChatDataChart";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   daxQuery?: string;
+  chartData?: any[];
+  suggestedChartType?: ChartType;
   timestamp: Date;
 }
 
@@ -76,6 +79,8 @@ export function DashboardChatDialog({
         role: "assistant",
         content: data.answer,
         daxQuery: data.daxQuery,
+        chartData: data.chartData,
+        suggestedChartType: data.suggestedChartType || "bar",
         timestamp: new Date(),
       };
 
@@ -161,6 +166,14 @@ export function DashboardChatDialog({
                   )}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  
+                  {/* Chart visualization */}
+                  {message.chartData && message.chartData.length > 0 && (
+                    <ChatDataChart 
+                      data={message.chartData} 
+                      suggestedType={message.suggestedChartType || "bar"} 
+                    />
+                  )}
                   
                   {message.daxQuery && (
                     <Collapsible className="mt-2">
