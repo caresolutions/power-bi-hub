@@ -95,6 +95,7 @@ export type Database = {
           credential_id: string | null
           dashboard_id: string
           dataset_id: string | null
+          dataset_schema: string | null
           embed_type: string
           id: string
           name: string
@@ -110,6 +111,7 @@ export type Database = {
           credential_id?: string | null
           dashboard_id: string
           dataset_id?: string | null
+          dataset_schema?: string | null
           embed_type?: string
           id?: string
           name: string
@@ -125,6 +127,7 @@ export type Database = {
           credential_id?: string | null
           dashboard_id?: string
           dataset_id?: string | null
+          dataset_schema?: string | null
           embed_type?: string
           id?: string
           name?: string

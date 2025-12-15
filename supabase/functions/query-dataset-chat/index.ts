@@ -220,6 +220,32 @@ function schemaDiscoveryFailed(schema: string): boolean {
          !schema.includes("Tabela:");
 }
 
+// Parse manual schema from dashboard configuration
+// Format: "TableName: Col1, Col2, Col3 | TableName2: Col1, Col2"
+function parseManualSchema(manualSchema: string): string {
+  const tables = manualSchema.split("|").map(t => t.trim()).filter(Boolean);
+  
+  let schema = "TABELAS E COLUNAS DISPONÍVEIS NO DATASET:\n\n";
+  
+  for (const tableDef of tables) {
+    const match = tableDef.match(/^([^:]+):\s*(.+)$/);
+    if (match) {
+      const tableName = match[1].trim();
+      const columns = match[2].split(",").map(c => c.trim()).filter(Boolean);
+      
+      schema += `Tabela: '${tableName}'\n`;
+      schema += "Colunas:\n";
+      for (const col of columns) {
+        schema += `  - '${tableName}'[${col}]\n`;
+      }
+      schema += "\n";
+    }
+  }
+  
+  console.log("Parsed manual schema:", schema.substring(0, 500));
+  return schema;
+}
+
 // Use Lovable AI to generate DAX query from natural language
 async function generateDaxQuery(question: string, tableSchema: string): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -370,7 +396,7 @@ serve(async (req) => {
     // Get dashboard info
     const { data: dashboard, error: dashboardError } = await supabase
       .from("dashboards")
-      .select("dataset_id, credential_id, name")
+      .select("dataset_id, credential_id, name, dataset_schema")
       .eq("id", dashboardId)
       .single();
 
@@ -410,9 +436,15 @@ serve(async (req) => {
     console.log("Getting access token...");
     const accessToken = await getAzureAccessToken(config);
 
-    // Discover dataset schema
-    console.log("Discovering dataset schema...");
-    const schema = await getDatasetSchema(accessToken, dashboard.dataset_id);
+    // Use manual schema if configured, otherwise try to discover
+    let schema: string;
+    if (dashboard.dataset_schema) {
+      console.log("Using manual schema from dashboard configuration");
+      schema = parseManualSchema(dashboard.dataset_schema);
+    } else {
+      console.log("Discovering dataset schema...");
+      schema = await getDatasetSchema(accessToken, dashboard.dataset_id);
+    }
 
     // Generate DAX query using AI
     console.log("Generating DAX query...");
