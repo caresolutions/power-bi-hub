@@ -22,7 +22,7 @@ interface BookmarksDialogProps {
   dashboardId: string;
   dashboardName: string;
   onApplyBookmark: (bookmarkState: any) => void;
-  getCurrentState: () => any;
+  getCurrentState: () => Promise<any>;
 }
 
 export const BookmarksDialog = ({
@@ -43,12 +43,17 @@ export const BookmarksDialog = ({
     if (!newName.trim()) return;
 
     setSaving(true);
-    const currentState = getCurrentState();
-    await createBookmark(newName, currentState, isShared);
-    setNewName("");
-    setIsShared(false);
-    setShowCreate(false);
-    setSaving(false);
+    try {
+      const currentState = await getCurrentState();
+      await createBookmark(newName, currentState, isShared);
+      setNewName("");
+      setIsShared(false);
+      setShowCreate(false);
+    } catch (err) {
+      console.error("Error creating bookmark:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleApply = (bookmark: DashboardBookmark) => {

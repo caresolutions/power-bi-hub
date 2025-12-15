@@ -335,21 +335,40 @@ const DashboardViewer = () => {
     }
   };
 
-  const getCurrentState = useCallback(() => {
-    // For now, return a simple state object
-    // In a more complete implementation, this would capture filters, slicers, etc.
-    return {
-      page: currentPage,
-      timestamp: new Date().toISOString(),
-    };
+  const getCurrentState = useCallback(async () => {
+    if (!reportRef.current) {
+      return {
+        page: currentPage,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    try {
+      // Use Power BI's built-in bookmark capture to get full report state
+      const capturedBookmark = await reportRef.current.bookmarksManager.capture();
+      return {
+        bookmarkState: capturedBookmark.state,
+        page: currentPage,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.error("Error capturing bookmark state:", err);
+      return {
+        page: currentPage,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }, [currentPage]);
 
   const handleApplyBookmark = useCallback(async (bookmarkState: any) => {
     if (!reportRef.current) return;
     
     try {
-      // Apply the page from the bookmark
-      if (bookmarkState.page) {
+      // Apply the full bookmark state using Power BI's bookmarksManager
+      if (bookmarkState.bookmarkState) {
+        await reportRef.current.bookmarksManager.applyState(bookmarkState.bookmarkState);
+      } else if (bookmarkState.page) {
+        // Fallback for old bookmarks that only have page
         await handlePageChange(bookmarkState.page);
       }
       
@@ -359,6 +378,11 @@ const DashboardViewer = () => {
       });
     } catch (err) {
       console.error("Error applying bookmark:", err);
+      toast({
+        title: "Erro",
+        description: "Não foi possível aplicar a visualização salva",
+        variant: "destructive",
+      });
     }
   }, [toast]);
 
