@@ -14,28 +14,47 @@ interface PowerBIConfig {
   password: string;
 }
 
-// Decrypt sensitive data
-async function decryptValue(ciphertext: string, keyString: string): Promise<string> {
-  const combined = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
-  const iv = combined.slice(0, 12);
-  const data = combined.slice(12);
+// Get encryption key (same method as manage-credentials)
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const keyString = Deno.env.get("ENCRYPTION_KEY");
+  if (!keyString) {
+    throw new Error("Encryption key not configured");
+  }
   
-  const keyBuffer = Uint8Array.from(atob(keyString), (c) => c.charCodeAt(0));
-  const key = await crypto.subtle.importKey(
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(keyString.padEnd(32, '0').slice(0, 32));
+  
+  return await crypto.subtle.importKey(
     "raw",
-    keyBuffer,
+    keyData,
     { name: "AES-GCM" },
     false,
     ["decrypt"]
   );
+}
+
+// Decrypt sensitive data
+async function decryptValue(ciphertext: string): Promise<string> {
+  if (!ciphertext) return "";
   
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    data
-  );
-  
-  return new TextDecoder().decode(decrypted);
+  try {
+    const key = await getEncryptionKey();
+    const combined = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
+    
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error("Decryption failed:", error);
+    return ciphertext;
+  }
 }
 
 // Get Azure AD access token
@@ -236,26 +255,13 @@ serve(async (req) => {
     }
 
     // Decrypt sensitive fields
-    const encryptionKey = Deno.env.get("ENCRYPTION_KEY");
-    let config: PowerBIConfig;
-
-    if (encryptionKey) {
-      config = {
-        client_id: credential.client_id,
-        client_secret: await decryptValue(credential.client_secret, encryptionKey),
-        tenant_id: credential.tenant_id,
-        username: credential.username || "",
-        password: credential.password ? await decryptValue(credential.password, encryptionKey) : "",
-      };
-    } else {
-      config = {
-        client_id: credential.client_id,
-        client_secret: credential.client_secret,
-        tenant_id: credential.tenant_id,
-        username: credential.username || "",
-        password: credential.password || "",
-      };
-    }
+    const config: PowerBIConfig = {
+      client_id: credential.client_id,
+      client_secret: await decryptValue(credential.client_secret),
+      tenant_id: credential.tenant_id,
+      username: credential.username || "",
+      password: credential.password ? await decryptValue(credential.password) : "",
+    };
 
     // Generate DAX query using AI
     console.log("Generating DAX query...");
