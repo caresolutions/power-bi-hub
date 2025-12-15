@@ -533,6 +533,47 @@ export type Database = {
           },
         ]
       }
+      user_dashboard_bookmarks: {
+        Row: {
+          bookmark_state: Json
+          created_at: string
+          dashboard_id: string
+          id: string
+          is_shared: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bookmark_state: Json
+          created_at?: string
+          dashboard_id: string
+          id?: string
+          is_shared?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bookmark_state?: Json
+          created_at?: string
+          dashboard_id?: string
+          id?: string
+          is_shared?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_bookmarks_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_dashboard_refresh_permissions: {
         Row: {
           created_at: string

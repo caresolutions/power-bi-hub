@@ -11,22 +11,40 @@ import {
   CreditCard,
   Shield,
   ChevronRight,
-  Cog
+  Cog,
+  Star,
+  BarChart3
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
+import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 
 type UserRole = 'admin' | 'user';
+
+interface FavoriteDashboard {
+  id: string;
+  name: string;
+}
 
 const Home = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [favoriteDashboards, setFavoriteDashboards] = useState<FavoriteDashboard[]>([]);
   const navigate = useNavigate();
   const { customization } = useCompanyCustomization();
+  const { favorites } = useDashboardFavorites();
 
   useEffect(() => {
     checkAuthAndRole();
   }, []);
+
+  useEffect(() => {
+    if (favorites.length > 0) {
+      fetchFavoriteDashboards();
+    } else {
+      setFavoriteDashboards([]);
+    }
+  }, [favorites]);
 
   const checkAuthAndRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -46,6 +64,20 @@ const Home = () => {
       setUserRole(roleData.role as UserRole);
     }
     setLoading(false);
+  };
+
+  const fetchFavoriteDashboards = async () => {
+    if (favorites.length === 0) return;
+
+    const { data } = await supabase
+      .from("dashboards")
+      .select("id, name")
+      .in("id", favorites)
+      .limit(4);
+
+    if (data) {
+      setFavoriteDashboards(data);
+    }
   };
 
   const handleLogout = async () => {
@@ -163,6 +195,42 @@ const Home = () => {
               : "Acesse os dashboards disponíveis para você"}
           </p>
         </div>
+
+        {/* Favorites Quick Access */}
+        {favoriteDashboards.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+              <h3 className="text-xl font-bold">Acesso Rápido</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {favoriteDashboards.map((dashboard, index) => (
+                <motion.div
+                  key={dashboard.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Card
+                    className="bg-card/60 backdrop-blur-md p-4 border-border/50 hover:border-amber-400/50 transition-all duration-300 cursor-pointer group"
+                    onClick={() => navigate(`/dashboard/${dashboard.id}`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="bg-amber-500/10 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                        <BarChart3 className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <span className="font-medium text-sm line-clamp-2">{dashboard.name}</span>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {menuItems.map((item, index) => (

@@ -24,6 +24,9 @@ interface Dashboard {
   credential_id: string | null;
   embed_type: string;
   public_link: string | null;
+  description?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
 }
 
 interface Credential {
