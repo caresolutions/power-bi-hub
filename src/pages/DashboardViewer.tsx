@@ -2,11 +2,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
 import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
+import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,6 +56,7 @@ const DashboardViewer = () => {
   const [lastRefresh, setLastRefresh] = useState<LastRefresh | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
   
@@ -471,6 +473,19 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {/* Chat with Data button */}
+          {dashboard.embed_type === "workspace_id" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setChatOpen(true)}
+              className="text-xs h-7 px-2"
+            >
+              <MessageSquare className="h-3 w-3" />
+              <span className="ml-1 hidden sm:inline">Chat IA</span>
+            </Button>
+          )}
+          
           {/* Bookmarks button */}
           {dashboard.embed_type === "workspace_id" && (
             <Button
@@ -526,6 +541,14 @@ const DashboardViewer = () => {
         dashboardName={dashboard.name}
         onApplyBookmark={handleApplyBookmark}
         getCurrentState={getCurrentState}
+      />
+
+      {/* Chat with Data Dialog */}
+      <DashboardChatDialog
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
       />
 
       {/* Dashboard content */}
