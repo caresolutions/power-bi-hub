@@ -28,7 +28,7 @@ interface EmbedData {
 }
 
 interface LastRefresh {
-  started_at: string;
+  completed_at: string | null;
   status: string;
 }
 
@@ -94,9 +94,11 @@ const DashboardViewer = () => {
   const fetchLastRefresh = async (dashboardId: string) => {
     const { data } = await supabase
       .from("dashboard_refresh_history")
-      .select("started_at, status")
+      .select("completed_at, status")
       .eq("dashboard_id", dashboardId)
-      .order("started_at", { ascending: false })
+      .eq("status", "completed")
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -323,9 +325,9 @@ const DashboardViewer = () => {
           </Button>
           <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
           
-          {lastRefresh && (
+          {lastRefresh && lastRefresh.completed_at && (
             <span className="ml-4 text-xs text-muted-foreground hidden sm:inline">
-              Última atualização: {format(new Date(lastRefresh.started_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+              Última atualização: {format(new Date(lastRefresh.completed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
             </span>
           )}
         </div>
