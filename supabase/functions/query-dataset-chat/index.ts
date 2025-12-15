@@ -335,6 +335,56 @@ Exemplos de sintaxe correta:
   return daxQuery;
 }
 
+// Suggest chart type based on data
+async function suggestChartType(question: string, data: any[]): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) return "bar";
+
+  const systemPrompt = `Você é um especialista em visualização de dados.
+Analise a pergunta do usuário e os dados retornados e sugira o melhor tipo de gráfico.
+
+REGRAS:
+1. Retorne APENAS uma das opções: bar, line, pie, table
+2. Use "bar" para comparações entre categorias
+3. Use "line" para séries temporais ou tendências
+4. Use "pie" para proporções/percentuais (máximo 7 itens)
+5. Use "table" quando os dados são muito complexos ou têm muitas colunas
+6. Se os dados têm mais de 10 linhas e muitas colunas, prefira "table"
+7. Se a pergunta menciona "evolução", "tendência", "ao longo do tempo", use "line"
+8. Se a pergunta menciona "distribuição", "percentual", "proporção", use "pie"
+
+Responda APENAS com: bar, line, pie ou table`;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Pergunta: "${question}"\n\nDados (${data.length} linhas):\n${JSON.stringify(data.slice(0, 5), null, 2)}` },
+        ],
+      }),
+    });
+
+    if (!response.ok) return "bar";
+
+    const result = await response.json();
+    const suggestion = result.choices[0].message.content.trim().toLowerCase();
+    
+    if (["bar", "line", "pie", "table"].includes(suggestion)) {
+      return suggestion;
+    }
+    return "bar";
+  } catch {
+    return "bar";
+  }
+}
+
 // Use Lovable AI to format the response
 async function formatResponse(question: string, daxResult: any): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -480,6 +530,15 @@ serve(async (req) => {
     const queryResult = await executeDaxQuery(accessToken, dashboard.dataset_id, daxQueryOrMessage);
     console.log("Query result:", JSON.stringify(queryResult).substring(0, 500));
 
+    // Extract chart data from result
+    const chartData = queryResult?.results?.[0]?.tables?.[0]?.rows || [];
+    console.log("Chart data rows:", chartData.length);
+
+    // Suggest chart type based on data
+    console.log("Suggesting chart type...");
+    const suggestedChartType = await suggestChartType(question, chartData);
+    console.log("Suggested chart type:", suggestedChartType);
+
     // Format response using AI
     console.log("Formatting response...");
     const formattedResponse = await formatResponse(question, queryResult);
@@ -490,6 +549,8 @@ serve(async (req) => {
         answer: formattedResponse,
         daxQuery: daxQueryOrMessage,
         rawData: queryResult,
+        chartData: chartData,
+        suggestedChartType: suggestedChartType,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
