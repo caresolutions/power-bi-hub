@@ -212,22 +212,49 @@ Ou tente uma agregação genérica se o usuário especificar um contexto.`;
   }
 }
 
+// Check if schema discovery failed
+function schemaDiscoveryFailed(schema: string): boolean {
+  return schema.includes("Não foi possível") || 
+         schema.includes("não disponível") ||
+         schema.includes("IMPORTANTE:") ||
+         !schema.includes("Tabela:");
+}
+
 // Use Lovable AI to generate DAX query from natural language
 async function generateDaxQuery(question: string, tableSchema: string): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-  const systemPrompt = `Você é um especialista em DAX (Data Analysis Expressions) para Power BI.
+  const schemaFailed = schemaDiscoveryFailed(tableSchema);
+  
+  let systemPrompt: string;
+  
+  if (schemaFailed) {
+    // Schema not available - ask AI to respond asking for table info
+    systemPrompt = `Você é um assistente de análise de dados para Power BI.
+
+ATENÇÃO: Não foi possível descobrir automaticamente as tabelas e colunas deste dataset.
+
+Você NÃO pode gerar queries DAX sem saber os nomes exatos das tabelas.
+
+Responda em português perguntando ao usuário quais são as tabelas e colunas disponíveis no dataset.
+Exemplo: "Para responder sua pergunta, preciso saber quais tabelas estão disponíveis no seu dataset. Você pode me informar os nomes das tabelas e suas principais colunas?"
+
+NÃO tente adivinhar nomes de tabelas. NÃO gere queries DAX.`;
+  } else {
+    systemPrompt = `Você é um especialista em DAX (Data Analysis Expressions) para Power BI.
 Sua tarefa é converter perguntas em português para queries DAX válidas.
 
-REGRAS IMPORTANTES:
+REGRAS CRÍTICAS:
 1. Sempre use EVALUATE no início da query
 2. Use TOPN para limitar resultados (máximo 100 linhas)
 3. Use SUMMARIZECOLUMNS para agregações
-4. Retorne APENAS a query DAX, sem explicações ou markdown
-5. Use EXATAMENTE os nomes de tabelas e colunas fornecidos no esquema
-6. Nomes de tabelas devem estar entre aspas simples: 'NomeTabela'
-7. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColunas]
+4. Retorne APENAS a query DAX pura, sem explicações, markdown, ou tags HTML/XML
+5. Use EXATAMENTE os nomes de tabelas e colunas fornecidos no esquema abaixo
+6. NÃO invente ou adivinhe nomes de tabelas ou colunas
+7. Nomes de tabelas devem estar entre aspas simples: 'NomeTabela'
+8. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColunas]
+9. NÃO use formatação como <tag>, **bold**, etc.
 
 ${tableSchema}
 
@@ -235,6 +262,7 @@ Exemplos de sintaxe correta:
 - EVALUATE TOPN(10, SUMMARIZECOLUMNS('Vendas'[Cliente], "Total", SUM('Vendas'[Valor])), [Total], DESC)
 - EVALUATE ROW("Total", SUM('Vendas'[Valor]))
 - EVALUATE FILTER('Clientes', 'Clientes'[Status] = "Ativo")`;
+  }
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -260,8 +288,16 @@ Exemplos de sintaxe correta:
   const data = await response.json();
   let daxQuery = data.choices[0].message.content.trim();
   
-  // Clean up any markdown formatting
-  daxQuery = daxQuery.replace(/```dax\n?/gi, '').replace(/```\n?/g, '').trim();
+  // Clean up any markdown/HTML/XML formatting
+  daxQuery = daxQuery.replace(/```dax\n?/gi, '').replace(/```\n?/g, '');
+  daxQuery = daxQuery.replace(/<[^>]*>/g, ''); // Remove any XML/HTML tags like <oii>, </oii>
+  daxQuery = daxQuery.replace(/\*\*/g, ''); // Remove bold markers
+  daxQuery = daxQuery.trim();
+  
+  // If schema discovery failed, the AI should have returned a question, not a query
+  if (schemaFailed && daxQuery.toUpperCase().startsWith("EVALUATE")) {
+    throw new Error("Não foi possível obter informações sobre as tabelas do dataset. Por favor, informe os nomes das tabelas disponíveis.");
+  }
   
   return daxQuery;
 }
@@ -380,12 +416,29 @@ serve(async (req) => {
 
     // Generate DAX query using AI
     console.log("Generating DAX query...");
-    const daxQuery = await generateDaxQuery(question, schema);
-    console.log("Generated DAX:", daxQuery);
+    const daxQueryOrMessage = await generateDaxQuery(question, schema);
+    console.log("Generated DAX/Message:", daxQueryOrMessage);
+
+    // Check if AI returned a message instead of a DAX query (schema discovery failed)
+    const isDaxQuery = daxQueryOrMessage.toUpperCase().trim().startsWith("EVALUATE");
+    
+    if (!isDaxQuery) {
+      // Schema discovery failed, AI returned a clarification message
+      console.log("Schema not available, returning AI message to user");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          answer: daxQueryOrMessage,
+          daxQuery: null,
+          rawData: null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Execute DAX query
     console.log("Executing DAX query...");
-    const queryResult = await executeDaxQuery(accessToken, dashboard.dataset_id, daxQuery);
+    const queryResult = await executeDaxQuery(accessToken, dashboard.dataset_id, daxQueryOrMessage);
     console.log("Query result:", JSON.stringify(queryResult).substring(0, 500));
 
     // Format response using AI
@@ -396,7 +449,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         answer: formattedResponse,
-        daxQuery: daxQuery,
+        daxQuery: daxQueryOrMessage,
         rawData: queryResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
