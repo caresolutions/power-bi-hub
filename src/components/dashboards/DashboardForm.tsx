@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -12,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft, Link2, Sparkles } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -50,11 +52,46 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
   const [dashboardId, setDashboardId] = useState(dashboard?.dashboard_id || "");
   const [reportSection, setReportSection] = useState(dashboard?.report_section || "");
   const [credentialId, setCredentialId] = useState(dashboard?.credential_id || "");
+  const [description, setDescription] = useState(dashboard?.description || "");
+  const [category, setCategory] = useState(dashboard?.category || "");
+  const [tags, setTags] = useState<string[]>(dashboard?.tags || []);
+  const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [urlParsed, setUrlParsed] = useState(false);
   const { toast } = useToast();
 
   const isEditing = !!dashboard;
+
+  const predefinedCategories = [
+    "Vendas",
+    "Financeiro",
+    "Marketing",
+    "Operações",
+    "RH",
+    "Logística",
+    "Produção",
+    "Outro",
+  ];
+
+  const handleAddTag = () => {
+    const trimmedTag = tagInput.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
 
   const parseDashboardUrl = (inputUrl: string) => {
     try {
@@ -130,7 +167,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
       }
 
       if (isEditing) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("dashboards")
           .update({
             name,
@@ -140,6 +177,9 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             dashboard_id: embedType === "public_link" ? "public" : dashboardId,
             report_section: reportSection || null,
             credential_id: embedType === "public_link" ? null : (credentialId || null),
+            description: description || null,
+            category: category || null,
+            tags: tags.length > 0 ? tags : null,
           })
           .eq("id", dashboard.id);
 
@@ -150,7 +190,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
           description: "Dashboard atualizado com sucesso",
         });
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("dashboards")
           .insert({
             owner_id: user.id,
@@ -162,6 +202,9 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             report_section: reportSection || null,
             credential_id: embedType === "public_link" ? null : (credentialId || null),
             company_id: profile.company_id,
+            description: description || null,
+            category: category || null,
+            tags: tags.length > 0 ? tags : null,
           });
 
         if (error) throw error;
@@ -374,6 +417,84 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
               </div>
             </>
           )}
+
+          {/* Catalog Fields Section */}
+          <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border/50">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Tag className="h-4 w-4" />
+              Informações do Catálogo
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Breve descrição do dashboard..."
+                className="bg-background/50 min-h-[80px] resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {predefinedCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="tags"
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  placeholder="Digite e pressione Enter..."
+                  className="bg-background/50 flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddTag}
+                  disabled={!tagInput.trim()}
+                >
+                  Adicionar
+                </Button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Adicione tags para facilitar a busca e organização
+              </p>
+            </div>
+          </div>
 
           <div className="flex gap-4">
             <Button
