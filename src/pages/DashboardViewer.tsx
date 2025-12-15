@@ -284,8 +284,25 @@ const DashboardViewer = () => {
     reportRef.current = report;
 
     report.on("error", (event: any) => {
-      console.error("Power BI embed error:", event.detail);
-      setEmbedError("Erro ao carregar o dashboard");
+      const errorDetail = event.detail;
+      console.error("Power BI embed error:", errorDetail);
+      
+      // Ignore non-critical errors that occur during normal interactions
+      const nonCriticalErrors = [
+        "visualClickedFailed",
+        "Invoked filter serialization function with no filter",
+        "drillDownFailed",
+        "drillUpFailed",
+      ];
+      
+      const errorMessage = errorDetail?.message || "";
+      const isNonCritical = nonCriticalErrors.some(err => 
+        errorMessage.toLowerCase().includes(err.toLowerCase())
+      );
+      
+      if (!isNonCritical) {
+        setEmbedError("Erro ao carregar o dashboard");
+      }
     });
 
     report.on("loaded", async () => {
