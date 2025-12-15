@@ -1,13 +1,17 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
+import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
+import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
+import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
+import { cn } from "@/lib/utils";
 
 interface Dashboard {
   id: string;
@@ -32,6 +36,12 @@ interface LastRefresh {
   status: string;
 }
 
+interface ReportPage {
+  name: string;
+  displayName: string;
+  isActive?: boolean;
+}
+
 const DashboardViewer = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,9 +54,15 @@ const DashboardViewer = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<LastRefresh | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [reportPages, setReportPages] = useState<ReportPage[]>([]);
+  const [currentPage, setCurrentPage] = useState<string>("");
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
+  const reportRef = useRef<pbi.Report | null>(null);
+  
+  const { isFavorite, toggleFavorite } = useDashboardFavorites();
 
   useEffect(() => {
     powerbiRef.current = new pbi.service.Service(
@@ -131,7 +147,6 @@ const DashboardViewer = () => {
         description: data.message || "Atualização do dataset iniciada",
       });
 
-      // Refresh last update info
       if (id) {
         fetchLastRefresh(id);
       }
@@ -148,7 +163,6 @@ const DashboardViewer = () => {
 
   const fetchDashboard = async (dashboardId: string, userId: string) => {
     try {
-      // First try to fetch as owner (admin)
       let { data, error } = await supabase
         .from("dashboards")
         .select("id, name, workspace_id, dashboard_id, report_section, embed_type, public_link, credential_id")
@@ -156,7 +170,6 @@ const DashboardViewer = () => {
         .single();
 
       if (error) {
-        // If not owner, check if user has access
         const { data: accessData } = await supabase
           .from("user_dashboard_access")
           .select("dashboard_id")
@@ -174,7 +187,6 @@ const DashboardViewer = () => {
           return;
         }
 
-        // Fetch dashboard with RPC or direct query
         const { data: dashboardData, error: fetchError } = await supabase
           .from("dashboards")
           .select("id, name, workspace_id, dashboard_id, report_section, embed_type, public_link, credential_id")
@@ -187,7 +199,6 @@ const DashboardViewer = () => {
 
       setDashboard(data);
 
-      // If it's a workspace_id type with credential, fetch embed token
       if (data?.embed_type === "workspace_id" && data?.credential_id) {
         await fetchEmbedToken(dashboardId);
       }
@@ -225,10 +236,8 @@ const DashboardViewer = () => {
         throw new Error(data.error || "Falha ao obter token de embed");
       }
 
-      // Set loading to false BEFORE embedding so the container is visible
       setEmbedLoading(false);
       
-      // Small delay to ensure React has rendered the visible container
       setTimeout(() => {
         embedReport(data);
       }, 100);
@@ -250,11 +259,9 @@ const DashboardViewer = () => {
       settings: {
         panes: {
           filters: { visible: false },
-          pageNavigation: { visible: true },
+          pageNavigation: { visible: false }, // Hide default nav, use our custom one
         },
-        // Use Default background to preserve all visual elements from the report
         background: pbi.models.BackgroundType.Default,
-        // Ensure visual headers are visible (logos, titles, etc.)
         visualSettings: {
           visualHeaders: [
             {
@@ -267,30 +274,93 @@ const DashboardViewer = () => {
       },
     };
 
-    // If there's a specific report section, add it
     if (embedData.reportSection) {
       config.pageName = embedData.reportSection;
     }
 
-    // Reset any existing embed
     powerbiRef.current.reset(embedContainerRef.current);
 
-    // Embed the report
-    const report = powerbiRef.current.embed(embedContainerRef.current, config);
+    const report = powerbiRef.current.embed(embedContainerRef.current, config) as pbi.Report;
+    reportRef.current = report;
 
     report.on("error", (event: any) => {
       console.error("Power BI embed error:", event.detail);
       setEmbedError("Erro ao carregar o dashboard");
     });
 
-    report.on("loaded", () => {
+    report.on("loaded", async () => {
       console.log("Report loaded successfully");
+      
+      // Get report pages for navigation
+      try {
+        const pages = await report.getPages();
+        const pageList = pages.map(page => ({
+          name: page.name,
+          displayName: page.displayName,
+          isActive: page.isActive,
+        }));
+        setReportPages(pageList);
+        
+        const activePage = pageList.find(p => p.isActive);
+        if (activePage) {
+          setCurrentPage(activePage.name);
+        }
+      } catch (err) {
+        console.error("Error getting pages:", err);
+      }
     });
 
     report.on("rendered", () => {
       console.log("Report rendered successfully");
     });
+
+    report.on("pageChanged", (event: any) => {
+      const newPage = event.detail.newPage;
+      setCurrentPage(newPage.name);
+    });
   };
+
+  const handlePageChange = async (pageName: string) => {
+    if (!reportRef.current) return;
+    
+    try {
+      const pages = await reportRef.current.getPages();
+      const targetPage = pages.find(p => p.name === pageName);
+      if (targetPage) {
+        await targetPage.setActive();
+        setCurrentPage(pageName);
+      }
+    } catch (err) {
+      console.error("Error changing page:", err);
+    }
+  };
+
+  const getCurrentState = useCallback(() => {
+    // For now, return a simple state object
+    // In a more complete implementation, this would capture filters, slicers, etc.
+    return {
+      page: currentPage,
+      timestamp: new Date().toISOString(),
+    };
+  }, [currentPage]);
+
+  const handleApplyBookmark = useCallback(async (bookmarkState: any) => {
+    if (!reportRef.current) return;
+    
+    try {
+      // Apply the page from the bookmark
+      if (bookmarkState.page) {
+        await handlePageChange(bookmarkState.page);
+      }
+      
+      toast({
+        title: "Visualização aplicada",
+        description: "O estado salvo foi restaurado",
+      });
+    } catch (err) {
+      console.error("Error applying bookmark:", err);
+    }
+  }, [toast]);
 
   if (loading) {
     return (
@@ -323,38 +393,80 @@ const DashboardViewer = () => {
             <ArrowLeft className="mr-1 h-3 w-3" />
             Voltar
           </Button>
-          <span className="ml-3 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
+          
+          {/* Favorite button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleFavorite(dashboard.id)}
+            className="text-xs h-7 px-2"
+          >
+            <Star
+              className={cn(
+                "h-3 w-3",
+                isFavorite(dashboard.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+              )}
+            />
+          </Button>
+          
+          <span className="ml-2 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
+          
+          {/* Report Pages Navigation */}
+          {reportPages.length > 1 && dashboard.embed_type === "workspace_id" && (
+            <div className="ml-4">
+              <ReportPagesNav
+                pages={reportPages}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
           
           {lastRefresh && lastRefresh.completed_at && (
-            <span className="ml-4 text-xs text-muted-foreground hidden sm:inline">
+            <span className="ml-4 text-xs text-muted-foreground hidden md:inline">
               Última atualização: {format(new Date(lastRefresh.completed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
             </span>
           )}
         </div>
         
-        {canRefresh && dashboard.embed_type === "workspace_id" && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* Bookmarks button */}
+          {dashboard.embed_type === "workspace_id" && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setHistoryOpen(true)}
+              onClick={() => setBookmarksOpen(true)}
               className="text-xs h-7 px-2"
             >
-              <History className="h-3 w-3" />
-              <span className="ml-1 hidden sm:inline">Histórico</span>
+              <Bookmark className="h-3 w-3" />
+              <span className="ml-1 hidden sm:inline">Visualizações</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="text-xs h-7 px-3"
-            >
-              <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Atualizando..." : "Atualizar Dados"}
-            </Button>
-          </div>
-        )}
+          )}
+          
+          {canRefresh && dashboard.embed_type === "workspace_id" && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setHistoryOpen(true)}
+                className="text-xs h-7 px-2"
+              >
+                <History className="h-3 w-3" />
+                <span className="ml-1 hidden sm:inline">Histórico</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="text-xs h-7 px-3"
+              >
+                <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+                {refreshing ? "Atualizando..." : "Atualizar Dados"}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Refresh History Dialog */}
@@ -363,6 +475,16 @@ const DashboardViewer = () => {
         onOpenChange={setHistoryOpen}
         dashboardId={dashboard.id}
         dashboardName={dashboard.name}
+      />
+
+      {/* Bookmarks Dialog */}
+      <BookmarksDialog
+        open={bookmarksOpen}
+        onOpenChange={setBookmarksOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
+        onApplyBookmark={handleApplyBookmark}
+        getCurrentState={getCurrentState}
       />
 
       {/* Dashboard content */}

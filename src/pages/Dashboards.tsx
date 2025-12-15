@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Search, Mail, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
+import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
+import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
+import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +31,9 @@ interface Dashboard {
   credential_id: string | null;
   embed_type: string;
   public_link: string | null;
+  description?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
 }
 
 interface Credential {
@@ -46,18 +51,63 @@ const Dashboards = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
+  
+  // Catalog filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useDashboardFavorites();
 
-  // Filter dashboards based on search query
+  // Extract unique categories and tags
+  const categories = useMemo(() => {
+    const cats = dashboards
+      .map(d => d.category)
+      .filter((c): c is string => !!c);
+    return [...new Set(cats)];
+  }, [dashboards]);
+
+  const allTags = useMemo(() => {
+    const tags = dashboards
+      .flatMap(d => d.tags || [])
+      .filter((t): t is string => !!t);
+    return [...new Set(tags)];
+  }, [dashboards]);
+
+  // Filter dashboards based on catalog filters
   const filteredDashboards = useMemo(() => {
-    if (!searchQuery.trim()) return dashboards;
-    return dashboards.filter(dashboard =>
-      dashboard.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return dashboards.filter(dashboard => {
+      // Search filter
+      const matchesSearch = !searchQuery.trim() || 
+        dashboard.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (dashboard.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Category filter
+      const matchesCategory = selectedCategory === "all" || 
+        dashboard.category === selectedCategory;
+      
+      // Tags filter
+      const matchesTags = selectedTags.length === 0 || 
+        selectedTags.some(tag => dashboard.tags?.includes(tag));
+      
+      // Favorites filter
+      const matchesFavorites = !showFavoritesOnly || isFavorite(dashboard.id);
+      
+      return matchesSearch && matchesCategory && matchesTags && matchesFavorites;
+    });
+  }, [dashboards, searchQuery, selectedCategory, selectedTags, showFavoritesOnly, isFavorite]);
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
     );
-  }, [dashboards, searchQuery]);
+  };
 
   useEffect(() => {
     checkAuthAndRole();
@@ -70,7 +120,6 @@ const Dashboards = () => {
       return;
     }
 
-    // Check user role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -111,7 +160,6 @@ const Dashboards = () => {
 
   const fetchUserDashboards = async (userId: string) => {
     try {
-      // Get dashboards the user has access to
       const { data: accessData, error: accessError } = await supabase
         .from("user_dashboard_access")
         .select("dashboard_id")
@@ -213,7 +261,7 @@ const Dashboards = () => {
                 <div className="bg-accent/10 p-2 rounded-lg">
                   <BarChart3 className="h-6 w-6 text-accent" />
                 </div>
-                <h1 className="text-2xl font-bold">Gestão de Dashboards</h1>
+                <h1 className="text-2xl font-bold">Catálogo de Dashboards</h1>
               </div>
             </div>
             
@@ -255,18 +303,20 @@ const Dashboards = () => {
               </p>
             </div>
 
-            {/* Search field */}
+            {/* Catalog Filters */}
             {!loading && dashboards.length > 0 && (
-              <div className="relative mb-6 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Buscar dashboard pelo nome..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-background/50"
-                />
-              </div>
+              <DashboardCatalogFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                selectedTags={selectedTags}
+                onTagToggle={handleTagToggle}
+                categories={categories}
+                tags={allTags}
+                showFavoritesOnly={showFavoritesOnly}
+                onFavoritesToggle={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              />
             )}
 
             {loading ? (
@@ -294,10 +344,10 @@ const Dashboards = () => {
               </Card>
             ) : filteredDashboards.length === 0 ? (
               <Card className="glass p-12 text-center border-border/50">
-                <Search className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-bold mb-2">Nenhum dashboard encontrado</h3>
+                <BarChart3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-2xl font-bold mb-2">Nenhum resultado encontrado</h3>
                 <p className="text-muted-foreground">
-                  Nenhum dashboard corresponde à busca "{searchQuery}"
+                  Tente ajustar os filtros ou a busca
                 </p>
               </Card>
             ) : (
@@ -307,7 +357,7 @@ const Dashboards = () => {
                     key={dashboard.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.05 }}
                   >
                     <Card 
                       className="glass border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer overflow-hidden"
@@ -317,17 +367,34 @@ const Dashboards = () => {
                       <div className="relative h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
                         <div className="absolute inset-0 bg-grid-pattern opacity-10" />
                         <BarChart3 className="h-12 w-12 text-primary/40" />
-                        {dashboard.embed_type === "public_link" && (
-                          <div className="absolute top-2 right-2">
+                        
+                        {/* Badges */}
+                        <div className="absolute top-2 right-2 flex gap-2">
+                          {dashboard.embed_type === "public_link" && (
                             <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
                               Link Público
                             </span>
-                          </div>
-                        )}
+                          )}
+                          {dashboard.category && (
+                            <span className="bg-accent/90 text-accent-foreground text-xs px-2 py-1 rounded-full">
+                              {dashboard.category}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Favorite button */}
+                        <div className="absolute top-2 left-2">
+                          <FavoriteButton
+                            isFavorite={isFavorite(dashboard.id)}
+                            onClick={() => toggleFavorite(dashboard.id)}
+                            size="sm"
+                            className="bg-background/80 hover:bg-background"
+                          />
+                        </div>
                       </div>
                       
                       <div className="p-5">
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between mb-2">
                           <h3 className="text-lg font-bold line-clamp-2">{dashboard.name}</h3>
                           {userRole === 'admin' && (
                             <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
@@ -350,6 +417,31 @@ const Dashboards = () => {
                             </div>
                           )}
                         </div>
+                        
+                        {dashboard.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                            {dashboard.description}
+                          </p>
+                        )}
+                        
+                        {/* Tags */}
+                        {dashboard.tags && dashboard.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {dashboard.tags.slice(0, 3).map(tag => (
+                              <span 
+                                key={tag} 
+                                className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {dashboard.tags.length > 3 && (
+                              <span className="text-xs px-2 py-0.5 text-muted-foreground">
+                                +{dashboard.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         
                         <div className="space-y-1 text-xs text-muted-foreground">
                           {dashboard.embed_type !== "public_link" && (
