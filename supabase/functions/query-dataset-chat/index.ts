@@ -275,12 +275,13 @@ REGRAS CRÍTICAS:
 1. Sempre use EVALUATE no início da query
 2. Use TOPN para limitar resultados (máximo 100 linhas)
 3. Use SUMMARIZECOLUMNS para agregações
-4. Retorne APENAS a query DAX pura, sem explicações, markdown, ou tags HTML/XML
+4. Retorne APENAS a query DAX pura, sem explicações
 5. Use EXATAMENTE os nomes de tabelas e colunas fornecidos no esquema abaixo
 6. NÃO invente ou adivinhe nomes de tabelas ou colunas
 7. Nomes de tabelas devem estar entre aspas simples: 'NomeTabela'
-8. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColunas]
-9. NÃO use formatação como <tag>, **bold**, etc.
+8. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColuna]
+9. NUNCA use tags XML como <oii>, </oii>, <tag>, etc. - APENAS texto puro DAX
+10. NUNCA use markdown, asteriscos, ou qualquer formatação
 
 ${tableSchema}
 
@@ -314,11 +315,17 @@ Exemplos de sintaxe correta:
   const data = await response.json();
   let daxQuery = data.choices[0].message.content.trim();
   
-  // Clean up any markdown/HTML/XML formatting
+  console.log("Raw AI response:", daxQuery.substring(0, 500));
+  
+  // Clean up any markdown/HTML/XML formatting - be more aggressive
   daxQuery = daxQuery.replace(/```dax\n?/gi, '').replace(/```\n?/g, '');
-  daxQuery = daxQuery.replace(/<[^>]*>/g, ''); // Remove any XML/HTML tags like <oii>, </oii>
+  daxQuery = daxQuery.replace(/<\/?oii>/gi, ''); // Specifically remove <oii> and </oii> tags
+  daxQuery = daxQuery.replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, ''); // Remove any XML/HTML tags
   daxQuery = daxQuery.replace(/\*\*/g, ''); // Remove bold markers
+  daxQuery = daxQuery.replace(/\s+/g, ' '); // Normalize whitespace
   daxQuery = daxQuery.trim();
+  
+  console.log("Cleaned DAX query:", daxQuery.substring(0, 500));
   
   // If schema discovery failed, the AI should have returned a question, not a query
   if (schemaFailed && daxQuery.toUpperCase().startsWith("EVALUATE")) {
