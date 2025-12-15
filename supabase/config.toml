@@ -32,3 +32,15 @@ verify_jwt = true
 
 [functions.process-subscriptions]
 verify_jwt = false
+
+[functions.refresh-dataset]
+verify_jwt = true
+
+[functions.sync-refresh-history]
+verify_jwt = false
+
+# Cron job to sync Power BI refresh history every 15 minutes
+[[cron]]
+name = "sync-refresh-history"
+schedule = "*/15 * * * *"
+function = "sync-refresh-history"
