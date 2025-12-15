@@ -111,44 +111,104 @@ async function executeDaxQuery(accessToken: string, datasetId: string, daxQuery:
   return await response.json();
 }
 
-// Fetch dataset schema using REST API
+// Fetch dataset schema using XMLA endpoint through DAX
 async function getDatasetSchema(accessToken: string, datasetId: string): Promise<string> {
   try {
-    // Get tables from REST API
-    const tablesUrl = `https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/tables`;
-    const tablesResponse = await fetch(tablesUrl, {
-      headers: { "Authorization": `Bearer ${accessToken}` },
+    // Try using simple DAX INFO functions
+    const tablesQuery = "EVALUATE INFO.TABLES()";
+    
+    const tablesResult = await fetch(`https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/executeQueries`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        queries: [{ query: tablesQuery }],
+        serializerSettings: { includeNulls: true },
+      }),
     });
     
-    if (!tablesResponse.ok) {
-      console.error("Failed to get tables from REST API:", await tablesResponse.text());
-      return "Não foi possível obter o esquema do dataset via REST API";
+    if (!tablesResult.ok) {
+      const errorText = await tablesResult.text();
+      console.error("Failed to get tables via DAX INFO:", errorText);
+      
+      // Return a prompt that tells AI to discover tables through exploration
+      return `IMPORTANTE: Não foi possível obter o esquema do dataset automaticamente.
+Por favor, gere uma query DAX exploratória simples para descobrir as tabelas disponíveis.
+Use: EVALUATE { ROW("info", "explorar") }
+Ou tente uma agregação genérica se o usuário especificar um contexto.`;
     }
     
-    const tablesData = await tablesResponse.json();
-    const tables = tablesData.value || [];
+    const tablesData = await tablesResult.json();
+    const tables = tablesData?.results?.[0]?.tables?.[0]?.rows || [];
+    console.log("Tables from INFO.TABLES():", JSON.stringify(tables).substring(0, 500));
     
-    // Build schema string
-    let schema = "TABELAS E COLUNAS DISPONÍVEIS:\n\n";
+    if (tables.length === 0) {
+      return "Não foram encontradas tabelas no dataset.";
+    }
+    
+    // Get columns info
+    const columnsQuery = "EVALUATE INFO.COLUMNS()";
+    const columnsResult = await fetch(`https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/executeQueries`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        queries: [{ query: columnsQuery }],
+        serializerSettings: { includeNulls: true },
+      }),
+    });
+    
+    let columns: any[] = [];
+    if (columnsResult.ok) {
+      const columnsData = await columnsResult.json();
+      columns = columnsData?.results?.[0]?.tables?.[0]?.rows || [];
+      console.log("Columns count:", columns.length);
+    }
+    
+    // Build schema string - handle different possible column name formats
+    let schema = "TABELAS E COLUNAS DISPONÍVEIS NO DATASET:\n\n";
     
     for (const table of tables) {
-      const tableName = table.name;
+      // Try different possible property names
+      const tableName = table["[Name]"] || table["Name"] || table["[TableName]"] || Object.values(table)[0];
+      const isHidden = table["[IsHidden]"] || table["IsHidden"] || false;
+      
+      if (isHidden === true || isHidden === "TRUE" || isHidden === 1) continue;
+      
       schema += `Tabela: '${tableName}'\n`;
       schema += "Colunas:\n";
       
-      if (table.columns) {
-        for (const col of table.columns) {
-          schema += `  - '${tableName}'[${col.name}] (${col.dataType})\n`;
+      // Filter columns for this table
+      const tableColumns = columns.filter((c: any) => {
+        const colTable = c["[TableID]"] || c["TableID"] || c["[Table]"];
+        const tableId = table["[ID]"] || table["ID"];
+        return colTable === tableId || colTable === tableName;
+      });
+      
+      if (tableColumns.length > 0) {
+        for (const col of tableColumns) {
+          const colName = col["[ExplicitName]"] || col["[Name]"] || col["ExplicitName"] || col["Name"] || "";
+          const colHidden = col["[IsHidden]"] || col["IsHidden"] || false;
+          if (colHidden === true || colHidden === "TRUE" || colHidden === 1) continue;
+          if (colName) {
+            schema += `  - '${tableName}'[${colName}]\n`;
+          }
         }
+      } else {
+        schema += `  (colunas não disponíveis - use 'NomeTabela'[*] para ver)\n`;
       }
       schema += "\n";
     }
     
-    console.log("Dataset schema discovered:", schema.substring(0, 1000));
+    console.log("Dataset schema discovered:", schema.substring(0, 1500));
     return schema;
   } catch (error) {
     console.error("Failed to get schema:", error);
-    return "Não foi possível obter o esquema do dataset";
+    return `Não foi possível obter o esquema do dataset. Erro: ${error instanceof Error ? error.message : "desconhecido"}`;
   }
 }
 
