@@ -58,16 +58,16 @@ const defaultColors: FormData = {
 };
 
 const colorFields: ColorField[] = [
-  { key: "primary_color", label: "Cor Primária", description: "Cor principal da marca" },
-  { key: "secondary_color", label: "Cor Secundária", description: "Cor de destaque secundária" },
-  { key: "accent_color", label: "Cor de Acento", description: "Botões e interações" },
-  { key: "background_color", label: "Fundo", description: "Cor de fundo geral" },
-  { key: "foreground_color", label: "Texto Principal", description: "Cor do texto" },
-  { key: "muted_color", label: "Texto Secundário", description: "Elementos desabilitados" },
-  { key: "destructive_color", label: "Ações Destrutivas", description: "Excluir, alertas" },
-  { key: "success_color", label: "Sucesso", description: "Confirmações positivas" },
-  { key: "card_color", label: "Cards", description: "Fundo de cartões" },
-  { key: "border_color", label: "Bordas", description: "Cor das bordas" },
+  { key: "primary_color", label: "Botões Principais", description: "Cor dos botões de ação" },
+  { key: "secondary_color", label: "Elementos Secundários", description: "Botões secundários, tags" },
+  { key: "accent_color", label: "Links e Destaques", description: "Links, hover, foco" },
+  { key: "background_color", label: "Fundo da Página", description: "Cor de fundo geral" },
+  { key: "foreground_color", label: "Texto Principal", description: "Textos e títulos" },
+  { key: "muted_color", label: "Texto Desabilitado", description: "Textos secundários, placeholders" },
+  { key: "destructive_color", label: "Botões de Exclusão", description: "Excluir, alertas de erro" },
+  { key: "success_color", label: "Sucesso", description: "Confirmações, status positivo" },
+  { key: "card_color", label: "Fundo dos Cards", description: "Painéis, modais, cartões" },
+  { key: "border_color", label: "Bordas", description: "Contornos de elementos" },
 ];
 
 export const CustomizationSettings = () => {
@@ -332,13 +332,47 @@ export const CustomizationSettings = () => {
   const applyColors = (colors: FormData) => {
     const root = document.documentElement;
     
+    // Cores principais
     root.style.setProperty("--primary", hexToHSL(colors.primary_color));
+    root.style.setProperty("--primary-foreground", "0 0% 100%");
     root.style.setProperty("--ring", hexToHSL(colors.primary_color));
+    
+    // Secundário
+    root.style.setProperty("--secondary", hexToHSL(colors.secondary_color));
+    root.style.setProperty("--secondary-foreground", hexToHSL(colors.foreground_color));
+    
+    // Acento
+    root.style.setProperty("--accent", hexToHSL(colors.accent_color));
+    root.style.setProperty("--accent-foreground", "0 0% 100%");
+    
+    // Fundo e texto
+    root.style.setProperty("--background", hexToHSL(colors.background_color));
+    root.style.setProperty("--foreground", hexToHSL(colors.foreground_color));
+    
+    // Muted
+    root.style.setProperty("--muted", hexToHSL(colors.muted_color));
+    root.style.setProperty("--muted-foreground", hexToHSL(colors.foreground_color));
+    
+    // Destrutivo
+    root.style.setProperty("--destructive", hexToHSL(colors.destructive_color));
+    root.style.setProperty("--destructive-foreground", "0 0% 100%");
+    
+    // Cards
+    root.style.setProperty("--card", hexToHSL(colors.card_color));
+    root.style.setProperty("--card-foreground", hexToHSL(colors.foreground_color));
+    root.style.setProperty("--popover", hexToHSL(colors.card_color));
+    root.style.setProperty("--popover-foreground", hexToHSL(colors.foreground_color));
+    
+    // Bordas
+    root.style.setProperty("--border", hexToHSL(colors.border_color));
+    root.style.setProperty("--input", hexToHSL(colors.border_color));
+    
+    // Sidebar
     root.style.setProperty("--sidebar-primary", hexToHSL(colors.primary_color));
     root.style.setProperty("--sidebar-ring", hexToHSL(colors.primary_color));
-    root.style.setProperty("--accent", hexToHSL(colors.accent_color));
-    root.style.setProperty("--muted", hexToHSL(colors.muted_color));
-    root.style.setProperty("--destructive", hexToHSL(colors.destructive_color));
+    root.style.setProperty("--sidebar-background", hexToHSL(colors.card_color));
+    root.style.setProperty("--sidebar-foreground", hexToHSL(colors.foreground_color));
+    root.style.setProperty("--sidebar-border", hexToHSL(colors.border_color));
   };
 
   if (loading) {
