@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.query-dataset-chat]
 verify_jwt = true
 
+[functions.extract-brandbook]
+verify_jwt = true
+
 # Cron job to sync Power BI refresh history every 15 minutes
 [[cron]]
 name = "sync-refresh-history"

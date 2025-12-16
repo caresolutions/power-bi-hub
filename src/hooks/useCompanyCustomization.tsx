@@ -5,6 +5,14 @@ interface CompanyCustomization {
   logo_url: string | null;
   primary_color: string;
   secondary_color: string;
+  accent_color: string | null;
+  background_color: string | null;
+  foreground_color: string | null;
+  muted_color: string | null;
+  destructive_color: string | null;
+  success_color: string | null;
+  card_color: string | null;
+  border_color: string | null;
 }
 
 // Convert hex to HSL
@@ -65,7 +73,7 @@ export const useCompanyCustomization = () => {
     if (profile?.company_id) {
       const { data: companyData } = await supabase
         .from("companies")
-        .select("logo_url, primary_color, secondary_color")
+        .select("logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color")
         .eq("id", profile.company_id)
         .single();
 
@@ -73,29 +81,40 @@ export const useCompanyCustomization = () => {
         setCustomization({
           logo_url: companyData.logo_url,
           primary_color: companyData.primary_color || "#0891b2",
-          secondary_color: companyData.secondary_color || "#06b6d4"
+          secondary_color: companyData.secondary_color || "#06b6d4",
+          accent_color: companyData.accent_color || "#0ea5e9",
+          background_color: companyData.background_color || "#ffffff",
+          foreground_color: companyData.foreground_color || "#0f172a",
+          muted_color: companyData.muted_color || "#94a3b8",
+          destructive_color: companyData.destructive_color || "#ef4444",
+          success_color: companyData.success_color || "#22c55e",
+          card_color: companyData.card_color || "#ffffff",
+          border_color: companyData.border_color || "#e2e8f0",
         });
 
         // Apply colors to CSS variables
-        applyColors(
-          companyData.primary_color || "#0891b2",
-          companyData.secondary_color || "#06b6d4"
-        );
+        applyColors(companyData);
       }
     }
     setLoading(false);
   };
 
-  const applyColors = (primaryHex: string, secondaryHex: string) => {
+  const applyColors = (colors: any) => {
     const root = document.documentElement;
-    const primaryHSL = hexToHSL(primaryHex);
-    const secondaryHSL = hexToHSL(secondaryHex);
+    
+    const primaryHSL = hexToHSL(colors.primary_color || "#0891b2");
+    const secondaryHSL = hexToHSL(colors.secondary_color || "#06b6d4");
+    const accentHSL = hexToHSL(colors.accent_color || "#0ea5e9");
+    const mutedHSL = hexToHSL(colors.muted_color || "#94a3b8");
+    const destructiveHSL = hexToHSL(colors.destructive_color || "#ef4444");
 
     root.style.setProperty("--primary", primaryHSL);
     root.style.setProperty("--ring", primaryHSL);
     root.style.setProperty("--sidebar-primary", primaryHSL);
     root.style.setProperty("--sidebar-ring", primaryHSL);
-    root.style.setProperty("--accent", secondaryHSL);
+    root.style.setProperty("--accent", accentHSL);
+    root.style.setProperty("--muted", mutedHSL);
+    root.style.setProperty("--destructive", destructiveHSL);
   };
 
   return { customization, loading, refetch: fetchCustomization };
