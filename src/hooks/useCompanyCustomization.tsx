@@ -105,16 +105,54 @@ export const useCompanyCustomization = () => {
     const primaryHSL = hexToHSL(colors.primary_color || "#0891b2");
     const secondaryHSL = hexToHSL(colors.secondary_color || "#06b6d4");
     const accentHSL = hexToHSL(colors.accent_color || "#0ea5e9");
+    const backgroundHSL = hexToHSL(colors.background_color || "#ffffff");
+    const foregroundHSL = hexToHSL(colors.foreground_color || "#0f172a");
     const mutedHSL = hexToHSL(colors.muted_color || "#94a3b8");
     const destructiveHSL = hexToHSL(colors.destructive_color || "#ef4444");
+    const cardHSL = hexToHSL(colors.card_color || "#ffffff");
+    const borderHSL = hexToHSL(colors.border_color || "#e2e8f0");
 
+    // Cores principais
     root.style.setProperty("--primary", primaryHSL);
+    root.style.setProperty("--primary-foreground", "0 0% 100%");
     root.style.setProperty("--ring", primaryHSL);
+    
+    // Secundário
+    root.style.setProperty("--secondary", secondaryHSL);
+    root.style.setProperty("--secondary-foreground", foregroundHSL);
+    
+    // Acento
+    root.style.setProperty("--accent", accentHSL);
+    root.style.setProperty("--accent-foreground", "0 0% 100%");
+    
+    // Fundo e texto
+    root.style.setProperty("--background", backgroundHSL);
+    root.style.setProperty("--foreground", foregroundHSL);
+    
+    // Muted
+    root.style.setProperty("--muted", mutedHSL);
+    root.style.setProperty("--muted-foreground", foregroundHSL);
+    
+    // Destrutivo
+    root.style.setProperty("--destructive", destructiveHSL);
+    root.style.setProperty("--destructive-foreground", "0 0% 100%");
+    
+    // Cards
+    root.style.setProperty("--card", cardHSL);
+    root.style.setProperty("--card-foreground", foregroundHSL);
+    root.style.setProperty("--popover", cardHSL);
+    root.style.setProperty("--popover-foreground", foregroundHSL);
+    
+    // Bordas
+    root.style.setProperty("--border", borderHSL);
+    root.style.setProperty("--input", borderHSL);
+    
+    // Sidebar
     root.style.setProperty("--sidebar-primary", primaryHSL);
     root.style.setProperty("--sidebar-ring", primaryHSL);
-    root.style.setProperty("--accent", accentHSL);
-    root.style.setProperty("--muted", mutedHSL);
-    root.style.setProperty("--destructive", destructiveHSL);
+    root.style.setProperty("--sidebar-background", cardHSL);
+    root.style.setProperty("--sidebar-foreground", foregroundHSL);
+    root.style.setProperty("--sidebar-border", borderHSL);
   };
 
   return { customization, loading, refetch: fetchCustomization };
