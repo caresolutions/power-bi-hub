@@ -271,7 +271,7 @@ NÃO tente adivinhar nomes de tabelas. NÃO gere queries DAX.`;
     systemPrompt = `Você é um especialista em DAX (Data Analysis Expressions) para Power BI.
 Sua tarefa é converter perguntas em português para queries DAX válidas.
 
-REGRAS CRÍTICAS:
+REGRAS CRÍTICAS DE SINTAXE DAX:
 1. Sempre use EVALUATE no início da query
 2. Use TOPN para limitar resultados (máximo 100 linhas)
 3. Use SUMMARIZECOLUMNS para agregações
@@ -279,15 +279,19 @@ REGRAS CRÍTICAS:
 5. Use EXATAMENTE os nomes de tabelas e colunas fornecidos no esquema abaixo
 6. NÃO invente ou adivinhe nomes de tabelas ou colunas
 7. Nomes de tabelas devem estar entre aspas simples: 'NomeTabela'
-8. Colunas devem usar a sintaxe: 'NomeTabela'[NomeColuna]
-9. NUNCA use tags XML como <oii>, </oii>, <tag>, etc. - APENAS texto puro DAX
-10. NUNCA use markdown, asteriscos, ou qualquer formatação
+8. Colunas físicas usam: 'NomeTabela'[NomeColuna]
+9. COLUNAS CALCULADAS/MEDIDAS (aliases criados com "Nome", expressão) devem ser referenciadas com COLCHETES: [NomeAlias]
+   - ERRADO: 'Numero de Chamados' (aspas simples é para TABELAS)
+   - CORRETO: [Numero de Chamados] (colchetes para colunas/aliases)
+10. NUNCA use tags XML como <oii>, </oii>, <tag>, etc. - APENAS texto puro DAX
+11. NUNCA use markdown, asteriscos, ou qualquer formatação
 
 ${tableSchema}
 
 Exemplos de sintaxe correta:
-- EVALUATE TOPN(10, SUMMARIZECOLUMNS('Vendas'[Cliente], "Total", SUM('Vendas'[Valor])), [Total], DESC)
+- EVALUATE TOPN(10, SUMMARIZECOLUMNS('Vendas'[Cliente], "TotalVendas", SUM('Vendas'[Valor])), [TotalVendas], DESC)
 - EVALUATE ROW("Total", SUM('Vendas'[Valor]))
+- EVALUATE TOPN(100, SUMMARIZECOLUMNS('Clientes'[Nome], "Quantidade", COUNT('Clientes'[Nome])), [Quantidade], DESC)
 - EVALUATE FILTER('Clientes', 'Clientes'[Status] = "Ativo")`;
   }
 
