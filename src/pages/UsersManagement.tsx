@@ -26,7 +26,9 @@ import {
   LayoutDashboard,
   Users2,
   UserCog,
-  ChevronRight
+  ChevronRight,
+  Building2,
+  UserPlus
 } from "lucide-react";
 import { motion } from "framer-motion";
 import InviteUserForm from "@/components/users/InviteUserForm";
@@ -47,6 +49,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface Company {
+  id: string;
+  name: string;
+}
 
 interface Dashboard {
   id: string;
@@ -85,6 +92,9 @@ interface Invitation {
 }
 
 const UsersManagement = () => {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<UserGroup[]>([]);
@@ -101,8 +111,11 @@ const UsersManagement = () => {
   const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null);
   const [userDashboardsDialogOpen, setUserDashboardsDialogOpen] = useState(false);
   const [groupDashboardsDialogOpen, setGroupDashboardsDialogOpen] = useState(false);
+  const [grantAccessDialogOpen, setGrantAccessDialogOpen] = useState(false);
+  const [selectedUsersToGrant, setSelectedUsersToGrant] = useState<string[]>([]);
   const [savingUserDashboards, setSavingUserDashboards] = useState(false);
   const [savingGroupDashboards, setSavingGroupDashboards] = useState(false);
+  const [savingGrantAccess, setSavingGrantAccess] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -117,6 +130,15 @@ const UsersManagement = () => {
       setSelectedDashboard(dashboardParam);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedCompany) {
+      fetchDashboards();
+      fetchUsers();
+      fetchGroups();
+      fetchInvitations();
+    }
+  }, [selectedCompany]);
 
   useEffect(() => {
     if (selectedDashboard) {
@@ -142,18 +164,44 @@ const UsersManagement = () => {
       return;
     }
 
-    fetchDashboards();
-    fetchUsers();
-    fetchGroups();
-    fetchInvitations();
+    const isMaster = roleData?.role === 'master_admin';
+    setIsMasterAdmin(isMaster);
+
+    if (isMaster) {
+      // Master admin needs to select a company first
+      const { data: companiesData } = await supabase
+        .from("companies")
+        .select("id, name")
+        .order("name");
+      setCompanies(companiesData || []);
+      setLoading(false);
+    } else {
+      // Regular admin - get their company
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData?.company_id) {
+        setSelectedCompany(profileData.company_id);
+      }
+      setLoading(false);
+    }
   };
 
   const fetchDashboards = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("dashboards")
         .select("id, name")
         .order("name");
+
+      if (selectedCompany) {
+        query = query.eq("company_id", selectedCompany);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDashboards(data || []);
@@ -167,24 +215,34 @@ const UsersManagement = () => {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchUsers = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("profiles")
       .select("id, email, full_name")
       .order("email");
+
+    if (selectedCompany) {
+      query = query.eq("company_id", selectedCompany);
+    }
+
+    const { data } = await query;
     setUsers(data || []);
   };
 
   const fetchGroups = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("user_groups")
       .select("id, name, description")
       .order("name");
+
+    if (selectedCompany) {
+      query = query.eq("company_id", selectedCompany);
+    }
+
+    const { data } = await query;
     setGroups(data || []);
   };
 
@@ -220,10 +278,16 @@ const UsersManagement = () => {
 
   const fetchInvitations = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("user_invitations")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (selectedCompany) {
+        query = query.eq("company_id", selectedCompany);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setInvitations(data || []);
@@ -254,6 +318,40 @@ const UsersManagement = () => {
     setGroupDashboardsDialogOpen(true);
   };
 
+  const getUsersWithoutAccess = () => {
+    const usersWithAccess = userAccess.map(a => a.user_id);
+    return users.filter(u => !usersWithAccess.includes(u.id));
+  };
+
+  const handleGrantAccessToUsers = async () => {
+    if (selectedUsersToGrant.length === 0 || !selectedDashboard) return;
+    setSavingGrantAccess(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("user_dashboard_access")
+        .insert(selectedUsersToGrant.map(userId => ({
+          user_id: userId,
+          dashboard_id: selectedDashboard,
+          granted_by: user.id
+        })));
+
+      if (error) throw error;
+
+      toast({ title: "Sucesso", description: "Acesso liberado com sucesso" });
+      setGrantAccessDialogOpen(false);
+      setSelectedUsersToGrant([]);
+      fetchUserAccess();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingGrantAccess(false);
+    }
+  };
+
   const handleSaveUserDashboards = async () => {
     if (!selectedUser) return;
     setSavingUserDashboards(true);
@@ -262,20 +360,15 @@ const UsersManagement = () => {
     if (!user) return;
 
     try {
-      // Get current access
       const { data: currentAccess } = await supabase
         .from("user_dashboard_access")
         .select("dashboard_id")
         .eq("user_id", selectedUser.id);
 
       const currentIds = (currentAccess || []).map(a => a.dashboard_id);
-      
-      // Dashboards to add
       const toAdd = userDashboards.filter(id => !currentIds.includes(id));
-      // Dashboards to remove
       const toRemove = currentIds.filter(id => !userDashboards.includes(id));
 
-      // Add new access
       if (toAdd.length > 0) {
         await supabase
           .from("user_dashboard_access")
@@ -286,7 +379,6 @@ const UsersManagement = () => {
           })));
       }
 
-      // Remove access
       if (toRemove.length > 0) {
         await supabase
           .from("user_dashboard_access")
@@ -313,20 +405,15 @@ const UsersManagement = () => {
     if (!user) return;
 
     try {
-      // Get current access
       const { data: currentAccess } = await supabase
         .from("group_dashboard_access")
         .select("dashboard_id")
         .eq("group_id", selectedGroup.id);
 
       const currentIds = (currentAccess || []).map(a => a.dashboard_id);
-      
-      // Dashboards to add
       const toAdd = groupDashboards.filter(id => !currentIds.includes(id));
-      // Dashboards to remove
       const toRemove = currentIds.filter(id => !groupDashboards.includes(id));
 
-      // Add new access
       if (toAdd.length > 0) {
         await supabase
           .from("group_dashboard_access")
@@ -337,7 +424,6 @@ const UsersManagement = () => {
           })));
       }
 
-      // Remove access
       if (toRemove.length > 0) {
         await supabase
           .from("group_dashboard_access")
@@ -432,14 +518,14 @@ const UsersManagement = () => {
       .join(", ");
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="absolute inset-0 bg-gradient-hero opacity-30" />
-      
-      {/* Header */}
-      <header className="relative z-10 border-b border-border/50 bg-card/30 backdrop-blur">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+  // Show company selector for master admin
+  if (isMasterAdmin && !selectedCompany) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        
+        <header className="relative z-10 border-b border-border/50 bg-card/30 backdrop-blur">
+          <div className="container mx-auto px-6 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={() => navigate("/home")}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -450,6 +536,84 @@ const UsersManagement = () => {
                   <Users className="h-6 w-6 text-green-500" />
                 </div>
                 <h1 className="text-2xl font-bold">Gestão de Usuários</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="relative z-10 container mx-auto px-6 py-12">
+          <Card className="bg-card/80 backdrop-blur-md border-border/50 p-8 max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <Building2 className="h-16 w-16 mx-auto text-primary mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Selecione uma Empresa</h2>
+              <p className="text-muted-foreground">
+                Como Master Admin, selecione a empresa que deseja gerenciar
+              </p>
+            </div>
+
+            {loading ? (
+              <p className="text-center text-muted-foreground">Carregando...</p>
+            ) : companies.length === 0 ? (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-4">Nenhuma empresa cadastrada</p>
+                <Button onClick={() => navigate("/master-admin")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Criar Empresa
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {companies.map((company, index) => (
+                  <motion.div
+                    key={company.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedCompany(company.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-lg">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="font-medium">{company.name}</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+      
+      {/* Header */}
+      <header className="relative z-10 border-b border-border/50 bg-card/30 backdrop-blur">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => isMasterAdmin ? setSelectedCompany("") : navigate("/home")}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {isMasterAdmin ? "Empresas" : "Voltar"}
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="bg-green-500/10 p-2 rounded-lg">
+                  <Users className="h-6 w-6 text-green-500" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">Gestão de Usuários</h1>
+                  {isMasterAdmin && selectedCompany && (
+                    <p className="text-sm text-muted-foreground">
+                      {companies.find(c => c.id === selectedCompany)?.name}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -467,7 +631,7 @@ const UsersManagement = () => {
                   className="bg-primary hover:bg-primary/90 shadow-glow"
                 >
                   <Plus className="mr-2 h-5 w-5" />
-                  Convidar Usuário
+                  Convidar Novo Usuário
                 </Button>
               )}
             </div>
@@ -484,12 +648,8 @@ const UsersManagement = () => {
             onCancel={() => setShowInviteForm(false)}
           />
         ) : (
-          <Tabs defaultValue="invitations" className="space-y-6">
+          <Tabs defaultValue="by-dashboard" className="space-y-6">
             <TabsList className="bg-card/50">
-              <TabsTrigger value="invitations">
-                <Mail className="h-4 w-4 mr-2" />
-                Convites
-              </TabsTrigger>
               <TabsTrigger value="by-dashboard">
                 <LayoutDashboard className="h-4 w-4 mr-2" />
                 Por Dashboard
@@ -502,82 +662,39 @@ const UsersManagement = () => {
                 <Users2 className="h-4 w-4 mr-2" />
                 Por Grupo
               </TabsTrigger>
+              <TabsTrigger value="invitations">
+                <Mail className="h-4 w-4 mr-2" />
+                Convites
+              </TabsTrigger>
             </TabsList>
-
-            {/* Invitations Tab */}
-            <TabsContent value="invitations">
-              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
-                <h2 className="text-xl font-bold mb-4">Convites Enviados</h2>
-                {invitations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Mail className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Nenhum convite enviado</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {invitations.map((invitation, index) => {
-                      const status = getInvitationStatus(invitation);
-                      return (
-                        <motion.div
-                          key={invitation.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="bg-muted p-2 rounded-lg">
-                              <Mail className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{invitation.email}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Dashboards: {getDashboardNames(invitation.dashboard_ids)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className={`flex items-center gap-2 ${status.color}`}>
-                              <status.icon className="h-4 w-4" />
-                              <span className="text-sm">{status.label}</span>
-                            </div>
-                            {!invitation.accepted_at && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setDeletingInviteId(invitation.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
 
             {/* By Dashboard Tab */}
             <TabsContent value="by-dashboard">
               <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">Acesso por Dashboard</h2>
-                  {dashboards.length > 0 && (
-                    <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
-                      <SelectTrigger className="w-64 bg-background/50">
-                        <SelectValue placeholder="Selecione um dashboard" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dashboards.map((dashboard) => (
-                          <SelectItem key={dashboard.id} value={dashboard.id}>
-                            {dashboard.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {dashboards.length > 0 && (
+                      <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
+                        <SelectTrigger className="w-64 bg-background/50">
+                          <SelectValue placeholder="Selecione um dashboard" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dashboards.map((dashboard) => (
+                            <SelectItem key={dashboard.id} value={dashboard.id}>
+                              {dashboard.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {selectedDashboard && (
+                      <Button onClick={() => setGrantAccessDialogOpen(true)}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Liberar Acesso
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {loading ? (
@@ -588,15 +705,19 @@ const UsersManagement = () => {
                   <div className="text-center py-8">
                     <LayoutDashboard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                     <p className="text-muted-foreground">
-                      Crie um dashboard primeiro para gerenciar acessos
+                      Nenhum dashboard cadastrado nesta empresa
                     </p>
                   </div>
                 ) : userAccess.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground mb-4">
                       Nenhum usuário com acesso direto a este dashboard
                     </p>
+                    <Button onClick={() => setGrantAccessDialogOpen(true)}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Liberar para Usuários
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -731,9 +852,120 @@ const UsersManagement = () => {
                 )}
               </Card>
             </TabsContent>
+
+            {/* Invitations Tab */}
+            <TabsContent value="invitations">
+              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
+                <h2 className="text-xl font-bold mb-4">Convites Enviados</h2>
+                {invitations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Mail className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Nenhum convite enviado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {invitations.map((invitation, index) => {
+                      const status = getInvitationStatus(invitation);
+                      return (
+                        <motion.div
+                          key={invitation.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="bg-muted p-2 rounded-lg">
+                              <Mail className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{invitation.email}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Dashboards: {getDashboardNames(invitation.dashboard_ids)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className={`flex items-center gap-2 ${status.color}`}>
+                              <status.icon className="h-4 w-4" />
+                              <span className="text-sm">{status.label}</span>
+                            </div>
+                            {!invitation.accepted_at && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeletingInviteId(invitation.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
           </Tabs>
         )}
       </main>
+
+      {/* Grant Access to Existing Users Dialog */}
+      <Dialog open={grantAccessDialogOpen} onOpenChange={(open) => {
+        setGrantAccessDialogOpen(open);
+        if (!open) setSelectedUsersToGrant([]);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Liberar Acesso ao Dashboard</DialogTitle>
+            <DialogDescription>
+              Selecione os usuários que terão acesso a: {dashboards.find(d => d.id === selectedDashboard)?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[300px] pr-4">
+            {getUsersWithoutAccess().length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Todos os usuários já têm acesso a este dashboard
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {getUsersWithoutAccess().map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={selectedUsersToGrant.includes(user.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedUsersToGrant([...selectedUsersToGrant, user.id]);
+                        } else {
+                          setSelectedUsersToGrant(selectedUsersToGrant.filter(id => id !== user.id));
+                        }
+                      }}
+                    />
+                    <div>
+                      <p className="font-medium">{user.full_name || user.email}</p>
+                      {user.full_name && (
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setGrantAccessDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleGrantAccessToUsers} disabled={savingGrantAccess || selectedUsersToGrant.length === 0}>
+              {savingGrantAccess ? "Liberando..." : `Liberar (${selectedUsersToGrant.length})`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* User Dashboards Dialog */}
       <Dialog open={userDashboardsDialogOpen} onOpenChange={setUserDashboardsDialogOpen}>
