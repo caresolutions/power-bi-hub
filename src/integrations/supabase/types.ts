@@ -194,6 +194,45 @@ export type Database = {
           },
         ]
       }
+      group_dashboard_access: {
+        Row: {
+          created_at: string
+          dashboard_id: string
+          granted_by: string
+          group_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          dashboard_id: string
+          granted_by: string
+          group_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          dashboard_id?: string
+          granted_by?: string
+          group_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_dashboard_access_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_dashboard_access_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "user_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       power_bi_configs: {
         Row: {
           client_id: string
@@ -457,6 +496,7 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          is_master_managed: boolean | null
           plan: string
           status: string
           stripe_customer_id: string | null
@@ -469,6 +509,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          is_master_managed?: boolean | null
           plan?: string
           status?: string
           stripe_customer_id?: string | null
@@ -481,6 +522,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          is_master_managed?: boolean | null
           plan?: string
           status?: string
           stripe_customer_id?: string | null
@@ -671,6 +713,76 @@ export type Database = {
           },
         ]
       }
+      user_group_members: {
+        Row: {
+          added_by: string
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "user_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_groups: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_groups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_invitations: {
         Row: {
           accepted_at: string | null
@@ -744,6 +856,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_group_dashboard_access: {
+        Args: { _dashboard_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -751,6 +867,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_master_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "master_admin"
