@@ -87,6 +87,41 @@ async function decryptValue(ciphertext: string, keyString: string): Promise<stri
   }
 }
 
+// Retry logic with exponential backoff
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Retry on 5xx errors (server errors, including 502 Bad Gateway)
+      if (response.status >= 500 && attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`[RETRY] Attempt ${attempt + 1} failed with ${response.status}, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`[RETRY] Attempt ${attempt + 1} failed with network error, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error("All retry attempts failed");
+}
+
 // Master User authentication using ROPC flow
 async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   const tokenUrl = `https://login.microsoftonline.com/${config.tenant_id}/oauth2/v2.0/token`;
@@ -102,7 +137,7 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
 
   console.log("Requesting Azure AD token using Master User auth...");
 
-  const response = await fetch(tokenUrl, {
+  const response = await fetchWithRetry(tokenUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -131,7 +166,7 @@ async function getReportEmbedToken(
 
   console.log("Fetching report details...");
 
-  const reportResponse = await fetch(reportUrl, {
+  const reportResponse = await fetchWithRetry(reportUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -151,7 +186,7 @@ async function getReportEmbedToken(
 
   console.log("Generating embed token...");
 
-  const embedResponse = await fetch(embedTokenUrl, {
+  const embedResponse = await fetchWithRetry(embedTokenUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
