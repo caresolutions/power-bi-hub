@@ -3,14 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
 import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
 import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
+import { CompanyFilter } from "@/components/CompanyFilter";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +37,10 @@ interface Dashboard {
   description?: string | null;
   category?: string | null;
   tags?: string[] | null;
+  company_id?: string | null;
+  company?: {
+    name: string;
+  };
 }
 
 interface Credential {
@@ -41,17 +48,15 @@ interface Credential {
   name: string;
 }
 
-type UserRole = 'admin' | 'user';
-
 const Dashboards = () => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
   
   // Catalog filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,6 +67,7 @@ const Dashboards = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
+  const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
 
   // Extract unique categories and tags
   const categories = useMemo(() => {
@@ -110,74 +116,86 @@ const Dashboards = () => {
   };
 
   useEffect(() => {
-    checkAuthAndRole();
-  }, []);
-
-  const checkAuthAndRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (roleData) {
-      setUserRole(roleData.role as UserRole);
-      
-      if (roleData.role === 'admin') {
-        fetchAdminDashboards();
+    if (!roleLoading && userId) {
+      fetchDashboards();
+      if (isAdmin) {
         fetchCredentials();
-      } else {
-        fetchUserDashboards(user.id);
       }
+    } else if (!roleLoading && !userId) {
+      navigate("/auth");
     }
-  };
+  }, [roleLoading, userId, isAdmin, selectedCompanyId]);
 
-  const fetchAdminDashboards = async () => {
+  const fetchDashboards = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("dashboards")
-        .select("*")
-        .order("created_at", { ascending: false });
+      if (isMasterAdmin) {
+        // Master Admin: fetch all dashboards or filtered by company
+        let query = supabase
+          .from("dashboards")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setDashboards(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (selectedCompanyId !== "all") {
+          query = query.eq("company_id", selectedCompanyId);
+        }
 
-  const fetchUserDashboards = async (userId: string) => {
-    try {
-      const { data: accessData, error: accessError } = await supabase
-        .from("user_dashboard_access")
-        .select("dashboard_id")
-        .eq("user_id", userId);
+        const { data, error } = await query;
+        if (error) throw error;
 
-      if (accessError) throw accessError;
+        // Fetch company names
+        if (data && data.length > 0) {
+          const companyIds = [...new Set(data.map(d => d.company_id).filter(Boolean))];
+          if (companyIds.length > 0) {
+            const { data: companies } = await supabase
+              .from("companies")
+              .select("id, name")
+              .in("id", companyIds);
 
-      if (accessData && accessData.length > 0) {
-        const dashboardIds = accessData.map(a => a.dashboard_id);
+            const companyMap = new Map(companies?.map(c => [c.id, c.name]) || []);
+            
+            const dashboardsWithCompany = data.map(dash => ({
+              ...dash,
+              company: dash.company_id ? { name: companyMap.get(dash.company_id) || "Desconhecida" } : undefined
+            }));
+            
+            setDashboards(dashboardsWithCompany);
+          } else {
+            setDashboards(data);
+          }
+        } else {
+          setDashboards(data || []);
+        }
+      } else if (isAdmin) {
+        // Admin: fetch only company dashboards
         const { data, error } = await supabase
           .from("dashboards")
           .select("*")
-          .in("id", dashboardIds);
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
         setDashboards(data || []);
       } else {
-        setDashboards([]);
+        // Regular user: fetch only dashboards with access
+        const { data: accessData, error: accessError } = await supabase
+          .from("user_dashboard_access")
+          .select("dashboard_id")
+          .eq("user_id", userId);
+
+        if (accessError) throw accessError;
+
+        if (accessData && accessData.length > 0) {
+          const dashboardIds = accessData.map(a => a.dashboard_id);
+          const { data, error } = await supabase
+            .from("dashboards")
+            .select("*")
+            .in("id", dashboardIds);
+
+          if (error) throw error;
+          setDashboards(data || []);
+        } else {
+          setDashboards([]);
+        }
       }
     } catch (error: any) {
       toast({
@@ -192,11 +210,17 @@ const Dashboards = () => {
 
   const fetchCredentials = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("power_bi_configs")
         .select("id, name")
         .order("name");
 
+      // For master admin, show all credentials or filtered by company
+      if (isMasterAdmin && selectedCompanyId !== "all") {
+        query = query.eq("company_id", selectedCompanyId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setCredentials(data || []);
     } catch (error: any) {
@@ -220,7 +244,7 @@ const Dashboards = () => {
         description: "Dashboard removido com sucesso",
       });
       
-      fetchAdminDashboards();
+      fetchDashboards();
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -235,7 +259,7 @@ const Dashboards = () => {
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditingDashboard(null);
-    fetchAdminDashboards();
+    fetchDashboards();
   };
 
   const getCredentialName = (credentialId: string | null) => {
@@ -243,6 +267,14 @@ const Dashboards = () => {
     const credential = credentials.find(c => c.id === credentialId);
     return credential?.name || "Não encontrado";
   };
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -265,7 +297,7 @@ const Dashboards = () => {
               </div>
             </div>
             
-            {userRole === 'admin' && !showForm && (
+            {isAdmin && !showForm && (
               <Button
                 onClick={() => setShowForm(true)}
                 className="bg-primary hover:bg-primary/90 shadow-glow"
@@ -289,18 +321,35 @@ const Dashboards = () => {
               setShowForm(false);
               setEditingDashboard(null);
             }}
+            isMasterAdmin={isMasterAdmin}
+            defaultCompanyId={isMasterAdmin ? (selectedCompanyId !== "all" ? selectedCompanyId : undefined) : companyId || undefined}
           />
         ) : (
           <>
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-2">
-                {userRole === 'admin' ? "Meus Dashboards" : "Dashboards Disponíveis"}
-              </h2>
-              <p className="text-muted-foreground">
-                {userRole === 'admin' 
-                  ? "Gerencie e compartilhe seus dashboards Power BI"
-                  : "Visualize os dashboards que você tem acesso"}
-              </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-3xl font-bold mb-2">
+                  {isMasterAdmin ? "Todos os Dashboards" : isAdmin ? "Meus Dashboards" : "Dashboards Disponíveis"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {isMasterAdmin 
+                    ? "Gerencie dashboards de todas as empresas"
+                    : isAdmin 
+                      ? "Gerencie e compartilhe seus dashboards Power BI"
+                      : "Visualize os dashboards que você tem acesso"}
+                </p>
+              </div>
+
+              {/* Company Filter for Master Admin */}
+              {isMasterAdmin && (
+                <CompanyFilter
+                  value={selectedCompanyId}
+                  onChange={(value) => {
+                    setSelectedCompanyId(value);
+                    setLoading(true);
+                  }}
+                />
+              )}
             </div>
 
             {/* Catalog Filters */}
@@ -328,11 +377,13 @@ const Dashboards = () => {
                 <BarChart3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-2xl font-bold mb-2">Nenhum dashboard encontrado</h3>
                 <p className="text-muted-foreground mb-6">
-                  {userRole === 'admin' 
-                    ? "Adicione seu primeiro dashboard Power BI"
-                    : "Você ainda não tem acesso a nenhum dashboard"}
+                  {isMasterAdmin && selectedCompanyId !== "all"
+                    ? "Esta empresa não possui dashboards cadastrados"
+                    : isAdmin 
+                      ? "Adicione seu primeiro dashboard Power BI"
+                      : "Você ainda não tem acesso a nenhum dashboard"}
                 </p>
-                {userRole === 'admin' && (
+                {isAdmin && (
                   <Button
                     onClick={() => setShowForm(true)}
                     className="bg-primary hover:bg-primary/90 shadow-glow"
@@ -396,7 +447,7 @@ const Dashboards = () => {
                       <div className="p-5">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="text-lg font-bold line-clamp-2">{dashboard.name}</h3>
-                          {userRole === 'admin' && (
+                          {isAdmin && (
                             <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
                               <Button
                                 variant="ghost"
@@ -417,6 +468,14 @@ const Dashboards = () => {
                             </div>
                           )}
                         </div>
+
+                        {/* Company badge for Master Admin */}
+                        {isMasterAdmin && dashboard.company && (
+                          <Badge variant="outline" className="mb-2 flex items-center gap-1 w-fit">
+                            <Building2 className="h-3 w-3" />
+                            {dashboard.company.name}
+                          </Badge>
+                        )}
                         
                         {dashboard.description && (
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -447,15 +506,15 @@ const Dashboards = () => {
                           {dashboard.embed_type !== "public_link" && (
                             <p className="truncate font-mono">WS: {dashboard.workspace_id.substring(0, 12)}...</p>
                           )}
-                          {userRole === 'admin' && dashboard.embed_type !== "public_link" && (
+                          {isAdmin && dashboard.embed_type !== "public_link" && (
                             <p>
                               Credencial: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
                             </p>
                           )}
                         </div>
                         
-                        {userRole === 'admin' && (
-                          <div className="flex flex-wrap gap-2 mt-4">
+                        {isAdmin && (
+                          <div className="flex flex-wrap gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="outline"
                               size="sm"

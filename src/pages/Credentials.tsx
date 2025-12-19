@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   ArrowLeft, 
@@ -10,10 +11,13 @@ import {
   Settings, 
   Pencil, 
   Trash2,
-  Key
+  Key,
+  Building2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import CredentialForm from "@/components/credentials/CredentialForm";
+import { CompanyFilter } from "@/components/CompanyFilter";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +36,10 @@ interface Credential {
   tenant_id: string;
   username?: string;
   created_at: string;
+  company_id: string | null;
+  company?: {
+    name: string;
+  };
 }
 
 const Credentials = () => {
@@ -40,42 +48,65 @@ const Credentials = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingCredential, setEditingCredential] = useState<Credential | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
 
   useEffect(() => {
-    checkAuth();
-    fetchCredentials();
-  }, []);
-
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    if (!roleLoading && userId) {
+      if (!isAdmin) {
+        navigate("/home");
+        return;
+      }
+      fetchCredentials();
+    } else if (!roleLoading && !userId) {
       navigate("/auth");
-      return;
     }
-
-    // Check if admin
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (roleData?.role !== 'admin') {
-      navigate("/home");
-    }
-  };
+  }, [roleLoading, userId, isAdmin, selectedCompanyId]);
 
   const fetchCredentials = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("power_bi_configs")
-        .select("id, name, client_id, tenant_id, username, created_at")
+        .select("id, name, client_id, tenant_id, username, created_at, company_id")
         .order("created_at", { ascending: false });
 
+      // Filter by company for non-master admins
+      if (!isMasterAdmin && companyId) {
+        query = query.eq("company_id", companyId);
+      } else if (isMasterAdmin && selectedCompanyId !== "all") {
+        query = query.eq("company_id", selectedCompanyId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setCredentials(data || []);
+
+      // Fetch company names for master admin view
+      if (isMasterAdmin && data) {
+        const companyIds = [...new Set(data.map(c => c.company_id).filter(Boolean))];
+        if (companyIds.length > 0) {
+          const { data: companies } = await supabase
+            .from("companies")
+            .select("id, name")
+            .in("id", companyIds);
+
+          const companyMap = new Map(companies?.map(c => [c.id, c.name]) || []);
+          
+          const credentialsWithCompany = data.map(cred => ({
+            ...cred,
+            company: cred.company_id ? { name: companyMap.get(cred.company_id) || "Desconhecida" } : undefined
+          }));
+          
+          setCredentials(credentialsWithCompany);
+        } else {
+          setCredentials(data || []);
+        }
+      } else {
+        setCredentials(data || []);
+      }
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -121,6 +152,14 @@ const Credentials = () => {
     fetchCredentials();
   };
 
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
@@ -165,14 +204,31 @@ const Credentials = () => {
               setShowForm(false);
               setEditingCredential(null);
             }}
+            isMasterAdmin={isMasterAdmin}
+            defaultCompanyId={isMasterAdmin ? (selectedCompanyId !== "all" ? selectedCompanyId : undefined) : companyId || undefined}
           />
         ) : (
           <>
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-2">Credenciais do Power BI</h2>
-              <p className="text-muted-foreground">
-                Gerencie suas credenciais de acesso ao Microsoft Power BI
-              </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-3xl font-bold mb-2">Credenciais do Power BI</h2>
+                <p className="text-muted-foreground">
+                  {isMasterAdmin 
+                    ? "Gerencie credenciais de todas as empresas"
+                    : "Gerencie suas credenciais de acesso ao Microsoft Power BI"}
+                </p>
+              </div>
+              
+              {/* Company Filter for Master Admin */}
+              {isMasterAdmin && (
+                <CompanyFilter
+                  value={selectedCompanyId}
+                  onChange={(value) => {
+                    setSelectedCompanyId(value);
+                    setLoading(true);
+                  }}
+                />
+              )}
             </div>
 
             {loading ? (
@@ -184,7 +240,9 @@ const Credentials = () => {
                 <Key className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-2xl font-bold mb-2">Nenhuma credencial cadastrada</h3>
                 <p className="text-muted-foreground mb-6">
-                  Adicione suas credenciais do Power BI para começar
+                  {isMasterAdmin && selectedCompanyId !== "all"
+                    ? "Esta empresa não possui credenciais cadastradas"
+                    : "Adicione suas credenciais do Power BI para começar"}
                 </p>
                 <Button
                   onClick={() => setShowForm(true)}
@@ -227,6 +285,14 @@ const Credentials = () => {
                       </div>
                       
                       <h3 className="text-xl font-bold mb-3">{credential.name}</h3>
+                      
+                      {/* Company badge for Master Admin */}
+                      {isMasterAdmin && credential.company && (
+                        <Badge variant="outline" className="mb-3 flex items-center gap-1 w-fit">
+                          <Building2 className="h-3 w-3" />
+                          {credential.company.name}
+                        </Badge>
+                      )}
                       
                       <div className="space-y-2 text-sm text-muted-foreground">
                         <p className="truncate font-mono">Client ID: {credential.client_id.slice(0, 8)}...</p>
