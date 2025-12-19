@@ -55,15 +55,22 @@ const Home = () => {
       return;
     }
 
-    // Check user role
-    const { data: roleData } = await supabase
+    // Check user roles - get all roles and use highest privilege
+    const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleData) {
-      setUserRole(roleData.role as UserRole);
+    if (rolesData && rolesData.length > 0) {
+      // Priority: master_admin > admin > user
+      const roles = rolesData.map(r => r.role);
+      if (roles.includes('master_admin')) {
+        setUserRole('master_admin');
+      } else if (roles.includes('admin')) {
+        setUserRole('admin');
+      } else {
+        setUserRole('user');
+      }
     }
     setLoading(false);
   };
