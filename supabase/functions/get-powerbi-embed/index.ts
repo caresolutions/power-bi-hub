@@ -203,58 +203,76 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { dashboardId } = await req.json();
+    const body = await req.json();
+    const { dashboardId, workspaceId, reportId, credentialId, reportSection } = body;
 
-    if (!dashboardId) {
-      throw new Error("Dashboard ID is required");
-    }
+    // Support both modes: by dashboardId OR by direct parameters (for slider slides)
+    let targetWorkspaceId: string;
+    let targetReportId: string;
+    let targetCredentialId: string;
+    let targetReportSection: string | null = null;
 
-    console.log("[AUDIT] Processing embed request for dashboard:", dashboardId);
+    if (dashboardId) {
+      // Mode 1: Lookup by dashboard ID
+      console.log("[AUDIT] Processing embed request for dashboard:", dashboardId);
 
-    // Get dashboard with credential
-    const { data: dashboard, error: dashboardError } = await supabase
-      .from("dashboards")
-      .select("workspace_id, dashboard_id, report_section, credential_id, owner_id")
-      .eq("id", dashboardId)
-      .single();
-
-    if (dashboardError || !dashboard) {
-      console.error("[AUDIT] Dashboard not found:", dashboardError);
-      throw new Error(USER_ERROR_MESSAGES.resource_not_found);
-    }
-
-    // Check if user has access (owner or has been granted access)
-    const isOwner = dashboard.owner_id === user.id;
-    
-    if (!isOwner) {
-      const { data: access } = await supabase
-        .from("user_dashboard_access")
-        .select("id")
-        .eq("dashboard_id", dashboardId)
-        .eq("user_id", user.id)
+      const { data: dashboard, error: dashboardError } = await supabase
+        .from("dashboards")
+        .select("workspace_id, dashboard_id, report_section, credential_id, owner_id")
+        .eq("id", dashboardId)
         .single();
 
-      if (!access) {
-        throw new Error(USER_ERROR_MESSAGES.permission_denied);
+      if (dashboardError || !dashboard) {
+        console.error("[AUDIT] Dashboard not found:", dashboardError);
+        throw new Error(USER_ERROR_MESSAGES.resource_not_found);
       }
+
+      // Check if user has access (owner or has been granted access)
+      const isOwner = dashboard.owner_id === user.id;
+      
+      if (!isOwner) {
+        const { data: access } = await supabase
+          .from("user_dashboard_access")
+          .select("id")
+          .eq("dashboard_id", dashboardId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (!access) {
+          throw new Error(USER_ERROR_MESSAGES.permission_denied);
+        }
+      }
+
+      if (!dashboard.credential_id) {
+        throw new Error(USER_ERROR_MESSAGES.credentials_missing);
+      }
+
+      targetWorkspaceId = dashboard.workspace_id;
+      targetReportId = dashboard.dashboard_id;
+      targetCredentialId = dashboard.credential_id;
+      targetReportSection = dashboard.report_section;
+    } else if (workspaceId && reportId && credentialId) {
+      // Mode 2: Direct parameters (for slider slides)
+      console.log("[AUDIT] Processing embed request with direct parameters");
+      targetWorkspaceId = workspaceId;
+      targetReportId = reportId;
+      targetCredentialId = credentialId;
+      targetReportSection = reportSection || null;
+    } else {
+      throw new Error("Dashboard ID or direct parameters (workspaceId, reportId, credentialId) are required");
     }
 
-    if (!dashboard.credential_id) {
-      throw new Error(USER_ERROR_MESSAGES.credentials_missing);
-    }
+    console.log("Processing credential:", targetCredentialId);
 
-    console.log("Processing credential for dashboard:", dashboardId);
-
-    // Get and decrypt credentials via the manage-credentials function
+    // Get and decrypt credentials
     const encryptionKey = Deno.env.get("ENCRYPTION_KEY");
     let credential: PowerBIConfig;
 
     if (encryptionKey) {
-      // Use decryption for encrypted credentials
       const { data: credData, error: credError } = await supabase
         .from("power_bi_configs")
         .select("client_id, client_secret, tenant_id, username, password")
-        .eq("id", dashboard.credential_id)
+        .eq("id", targetCredentialId)
         .single();
 
       if (credError || !credData) {
@@ -262,7 +280,6 @@ serve(async (req) => {
         throw new Error(USER_ERROR_MESSAGES.credentials_missing);
       }
 
-      // Decrypt sensitive fields
       credential = {
         client_id: credData.client_id,
         client_secret: await decryptValue(credData.client_secret, encryptionKey),
@@ -271,11 +288,10 @@ serve(async (req) => {
         password: await decryptValue(credData.password || "", encryptionKey),
       };
     } else {
-      // Fallback for unencrypted credentials (backward compatibility)
       const { data: credData, error: credError } = await supabase
         .from("power_bi_configs")
         .select("client_id, client_secret, tenant_id, username, password")
-        .eq("id", dashboard.credential_id)
+        .eq("id", targetCredentialId)
         .single();
 
       if (credError || !credData) {
@@ -286,19 +302,16 @@ serve(async (req) => {
       credential = credData as PowerBIConfig;
     }
 
-    // Validate required fields
     if (!credential.username || !credential.password) {
       throw new Error(USER_ERROR_MESSAGES.credentials_missing);
     }
 
-    // Get Azure AD access token using Master User auth
     const accessToken = await getAzureAccessToken(credential);
 
-    // Get embed token
     const embedData = await getReportEmbedToken(
       accessToken,
-      dashboard.workspace_id,
-      dashboard.dashboard_id
+      targetWorkspaceId,
+      targetReportId
     );
 
     console.log("Embed data generated successfully");
@@ -307,7 +320,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         ...embedData,
-        reportSection: dashboard.report_section,
+        reportSection: targetReportSection,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
