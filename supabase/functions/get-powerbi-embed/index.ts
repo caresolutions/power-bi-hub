@@ -301,19 +301,29 @@ serve(async (req) => {
         throw new Error(USER_ERROR_MESSAGES.resource_not_found);
       }
 
-      // Check if user has access (owner or has been granted access)
+      // Check if user has access (owner, direct access, or group access)
       const isOwner = dashboard.owner_id === user.id;
       
       if (!isOwner) {
-        const { data: access } = await supabase
+        // Check direct user access
+        const { data: directAccess } = await supabase
           .from("user_dashboard_access")
           .select("id")
           .eq("dashboard_id", dashboardId)
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (!access) {
-          throw new Error(USER_ERROR_MESSAGES.permission_denied);
+        if (!directAccess) {
+          // Check group access - user may be member of a group with dashboard access
+          const { data: groupAccess } = await supabase.rpc("has_group_dashboard_access", {
+            _user_id: user.id,
+            _dashboard_id: dashboardId
+          });
+
+          if (!groupAccess) {
+            console.error("[AUDIT] Permission denied for user:", user.id, "on dashboard:", dashboardId);
+            throw new Error(USER_ERROR_MESSAGES.permission_denied);
+          }
         }
       }
 
