@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +30,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, 
   Building2, 
@@ -39,10 +45,18 @@ import {
   Trash2, 
   Users,
   LayoutDashboard,
-  Shield
+  Shield,
+  Settings,
+  CreditCard,
+  FolderOpen
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { CompanyForm } from "@/components/master-admin/CompanyForm";
+import { CompanyUsersManager } from "@/components/master-admin/CompanyUsersManager";
+import { CompanyDashboardsManager } from "@/components/master-admin/CompanyDashboardsManager";
+import { CompanyGroupsManager } from "@/components/master-admin/CompanyGroupsManager";
+import { CompanySubscriptionManager } from "@/components/master-admin/CompanySubscriptionManager";
 
 interface Company {
   id: string;
@@ -61,7 +75,8 @@ const MasterAdmin = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", cnpj: "" });
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -134,52 +149,8 @@ const MasterAdmin = () => {
     setLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.cnpj) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-
-    if (editingCompany) {
-      // Update
-      const { error } = await supabase
-        .from("companies")
-        .update({ name: formData.name, cnpj: formData.cnpj })
-        .eq("id", editingCompany.id);
-
-      if (error) {
-        toast.error("Erro ao atualizar empresa");
-        return;
-      }
-      toast.success("Empresa atualizada com sucesso");
-    } else {
-      // Create
-      const { error } = await supabase
-        .from("companies")
-        .insert({ name: formData.name, cnpj: formData.cnpj });
-
-      if (error) {
-        if (error.code === "23505") {
-          toast.error("CNPJ já cadastrado");
-        } else {
-          toast.error("Erro ao criar empresa");
-        }
-        return;
-      }
-      toast.success("Empresa criada com sucesso");
-    }
-
-    setDialogOpen(false);
-    setEditingCompany(null);
-    setFormData({ name: "", cnpj: "" });
-    fetchCompanies();
-  };
-
   const handleEdit = (company: Company) => {
     setEditingCompany(company);
-    setFormData({ name: company.name, cnpj: company.cnpj });
     setDialogOpen(true);
   };
 
@@ -199,6 +170,11 @@ const MasterAdmin = () => {
     toast.success("Empresa excluída com sucesso");
     setDeleteId(null);
     fetchCompanies();
+  };
+
+  const handleManageCompany = (company: Company) => {
+    setSelectedCompany(company);
+    setSheetOpen(true);
   };
 
   const handleLogout = async () => {
@@ -237,7 +213,7 @@ const MasterAdmin = () => {
           <div>
             <h1 className="text-3xl font-bold mb-2">Gestão de Empresas</h1>
             <p className="text-muted-foreground">
-              Crie e gerencie as empresas do sistema
+              Crie e gerencie as empresas, usuários, grupos, dashboards e assinaturas
             </p>
           </div>
 
@@ -245,7 +221,6 @@ const MasterAdmin = () => {
             setDialogOpen(open);
             if (!open) {
               setEditingCompany(null);
-              setFormData({ name: "", cnpj: "" });
             }
           }}>
             <DialogTrigger asChild>
@@ -265,34 +240,18 @@ const MasterAdmin = () => {
                     : "Preencha os dados para criar uma nova empresa"}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome da Empresa</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Nome da empresa"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ</Label>
-                  <Input
-                    id="cnpj"
-                    value={formData.cnpj}
-                    onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                    placeholder="00.000.000/0000-00"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingCompany ? "Salvar" : "Criar"}
-                  </Button>
-                </div>
-              </form>
+              <CompanyForm 
+                editingCompany={editingCompany}
+                onSuccess={() => {
+                  setDialogOpen(false);
+                  setEditingCompany(null);
+                  fetchCompanies();
+                }}
+                onCancel={() => {
+                  setDialogOpen(false);
+                  setEditingCompany(null);
+                }}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -358,7 +317,15 @@ const MasterAdmin = () => {
                       {new Date(company.created_at).toLocaleDateString("pt-BR")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleManageCompany(company)}
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Gerenciar
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -383,6 +350,69 @@ const MasterAdmin = () => {
           </Card>
         )}
       </main>
+
+      {/* Company Management Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              {selectedCompany?.name}
+            </SheetTitle>
+          </SheetHeader>
+
+          {selectedCompany && (
+            <Tabs defaultValue="users" className="mt-6">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="users" className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Usuários</span>
+                </TabsTrigger>
+                <TabsTrigger value="groups" className="flex items-center gap-1">
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline">Grupos</span>
+                </TabsTrigger>
+                <TabsTrigger value="dashboards" className="flex items-center gap-1">
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Dashboards</span>
+                </TabsTrigger>
+                <TabsTrigger value="subscription" className="flex items-center gap-1">
+                  <CreditCard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Assinatura</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="users" className="mt-6">
+                <CompanyUsersManager 
+                  companyId={selectedCompany.id} 
+                  companyName={selectedCompany.name}
+                />
+              </TabsContent>
+
+              <TabsContent value="groups" className="mt-6">
+                <CompanyGroupsManager 
+                  companyId={selectedCompany.id} 
+                  companyName={selectedCompany.name}
+                />
+              </TabsContent>
+
+              <TabsContent value="dashboards" className="mt-6">
+                <CompanyDashboardsManager 
+                  companyId={selectedCompany.id} 
+                  companyName={selectedCompany.name}
+                />
+              </TabsContent>
+
+              <TabsContent value="subscription" className="mt-6">
+                <CompanySubscriptionManager 
+                  companyId={selectedCompany.id} 
+                  companyName={selectedCompany.name}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
