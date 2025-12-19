@@ -151,6 +151,27 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
     setEmbedsLoading(false);
   };
 
+  // Refresh all embeds when sequence loops
+  const refreshAllEmbeds = useCallback(async () => {
+    console.log("Sequence completed - refreshing all embeds...");
+    
+    // Reset all embed containers
+    embedContainersRef.current.forEach((container) => {
+      if (powerbiRef.current) {
+        powerbiRef.current.reset(container);
+      }
+    });
+    
+    // Clear loaded slides to allow re-embedding
+    setLoadedSlides(new Set());
+    reportsRef.current.clear();
+    
+    // Re-fetch all embed tokens
+    if (visibleSlides.length > 0) {
+      await prefetchAllEmbeds(visibleSlides);
+    }
+  }, [visibleSlides]);
+
   // Embed a slide into its container
   const embedSlide = useCallback((slide: SliderSlide) => {
     const container = embedContainersRef.current.get(slide.id);
@@ -234,19 +255,26 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
     };
   }, [isPlaying, currentSlideIndex, visibleSlides.length, isTransitioning]);
 
-  const goToNextSlide = useCallback(() => {
-    const nextIndex = currentSlideIndex >= visibleSlides.length - 1 ? 0 : currentSlideIndex + 1;
+  const goToNextSlide = useCallback(async () => {
+    const isLastSlide = currentSlideIndex >= visibleSlides.length - 1;
+    const nextIndex = isLastSlide ? 0 : currentSlideIndex + 1;
     const nextSlide = visibleSlides[nextIndex];
     
     // Apply transition
     setIsTransitioning(true);
     setProgress(0);
     
+    // If looping back to first slide, refresh all embeds
+    if (isLastSlide) {
+      console.log("Sequence complete - will refresh embeds");
+      await refreshAllEmbeds();
+    }
+    
     setTimeout(() => {
       setCurrentSlideIndex(nextIndex);
       setIsTransitioning(false);
     }, nextSlide?.transition_type === "fade" ? 300 : 0);
-  }, [currentSlideIndex, visibleSlides]);
+  }, [currentSlideIndex, visibleSlides, refreshAllEmbeds]);
 
   const goToPrevSlide = useCallback(() => {
     const prevIndex = currentSlideIndex <= 0 ? visibleSlides.length - 1 : currentSlideIndex - 1;
