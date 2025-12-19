@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -31,9 +31,15 @@ interface Dashboard {
   tags?: string[] | null;
   dataset_id?: string | null;
   dataset_schema?: string | null;
+  company_id?: string | null;
 }
 
 interface Credential {
+  id: string;
+  name: string;
+}
+
+interface Company {
   id: string;
   name: string;
 }
@@ -43,9 +49,11 @@ interface DashboardFormProps {
   credentials: Credential[];
   onSuccess: () => void;
   onCancel: () => void;
+  isMasterAdmin?: boolean;
+  defaultCompanyId?: string;
 }
 
-const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: DashboardFormProps) => {
+const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAdmin = false, defaultCompanyId }: DashboardFormProps) => {
   const [url, setUrl] = useState("");
   const [name, setName] = useState(dashboard?.name || "");
   const [embedType, setEmbedType] = useState(dashboard?.embed_type || "workspace_id");
@@ -59,11 +67,25 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
   const [tags, setTags] = useState<string[]>(dashboard?.tags || []);
   const [tagInput, setTagInput] = useState("");
   const [datasetSchema, setDatasetSchema] = useState(dashboard?.dataset_schema || "");
+  const [companyId, setCompanyId] = useState(dashboard?.company_id || defaultCompanyId || "");
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [urlParsed, setUrlParsed] = useState(false);
   const { toast } = useToast();
 
   const isEditing = !!dashboard;
+
+  useEffect(() => {
+    if (isMasterAdmin) {
+      fetchCompanies();
+    }
+  }, [isMasterAdmin]);
+
+  const fetchCompanies = async () => {
+    const { data } = await supabase.from("companies").select("id, name").order("name");
+    setCompanies(data || []);
+  };
+
 
   const predefinedCategories = [
     "Vendas",
@@ -158,15 +180,21 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Get user's company_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
+      // Get company_id - use selected for master admin, or fetch from profile
+      let targetCompanyId = companyId;
+      if (!isMasterAdmin) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
+          .single();
 
-      if (!profile?.company_id) {
-        throw new Error("Empresa não configurada");
+        if (!profile?.company_id) {
+          throw new Error("Empresa não configurada");
+        }
+        targetCompanyId = profile.company_id;
+      } else if (!companyId) {
+        throw new Error("Selecione uma empresa");
       }
 
       if (isEditing) {
@@ -205,7 +233,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel }: Dashboar
             dashboard_id: embedType === "public_link" ? "public" : dashboardId,
             report_section: reportSection || null,
             credential_id: embedType === "public_link" ? null : (credentialId || null),
-            company_id: profile.company_id,
+            company_id: targetCompanyId,
             description: description || null,
             category: category || null,
             tags: tags.length > 0 ? tags : null,

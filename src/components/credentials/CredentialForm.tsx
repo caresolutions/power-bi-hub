@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Key, ArrowLeft, User, Lock } from "lucide-react";
+import { Key, ArrowLeft, User, Lock, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Credential {
@@ -14,28 +21,68 @@ interface Credential {
   client_id: string;
   tenant_id: string;
   username?: string;
+  company_id?: string | null;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 interface CredentialFormProps {
   credential?: Credential | null;
   onSuccess: () => void;
   onCancel: () => void;
+  isMasterAdmin?: boolean;
+  defaultCompanyId?: string;
 }
 
-const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps) => {
+const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false, defaultCompanyId }: CredentialFormProps) => {
   const [name, setName] = useState(credential?.name || "");
   const [clientId, setClientId] = useState(credential?.client_id || "");
   const [clientSecret, setClientSecret] = useState("");
   const [tenantId, setTenantId] = useState(credential?.tenant_id || "");
   const [username, setUsername] = useState(credential?.username || "");
   const [password, setPassword] = useState("");
+  const [companyId, setCompanyId] = useState(credential?.company_id || defaultCompanyId || "");
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const isEditing = !!credential;
 
+  useEffect(() => {
+    if (isMasterAdmin) {
+      fetchCompanies();
+    }
+  }, [isMasterAdmin]);
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("id, name")
+        .order("name");
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isMasterAdmin && !companyId) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma empresa",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -55,6 +102,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
               tenant_id: tenantId,
               username,
               password: password || undefined,
+              company_id: isMasterAdmin ? companyId : undefined,
             },
           },
         });
@@ -78,6 +126,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
               tenant_id: tenantId,
               username,
               password,
+              company_id: isMasterAdmin ? companyId : undefined,
             },
           },
         });
@@ -132,6 +181,28 @@ const CredentialForm = ({ credential, onSuccess, onCancel }: CredentialFormProps
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Company selector for Master Admin */}
+          {isMasterAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="company" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Empresa *
+              </Label>
+              <Select value={companyId} onValueChange={setCompanyId}>
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Selecione uma empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome da Credencial</Label>
             <Input
