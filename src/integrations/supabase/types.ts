@@ -753,7 +753,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "master_admin"
       export_format: "pdf" | "pptx"
       schedule_frequency: "once" | "daily" | "weekly" | "monthly" | "interval"
     }
@@ -883,7 +883,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "master_admin"],
       export_format: ["pdf", "pptx"],
       schedule_frequency: ["once", "daily", "weekly", "monthly", "interval"],
     },
