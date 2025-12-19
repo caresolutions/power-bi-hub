@@ -6,6 +6,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Generic user-facing error messages (hide internal details)
+const USER_ERROR_MESSAGES = {
+  auth_failed: "Falha na autenticação. Verifique suas credenciais do Power BI.",
+  resource_not_found: "Recurso não encontrado. Verifique as configurações do dashboard.",
+  permission_denied: "Você não tem permissão para atualizar este dashboard.",
+  refresh_in_progress: "Atualização já em andamento ou limite atingido. Tente novamente mais tarde.",
+  service_error: "Erro ao processar solicitação. Tente novamente mais tarde.",
+  credentials_missing: "Credenciais não configuradas para este dashboard.",
+};
+
+// Categorize errors for safe user messages
+function categorizeError(error: Error | string): keyof typeof USER_ERROR_MESSAGES {
+  const message = typeof error === 'string' ? error : error.message;
+  const lowerMsg = message.toLowerCase();
+  
+  if (lowerMsg.includes('authentication') || lowerMsg.includes('token') || lowerMsg.includes('azure')) {
+    return 'auth_failed';
+  }
+  if (lowerMsg.includes('not found') || lowerMsg.includes('404')) {
+    return 'resource_not_found';
+  }
+  if (lowerMsg.includes('permission') || lowerMsg.includes('denied') || lowerMsg.includes('403') || lowerMsg.includes('permissão')) {
+    return 'permission_denied';
+  }
+  if (lowerMsg.includes('400') || lowerMsg.includes('in progress') || lowerMsg.includes('andamento') || lowerMsg.includes('limite')) {
+    return 'refresh_in_progress';
+  }
+  if (lowerMsg.includes('credencial') || lowerMsg.includes('credential')) {
+    return 'credentials_missing';
+  }
+  return 'service_error';
+}
+
 interface PowerBIConfig {
   client_id: string;
   client_secret: string;
@@ -42,7 +75,7 @@ async function decryptValue(ciphertext: string, keyString: string): Promise<stri
     
     return new TextDecoder().decode(decrypted);
   } catch (error) {
-    console.error("Decryption failed - returning as-is for backward compatibility");
+    console.error("[AUDIT] Decryption failed - returning as-is for backward compatibility");
     return ciphertext;
   }
 }
@@ -72,8 +105,8 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Azure AD token error:", errorText);
-    throw new Error(`Failed to get Azure AD token: ${response.status} - ${errorText}`);
+    console.error("[AUDIT] Azure AD token error:", errorText);
+    throw new Error(USER_ERROR_MESSAGES.auth_failed);
   }
 
   const data = await response.json();
@@ -99,8 +132,8 @@ async function getDatasetFromReport(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Report fetch error:", errorText);
-    throw new Error(`Falha ao buscar relatório: ${response.status}`);
+    console.error("[AUDIT] Report fetch error:", errorText);
+    throw new Error(USER_ERROR_MESSAGES.resource_not_found);
   }
 
   const reportData = await response.json();
@@ -131,17 +164,17 @@ async function refreshDataset(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Dataset refresh error:", errorText);
+    console.error("[AUDIT] Dataset refresh error:", errorText);
     
     // Parse common errors
     if (response.status === 400) {
-      throw new Error("Atualização já em andamento ou limite de atualizações atingido");
+      throw new Error(USER_ERROR_MESSAGES.refresh_in_progress);
     }
     if (response.status === 403) {
-      throw new Error("Sem permissão para atualizar o dataset");
+      throw new Error(USER_ERROR_MESSAGES.permission_denied);
     }
     
-    throw new Error(`Falha ao atualizar dataset: ${response.status} - ${errorText}`);
+    throw new Error(USER_ERROR_MESSAGES.service_error);
   }
 
   console.log("Dataset refresh triggered successfully");
@@ -180,8 +213,8 @@ serve(async (req) => {
       throw new Error("Dashboard ID is required");
     }
 
-    console.log("Processing refresh request for dashboard:", dashboardId);
-    console.log("User ID:", user.id);
+    console.log("[AUDIT] Processing refresh request for dashboard:", dashboardId);
+    console.log("[AUDIT] User ID:", user.id);
 
     // Check if user has refresh permission for this dashboard
     const { data: permission, error: permError } = await supabase
@@ -192,12 +225,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (permError) {
-      console.error("Permission check error:", permError);
-      throw new Error("Erro ao verificar permissões");
+      console.error("[AUDIT] Permission check error:", permError);
+      throw new Error(USER_ERROR_MESSAGES.service_error);
     }
 
     if (!permission) {
-      throw new Error("Você não tem permissão para atualizar este dashboard");
+      throw new Error(USER_ERROR_MESSAGES.permission_denied);
     }
 
     // Create history entry
@@ -212,7 +245,7 @@ serve(async (req) => {
       .single();
 
     if (historyError) {
-      console.error("Error creating history entry:", historyError);
+      console.error("[AUDIT] Error creating history entry:", historyError);
     } else {
       historyId = historyEntry.id;
     }
@@ -225,12 +258,12 @@ serve(async (req) => {
       .single();
 
     if (dashboardError || !dashboard) {
-      console.error("Dashboard not found:", dashboardError);
-      throw new Error("Dashboard não encontrado");
+      console.error("[AUDIT] Dashboard not found:", dashboardError);
+      throw new Error(USER_ERROR_MESSAGES.resource_not_found);
     }
 
     if (!dashboard.credential_id) {
-      throw new Error("Nenhuma credencial configurada para este dashboard");
+      throw new Error(USER_ERROR_MESSAGES.credentials_missing);
     }
 
     // Get and decrypt credentials
@@ -244,8 +277,8 @@ serve(async (req) => {
       .single();
 
     if (credError || !credData) {
-      console.error("Credential not found:", credError);
-      throw new Error("Credenciais do Power BI não encontradas");
+      console.error("[AUDIT] Credential not found:", credError);
+      throw new Error(USER_ERROR_MESSAGES.credentials_missing);
     }
 
     if (encryptionKey) {
@@ -282,7 +315,7 @@ serve(async (req) => {
     // Trigger dataset refresh
     await refreshDataset(accessToken, dashboard.workspace_id, datasetId);
 
-    console.log("Dataset refresh completed successfully");
+    console.log("[AUDIT] Dataset refresh completed successfully");
 
     // Update history entry as completed
     if (historyId) {
@@ -305,7 +338,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error("Error in refresh-dataset:", error.message);
+    console.error("[AUDIT] Error in refresh-dataset:", error.message);
 
     // Update history entry as failed
     if (historyId) {
@@ -314,15 +347,19 @@ serve(async (req) => {
         .update({
           status: "failed",
           completed_at: new Date().toISOString(),
-          error_message: error.message,
+          error_message: "Falha na atualização",
         })
         .eq("id", historyId);
     }
 
+    // Determine safe user-facing error message
+    const errorCategory = categorizeError(error);
+    const safeError = USER_ERROR_MESSAGES[errorCategory];
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: safeError,
       }),
       {
         status: 400,
