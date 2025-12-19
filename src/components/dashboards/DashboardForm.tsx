@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2 } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2, Play } from "lucide-react";
 import { motion } from "framer-motion";
+import SliderSlidesManager, { SliderSlide } from "./SliderSlidesManager";
 
 interface Dashboard {
   id: string;
@@ -71,6 +72,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [urlParsed, setUrlParsed] = useState(false);
+  const [sliderSlides, setSliderSlides] = useState<SliderSlide[]>([]);
   const { toast } = useToast();
 
   const isEditing = !!dashboard;
@@ -81,9 +83,39 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
     }
   }, [isMasterAdmin]);
 
+  useEffect(() => {
+    if (isEditing && dashboard?.embed_type === "slider") {
+      fetchSliderSlides();
+    }
+  }, [isEditing, dashboard]);
+
   const fetchCompanies = async () => {
     const { data } = await supabase.from("companies").select("id, name").order("name");
     setCompanies(data || []);
+  };
+
+  const fetchSliderSlides = async () => {
+    if (!dashboard?.id) return;
+    const { data } = await supabase
+      .from("slider_slides")
+      .select("*")
+      .eq("dashboard_id", dashboard.id)
+      .order("slide_order");
+    
+    if (data) {
+      setSliderSlides(data.map(s => ({
+        id: s.id,
+        slide_name: s.slide_name,
+        workspace_id: s.workspace_id,
+        report_id: s.report_id,
+        report_section: s.report_section || "",
+        credential_id: s.credential_id || "",
+        duration_seconds: s.duration_seconds,
+        slide_order: s.slide_order,
+        transition_type: s.transition_type,
+        is_visible: s.is_visible,
+      })));
+    }
   };
 
 
@@ -180,6 +212,11 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Validate slider has slides
+      if (embedType === "slider" && sliderSlides.length === 0) {
+        throw new Error("Adicione pelo menos um slide ao Slider");
+      }
+
       // Get company_id - use selected for master admin, or fetch from profile
       let targetCompanyId = companyId;
       if (!isMasterAdmin) {
@@ -197,6 +234,16 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
         throw new Error("Selecione uma empresa");
       }
 
+      // Determine workspace_id and dashboard_id based on embed type
+      const getWorkspaceId = () => {
+        if (embedType === "public_link" || embedType === "slider") return "slider";
+        return workspaceId;
+      };
+      const getDashboardId = () => {
+        if (embedType === "public_link" || embedType === "slider") return "slider";
+        return dashboardId;
+      };
+
       if (isEditing) {
         const { error } = await (supabase as any)
           .from("dashboards")
@@ -204,10 +251,10 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
             name,
             embed_type: embedType,
             public_link: publicLink || null,
-            workspace_id: embedType === "public_link" ? "public" : workspaceId,
-            dashboard_id: embedType === "public_link" ? "public" : dashboardId,
+            workspace_id: getWorkspaceId(),
+            dashboard_id: getDashboardId(),
             report_section: reportSection || null,
-            credential_id: embedType === "public_link" ? null : (credentialId || null),
+            credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
             description: description || null,
             category: category || null,
             tags: tags.length > 0 ? tags : null,
@@ -217,30 +264,42 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
 
         if (error) throw error;
 
+        // Handle slider slides
+        if (embedType === "slider") {
+          await saveSliderSlides(dashboard.id);
+        }
+
         toast({
           title: "Sucesso",
           description: "Dashboard atualizado com sucesso",
         });
       } else {
-        const { error } = await (supabase as any)
+        const { data: newDashboard, error } = await (supabase as any)
           .from("dashboards")
           .insert({
             owner_id: user.id,
             name,
             embed_type: embedType,
             public_link: publicLink || null,
-            workspace_id: embedType === "public_link" ? "public" : workspaceId,
-            dashboard_id: embedType === "public_link" ? "public" : dashboardId,
+            workspace_id: getWorkspaceId(),
+            dashboard_id: getDashboardId(),
             report_section: reportSection || null,
-            credential_id: embedType === "public_link" ? null : (credentialId || null),
+            credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
             company_id: targetCompanyId,
             description: description || null,
             category: category || null,
             tags: tags.length > 0 ? tags : null,
             dataset_schema: datasetSchema || null,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Handle slider slides
+        if (embedType === "slider" && newDashboard) {
+          await saveSliderSlides(newDashboard.id);
+        }
 
         toast({
           title: "Sucesso",
@@ -257,6 +316,30 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveSliderSlides = async (dashboardId: string) => {
+    // Delete existing slides
+    await supabase.from("slider_slides").delete().eq("dashboard_id", dashboardId);
+    
+    // Insert new slides
+    if (sliderSlides.length > 0) {
+      const slidesToInsert = sliderSlides.map((slide, index) => ({
+        dashboard_id: dashboardId,
+        slide_name: slide.slide_name,
+        workspace_id: slide.workspace_id,
+        report_id: slide.report_id,
+        report_section: slide.report_section || null,
+        credential_id: slide.credential_id || null,
+        duration_seconds: slide.duration_seconds,
+        slide_order: index + 1,
+        transition_type: slide.transition_type,
+        is_visible: slide.is_visible,
+      }));
+
+      const { error } = await supabase.from("slider_slides").insert(slidesToInsert);
+      if (error) throw error;
     }
   };
 
@@ -299,14 +382,33 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
               <SelectContent>
                 <SelectItem value="workspace_id">ID do Workspace (Power BI Embedded)</SelectItem>
                 <SelectItem value="public_link">Link Público</SelectItem>
+                <SelectItem value="slider">
+                  <div className="flex items-center gap-2">
+                    <Play className="h-4 w-4" />
+                    Slider (Múltiplos Dashboards)
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               {embedType === "public_link" 
                 ? "Use um link público para incorporar o dashboard diretamente" 
+                : embedType === "slider"
+                ? "Mescle múltiplos dashboards em uma apresentação rotativa para exibição em TVs"
                 : "Use as credenciais do Power BI para incorporar dashboards privados"}
             </p>
           </div>
+
+          {/* Slider Section */}
+          {embedType === "slider" && (
+            <div className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <SliderSlidesManager
+                slides={sliderSlides}
+                onSlidesChange={setSliderSlides}
+                credentials={credentials}
+              />
+            </div>
+          )}
 
           {/* Public Link Section */}
           {embedType === "public_link" && (

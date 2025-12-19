@@ -8,6 +8,7 @@ import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDial
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
 import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
+import SliderViewer from "@/components/dashboards/SliderViewer";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -553,7 +554,9 @@ const DashboardViewer = () => {
 
       {/* Dashboard content */}
       <div className="flex-1 w-full overflow-hidden">
-        {dashboard.embed_type === "public_link" && dashboard.public_link ? (
+        {dashboard.embed_type === "slider" ? (
+          <SliderViewer dashboardId={dashboard.id} />
+        ) : dashboard.embed_type === "public_link" && dashboard.public_link ? (
           <iframe
             src={dashboard.public_link}
             className="w-full h-full"
