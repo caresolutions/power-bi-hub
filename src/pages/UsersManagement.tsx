@@ -3,7 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Users, 
@@ -12,7 +22,11 @@ import {
   Trash2,
   Clock,
   CheckCircle,
-  XCircle 
+  XCircle,
+  LayoutDashboard,
+  Users2,
+  UserCog,
+  ChevronRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import InviteUserForm from "@/components/users/InviteUserForm";
@@ -39,6 +53,18 @@ interface Dashboard {
   name: string;
 }
 
+interface User {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
+interface UserGroup {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 interface UserAccess {
   id: string;
   user_id: string;
@@ -60,21 +86,29 @@ interface Invitation {
 
 const UsersManagement = () => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<UserGroup[]>([]);
   const [selectedDashboard, setSelectedDashboard] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null);
   const [userAccess, setUserAccess] = useState<UserAccess[]>([]);
+  const [userDashboards, setUserDashboards] = useState<string[]>([]);
+  const [groupDashboards, setGroupDashboards] = useState<string[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [deletingAccessId, setDeletingAccessId] = useState<string | null>(null);
   const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null);
+  const [userDashboardsDialogOpen, setUserDashboardsDialogOpen] = useState(false);
+  const [groupDashboardsDialogOpen, setGroupDashboardsDialogOpen] = useState(false);
+  const [savingUserDashboards, setSavingUserDashboards] = useState(false);
+  const [savingGroupDashboards, setSavingGroupDashboards] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
     checkAuth();
-    fetchDashboards();
-    fetchInvitations();
   }, []);
 
   useEffect(() => {
@@ -97,16 +131,21 @@ const UsersManagement = () => {
       return;
     }
 
-    // Check if admin
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .single();
 
-    if (roleData?.role !== 'admin') {
+    if (roleData?.role !== 'admin' && roleData?.role !== 'master_admin') {
       navigate("/home");
+      return;
     }
+
+    fetchDashboards();
+    fetchUsers();
+    fetchGroups();
+    fetchInvitations();
   };
 
   const fetchDashboards = async () => {
@@ -133,6 +172,22 @@ const UsersManagement = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .order("email");
+    setUsers(data || []);
+  };
+
+  const fetchGroups = async () => {
+    const { data } = await supabase
+      .from("user_groups")
+      .select("id, name, description")
+      .order("name");
+    setGroups(data || []);
+  };
+
   const fetchUserAccess = async () => {
     try {
       const { data, error } = await supabase
@@ -142,7 +197,6 @@ const UsersManagement = () => {
 
       if (error) throw error;
 
-      // Fetch profiles separately
       if (data && data.length > 0) {
         const userIds = data.map(d => d.user_id);
         const { data: profilesData } = await supabase
@@ -175,6 +229,129 @@ const UsersManagement = () => {
       setInvitations(data || []);
     } catch (error: any) {
       console.error("Error fetching invitations:", error);
+    }
+  };
+
+  const fetchUserDashboards = async (user: User) => {
+    setSelectedUser(user);
+    const { data } = await supabase
+      .from("user_dashboard_access")
+      .select("dashboard_id")
+      .eq("user_id", user.id);
+    
+    setUserDashboards((data || []).map(d => d.dashboard_id));
+    setUserDashboardsDialogOpen(true);
+  };
+
+  const fetchGroupDashboards = async (group: UserGroup) => {
+    setSelectedGroup(group);
+    const { data } = await supabase
+      .from("group_dashboard_access")
+      .select("dashboard_id")
+      .eq("group_id", group.id);
+    
+    setGroupDashboards((data || []).map(d => d.dashboard_id));
+    setGroupDashboardsDialogOpen(true);
+  };
+
+  const handleSaveUserDashboards = async () => {
+    if (!selectedUser) return;
+    setSavingUserDashboards(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Get current access
+      const { data: currentAccess } = await supabase
+        .from("user_dashboard_access")
+        .select("dashboard_id")
+        .eq("user_id", selectedUser.id);
+
+      const currentIds = (currentAccess || []).map(a => a.dashboard_id);
+      
+      // Dashboards to add
+      const toAdd = userDashboards.filter(id => !currentIds.includes(id));
+      // Dashboards to remove
+      const toRemove = currentIds.filter(id => !userDashboards.includes(id));
+
+      // Add new access
+      if (toAdd.length > 0) {
+        await supabase
+          .from("user_dashboard_access")
+          .insert(toAdd.map(dashboardId => ({
+            user_id: selectedUser.id,
+            dashboard_id: dashboardId,
+            granted_by: user.id
+          })));
+      }
+
+      // Remove access
+      if (toRemove.length > 0) {
+        await supabase
+          .from("user_dashboard_access")
+          .delete()
+          .eq("user_id", selectedUser.id)
+          .in("dashboard_id", toRemove);
+      }
+
+      toast({ title: "Sucesso", description: "Permissões atualizadas" });
+      setUserDashboardsDialogOpen(false);
+      fetchUserAccess();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingUserDashboards(false);
+    }
+  };
+
+  const handleSaveGroupDashboards = async () => {
+    if (!selectedGroup) return;
+    setSavingGroupDashboards(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Get current access
+      const { data: currentAccess } = await supabase
+        .from("group_dashboard_access")
+        .select("dashboard_id")
+        .eq("group_id", selectedGroup.id);
+
+      const currentIds = (currentAccess || []).map(a => a.dashboard_id);
+      
+      // Dashboards to add
+      const toAdd = groupDashboards.filter(id => !currentIds.includes(id));
+      // Dashboards to remove
+      const toRemove = currentIds.filter(id => !groupDashboards.includes(id));
+
+      // Add new access
+      if (toAdd.length > 0) {
+        await supabase
+          .from("group_dashboard_access")
+          .insert(toAdd.map(dashboardId => ({
+            group_id: selectedGroup.id,
+            dashboard_id: dashboardId,
+            granted_by: user.id
+          })));
+      }
+
+      // Remove access
+      if (toRemove.length > 0) {
+        await supabase
+          .from("group_dashboard_access")
+          .delete()
+          .eq("group_id", selectedGroup.id)
+          .in("dashboard_id", toRemove);
+      }
+
+      toast({ title: "Sucesso", description: "Permissões do grupo atualizadas" });
+      setGroupDashboardsDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingGroupDashboards(false);
     }
   };
 
@@ -276,21 +453,30 @@ const UsersManagement = () => {
               </div>
             </div>
             
-            {!showInviteForm && (
+            <div className="flex gap-2">
               <Button
-                onClick={() => setShowInviteForm(true)}
-                className="bg-primary hover:bg-primary/90 shadow-glow"
+                variant="outline"
+                onClick={() => navigate("/groups")}
               >
-                <Plus className="mr-2 h-5 w-5" />
-                Convidar Usuário
+                <Users2 className="mr-2 h-4 w-4" />
+                Grupos
               </Button>
-            )}
+              {!showInviteForm && (
+                <Button
+                  onClick={() => setShowInviteForm(true)}
+                  className="bg-primary hover:bg-primary/90 shadow-glow"
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  Convidar Usuário
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 container mx-auto px-6 py-12">
+      <main className="relative z-10 container mx-auto px-6 py-8">
         {showInviteForm ? (
           <InviteUserForm 
             dashboards={dashboards}
@@ -298,28 +484,47 @@ const UsersManagement = () => {
             onCancel={() => setShowInviteForm(false)}
           />
         ) : (
-          <div className="space-y-12">
-            {/* Pending Invitations */}
-            <section>
-              <h2 className="text-2xl font-bold mb-6">Convites Enviados</h2>
-              
-              {invitations.length === 0 ? (
-                <Card className="glass p-8 text-center border-border/50">
-                  <Mail className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">Nenhum convite enviado</p>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {invitations.map((invitation, index) => {
-                    const status = getInvitationStatus(invitation);
-                    return (
-                      <motion.div
-                        key={invitation.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                      >
-                        <Card className="glass p-4 border-border/50 flex items-center justify-between">
+          <Tabs defaultValue="invitations" className="space-y-6">
+            <TabsList className="bg-card/50">
+              <TabsTrigger value="invitations">
+                <Mail className="h-4 w-4 mr-2" />
+                Convites
+              </TabsTrigger>
+              <TabsTrigger value="by-dashboard">
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Por Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="by-user">
+                <UserCog className="h-4 w-4 mr-2" />
+                Por Usuário
+              </TabsTrigger>
+              <TabsTrigger value="by-group">
+                <Users2 className="h-4 w-4 mr-2" />
+                Por Grupo
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Invitations Tab */}
+            <TabsContent value="invitations">
+              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
+                <h2 className="text-xl font-bold mb-4">Convites Enviados</h2>
+                {invitations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Mail className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Nenhum convite enviado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {invitations.map((invitation, index) => {
+                      const status = getInvitationStatus(invitation);
+                      return (
+                        <motion.div
+                          key={invitation.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                        >
                           <div className="flex items-center gap-4">
                             <div className="bg-muted p-2 rounded-lg">
                               <Mail className="h-5 w-5" />
@@ -346,63 +551,63 @@ const UsersManagement = () => {
                               </Button>
                             )}
                           </div>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* User Access by Dashboard */}
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Acesso por Dashboard</h2>
-                
-                {dashboards.length > 0 && (
-                  <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
-                    <SelectTrigger className="w-64 bg-background/50">
-                      <SelectValue placeholder="Selecione um dashboard" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dashboards.map((dashboard) => (
-                        <SelectItem key={dashboard.id} value={dashboard.id}>
-                          {dashboard.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+              </Card>
+            </TabsContent>
 
-              {loading ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Carregando...</p>
+            {/* By Dashboard Tab */}
+            <TabsContent value="by-dashboard">
+              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">Acesso por Dashboard</h2>
+                  {dashboards.length > 0 && (
+                    <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
+                      <SelectTrigger className="w-64 bg-background/50">
+                        <SelectValue placeholder="Selecione um dashboard" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dashboards.map((dashboard) => (
+                          <SelectItem key={dashboard.id} value={dashboard.id}>
+                            {dashboard.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
-              ) : dashboards.length === 0 ? (
-                <Card className="glass p-8 text-center border-border/50">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    Crie um dashboard primeiro para gerenciar acessos
-                  </p>
-                </Card>
-              ) : userAccess.length === 0 ? (
-                <Card className="glass p-8 text-center border-border/50">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    Nenhum usuário com acesso a este dashboard
-                  </p>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {userAccess.map((access, index) => (
-                    <motion.div
-                      key={access.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Card className="glass p-4 border-border/50 flex items-center justify-between">
+
+                {loading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Carregando...</p>
+                  </div>
+                ) : dashboards.length === 0 ? (
+                  <div className="text-center py-8">
+                    <LayoutDashboard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      Crie um dashboard primeiro para gerenciar acessos
+                    </p>
+                  </div>
+                ) : userAccess.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      Nenhum usuário com acesso direto a este dashboard
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {userAccess.map((access, index) => (
+                      <motion.div
+                        key={access.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                      >
                         <div className="flex items-center gap-4">
                           <div className="bg-green-500/10 p-2 rounded-lg">
                             <Users className="h-5 w-5 text-green-500" />
@@ -423,15 +628,214 @@ const UsersManagement = () => {
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
-                      </Card>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
+
+            {/* By User Tab */}
+            <TabsContent value="by-user">
+              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
+                <h2 className="text-xl font-bold mb-4">Gerenciar por Usuário</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Clique em um usuário para gerenciar seus acessos aos dashboards
+                </p>
+                
+                {users.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Nenhum usuário encontrado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {users.map((user, index) => (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => fetchUserDashboards(user)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2 rounded-lg">
+                            <UserCog className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{user.full_name || user.email}</p>
+                            {user.full_name && (
+                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
+
+            {/* By Group Tab */}
+            <TabsContent value="by-group">
+              <Card className="bg-card/80 backdrop-blur-md border-border/50 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold">Gerenciar por Grupo</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Libere dashboards para todos os membros de um grupo de uma vez
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => navigate("/groups")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Gerenciar Grupos
+                  </Button>
                 </div>
-              )}
-            </section>
-          </div>
+                
+                {groups.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground mb-4">Nenhum grupo criado</p>
+                    <Button onClick={() => navigate("/groups")}>
+                      Criar Primeiro Grupo
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {groups.map((group, index) => (
+                      <motion.div
+                        key={group.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => fetchGroupDashboards(group)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="bg-indigo-500/10 p-2 rounded-lg">
+                            <Users2 className="h-4 w-4 text-indigo-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{group.name}</p>
+                            {group.description && (
+                              <p className="text-xs text-muted-foreground">{group.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
       </main>
+
+      {/* User Dashboards Dialog */}
+      <Dialog open={userDashboardsDialogOpen} onOpenChange={setUserDashboardsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dashboards do Usuário</DialogTitle>
+            <DialogDescription>
+              {selectedUser?.full_name || selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[300px] pr-4">
+            {dashboards.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Nenhum dashboard disponível
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {dashboards.map((dashboard) => (
+                  <div
+                    key={dashboard.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={userDashboards.includes(dashboard.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setUserDashboards([...userDashboards, dashboard.id]);
+                        } else {
+                          setUserDashboards(userDashboards.filter(id => id !== dashboard.id));
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4 text-primary" />
+                      <span>{dashboard.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setUserDashboardsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveUserDashboards} disabled={savingUserDashboards}>
+              {savingUserDashboards ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Dashboards Dialog */}
+      <Dialog open={groupDashboardsDialogOpen} onOpenChange={setGroupDashboardsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dashboards do Grupo</DialogTitle>
+            <DialogDescription>
+              {selectedGroup?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[300px] pr-4">
+            {dashboards.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Nenhum dashboard disponível
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {dashboards.map((dashboard) => (
+                  <div
+                    key={dashboard.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={groupDashboards.includes(dashboard.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setGroupDashboards([...groupDashboards, dashboard.id]);
+                        } else {
+                          setGroupDashboards(groupDashboards.filter(id => id !== dashboard.id));
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4 text-primary" />
+                      <span>{dashboard.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setGroupDashboardsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveGroupDashboards} disabled={savingGroupDashboards}>
+              {savingGroupDashboards ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Revoke Access Dialog */}
       <AlertDialog open={!!deletingAccessId} onOpenChange={() => setDeletingAccessId(null)}>

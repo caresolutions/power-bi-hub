@@ -13,13 +13,15 @@ import {
   ChevronRight,
   Cog,
   Star,
-  BarChart3
+  BarChart3,
+  Building2,
+  Users2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 
-type UserRole = 'admin' | 'user';
+type UserRole = 'admin' | 'user' | 'master_admin';
 
 interface FavoriteDashboard {
   id: string;
@@ -85,6 +87,24 @@ const Home = () => {
     navigate("/");
   };
 
+  // Master Admin menu
+  const masterAdminMenuItems = [
+    {
+      title: "Gestão de Empresas",
+      description: "Crie e gerencie empresas do sistema",
+      icon: Building2,
+      path: "/master-admin",
+      color: "bg-purple-500/10 text-purple-500"
+    },
+    {
+      title: "Visualizar Dashboards",
+      description: "Acesse todos os dashboards",
+      icon: LayoutDashboard,
+      path: "/dashboards",
+      color: "bg-primary/10 text-primary"
+    }
+  ];
+
   const adminMenuItems = [
     {
       title: "Configuração de Ambiente",
@@ -108,6 +128,13 @@ const Home = () => {
       color: "bg-green-500/10 text-green-500"
     },
     {
+      title: "Gestão de Grupos",
+      description: "Crie grupos e libere dashboards em massa",
+      icon: Users2,
+      path: "/groups",
+      color: "bg-indigo-500/10 text-indigo-500"
+    },
+    {
       title: "Assinatura",
       description: "Gerencie seu plano e pagamentos",
       icon: CreditCard,
@@ -126,7 +153,19 @@ const Home = () => {
     }
   ];
 
-  const menuItems = userRole === 'admin' ? adminMenuItems : userMenuItems;
+  const menuItems = userRole === 'master_admin' 
+    ? masterAdminMenuItems 
+    : userRole === 'admin' 
+      ? adminMenuItems 
+      : userMenuItems;
+
+  const getRoleLabel = () => {
+    switch (userRole) {
+      case 'master_admin': return 'Master Admin';
+      case 'admin': return 'Admin';
+      default: return 'Usuário';
+    }
+  };
 
   if (loading) {
     return (
@@ -164,10 +203,10 @@ const Home = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Shield className="h-4 w-4" />
-                <span className="capitalize">{userRole}</span>
+                <span>{getRoleLabel()}</span>
               </div>
               
-              {userRole === 'admin' && (
+              {(userRole === 'admin' || userRole === 'master_admin') && (
                 <Button variant="ghost" onClick={() => navigate("/settings")}>
                   <Cog className="mr-2 h-4 w-4" />
                   Configurações
@@ -190,9 +229,11 @@ const Home = () => {
             Bem-vindo ao <span className="text-primary">Care BI</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            {userRole === 'admin' 
-              ? "Gerencie suas credenciais, dashboards e usuários em um só lugar"
-              : "Acesse os dashboards disponíveis para você"}
+            {userRole === 'master_admin' 
+              ? "Gerencie empresas e tenha acesso completo ao sistema"
+              : userRole === 'admin' 
+                ? "Gerencie suas credenciais, dashboards e usuários em um só lugar"
+                : "Acesse os dashboards disponíveis para você"}
           </p>
         </div>
 
