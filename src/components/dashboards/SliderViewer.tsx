@@ -36,6 +36,12 @@ interface SliderSlide {
   is_visible: boolean;
 }
 
+interface EmbedData {
+  embedToken: string;
+  embedUrl: string;
+  reportSection: string | null;
+}
+
 interface SliderViewerProps {
   dashboardId: string;
 }
@@ -46,14 +52,18 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedsLoading, setEmbedsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [autoHideControls, setAutoHideControls] = useState(true);
+  const [embedDataMap, setEmbedDataMap] = useState<Map<string, EmbedData>>(new Map());
+  const [loadedSlides, setLoadedSlides] = useState<Set<string>>(new Set());
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
-  const embedContainerRef = useRef<HTMLDivElement>(null);
+  const embedContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const powerbiRef = useRef<pbi.service.Service | null>(null);
+  const reportsRef = useRef<Map<string, pbi.Report>>(new Map());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -74,9 +84,13 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (progressRef.current) clearInterval(progressRef.current);
       if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
-      if (embedContainerRef.current && powerbiRef.current) {
-        powerbiRef.current.reset(embedContainerRef.current);
-      }
+      
+      // Reset all embeds
+      embedContainersRef.current.forEach((container) => {
+        if (powerbiRef.current) {
+          powerbiRef.current.reset(container);
+        }
+      });
     };
   }, [dashboardId]);
 
@@ -89,47 +103,62 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
 
     if (data && !error) {
       setSlides(data);
+      
+      // Pre-fetch all embed tokens
+      const visible = data.filter(s => s.is_visible);
+      if (visible.length > 0) {
+        await prefetchAllEmbeds(visible);
+      }
     }
     setLoading(false);
   };
 
-  // Load slide embed
-  useEffect(() => {
-    if (currentSlide && currentSlide.credential_id) {
-      loadSlideEmbed(currentSlide);
-    }
-  }, [currentSlideIndex, slides]);
+  const prefetchAllEmbeds = async (slidesToFetch: SliderSlide[]) => {
+    setEmbedsLoading(true);
+    const embedMap = new Map<string, EmbedData>();
 
-  const loadSlideEmbed = async (slide: SliderSlide) => {
-    if (!slide.credential_id) return;
-    
-    setEmbedLoading(true);
+    await Promise.all(
+      slidesToFetch.map(async (slide) => {
+        if (!slide.credential_id) return;
 
-    try {
-      const response = await supabase.functions.invoke("get-powerbi-embed", {
-        body: { 
-          workspaceId: slide.workspace_id,
-          reportId: slide.report_id,
-          credentialId: slide.credential_id,
-          reportSection: slide.report_section,
-        },
-      });
+        try {
+          const response = await supabase.functions.invoke("get-powerbi-embed", {
+            body: { 
+              workspaceId: slide.workspace_id,
+              reportId: slide.report_id,
+              credentialId: slide.credential_id,
+              reportSection: slide.report_section,
+            },
+          });
 
-      if (response.error) throw new Error(response.error.message);
+          if (response.error) throw new Error(response.error.message);
 
-      const data = response.data as any;
-      if (!data.success) throw new Error(data.error || "Falha ao obter token");
+          const data = response.data as any;
+          if (!data.success) throw new Error(data.error || "Falha ao obter token");
 
-      embedReport(data, slide);
-    } catch (error) {
-      console.error("Error loading slide:", error);
-    } finally {
-      setEmbedLoading(false);
-    }
+          embedMap.set(slide.id, {
+            embedToken: data.embedToken,
+            embedUrl: data.embedUrl,
+            reportSection: data.reportSection,
+          });
+        } catch (error) {
+          console.error("Error prefetching embed for slide:", slide.id, error);
+        }
+      })
+    );
+
+    setEmbedDataMap(embedMap);
+    setEmbedsLoading(false);
   };
 
-  const embedReport = (embedData: any, slide: SliderSlide) => {
-    if (!embedContainerRef.current || !powerbiRef.current) return;
+  // Embed a slide into its container
+  const embedSlide = useCallback((slide: SliderSlide) => {
+    const container = embedContainersRef.current.get(slide.id);
+    const embedData = embedDataMap.get(slide.id);
+    
+    if (!container || !embedData || !powerbiRef.current || loadedSlides.has(slide.id)) {
+      return;
+    }
 
     const config: pbi.IEmbedConfiguration = {
       type: "report",
@@ -149,17 +178,42 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
       },
     };
 
-    if (slide.report_section) {
-      config.pageName = slide.report_section;
+    if (embedData.reportSection) {
+      config.pageName = embedData.reportSection;
     }
 
-    powerbiRef.current.reset(embedContainerRef.current);
-    powerbiRef.current.embed(embedContainerRef.current, config);
-  };
+    const report = powerbiRef.current.embed(container, config) as pbi.Report;
+    reportsRef.current.set(slide.id, report);
+    setLoadedSlides(prev => new Set(prev).add(slide.id));
+  }, [embedDataMap, loadedSlides]);
+
+  // Load current slide and preload adjacent slides
+  useEffect(() => {
+    if (visibleSlides.length === 0 || embedDataMap.size === 0) return;
+
+    // Load current slide
+    if (currentSlide) {
+      embedSlide(currentSlide);
+    }
+
+    // Preload next slide
+    const nextIndex = (currentSlideIndex + 1) % visibleSlides.length;
+    const nextSlide = visibleSlides[nextIndex];
+    if (nextSlide && nextSlide.id !== currentSlide?.id) {
+      embedSlide(nextSlide);
+    }
+
+    // Preload previous slide
+    const prevIndex = currentSlideIndex === 0 ? visibleSlides.length - 1 : currentSlideIndex - 1;
+    const prevSlide = visibleSlides[prevIndex];
+    if (prevSlide && prevSlide.id !== currentSlide?.id) {
+      embedSlide(prevSlide);
+    }
+  }, [currentSlideIndex, embedDataMap, visibleSlides, currentSlide, embedSlide]);
 
   // Auto-advance timer
   useEffect(() => {
-    if (!isPlaying || visibleSlides.length === 0 || !currentSlide) return;
+    if (!isPlaying || visibleSlides.length === 0 || !currentSlide || isTransitioning) return;
 
     const duration = currentSlide.duration_seconds * 1000;
     let startTime = Date.now();
@@ -178,21 +232,48 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (progressRef.current) clearInterval(progressRef.current);
     };
-  }, [isPlaying, currentSlideIndex, visibleSlides.length]);
+  }, [isPlaying, currentSlideIndex, visibleSlides.length, isTransitioning]);
 
   const goToNextSlide = useCallback(() => {
+    const nextIndex = currentSlideIndex >= visibleSlides.length - 1 ? 0 : currentSlideIndex + 1;
+    const nextSlide = visibleSlides[nextIndex];
+    
+    // Apply transition
+    setIsTransitioning(true);
     setProgress(0);
-    setCurrentSlideIndex(prev => 
-      prev >= visibleSlides.length - 1 ? 0 : prev + 1
-    );
-  }, [visibleSlides.length]);
+    
+    setTimeout(() => {
+      setCurrentSlideIndex(nextIndex);
+      setIsTransitioning(false);
+    }, nextSlide?.transition_type === "fade" ? 300 : 0);
+  }, [currentSlideIndex, visibleSlides]);
 
   const goToPrevSlide = useCallback(() => {
+    const prevIndex = currentSlideIndex <= 0 ? visibleSlides.length - 1 : currentSlideIndex - 1;
+    const prevSlide = visibleSlides[prevIndex];
+    
+    // Apply transition
+    setIsTransitioning(true);
     setProgress(0);
-    setCurrentSlideIndex(prev => 
-      prev <= 0 ? visibleSlides.length - 1 : prev - 1
-    );
-  }, [visibleSlides.length]);
+    
+    setTimeout(() => {
+      setCurrentSlideIndex(prevIndex);
+      setIsTransitioning(false);
+    }, prevSlide?.transition_type === "fade" ? 300 : 0);
+  }, [currentSlideIndex, visibleSlides]);
+
+  const goToSlide = useCallback((index: number) => {
+    if (index === currentSlideIndex) return;
+    
+    const targetSlide = visibleSlides[index];
+    setIsTransitioning(true);
+    setProgress(0);
+    
+    setTimeout(() => {
+      setCurrentSlideIndex(index);
+      setIsTransitioning(false);
+    }, targetSlide?.transition_type === "fade" ? 300 : 0);
+  }, [currentSlideIndex, visibleSlides]);
 
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -230,10 +311,41 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
     resetControlsTimer();
   }, [isPlaying, autoHideControls]);
 
-  if (loading) {
+  // Set container ref for a slide
+  const setEmbedContainerRef = useCallback((slideId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      embedContainersRef.current.set(slideId, element);
+    }
+  }, []);
+
+  // Get transition class based on type
+  const getTransitionClass = (slide: SliderSlide, isActive: boolean) => {
+    const baseClass = "absolute inset-0 w-full h-full transition-all duration-500";
+    
+    if (slide.transition_type === "fade") {
+      return cn(baseClass, isActive ? "opacity-100 z-10" : "opacity-0 z-0");
+    }
+    
+    if (slide.transition_type === "slide") {
+      return cn(
+        baseClass,
+        isActive 
+          ? "translate-x-0 opacity-100 z-10" 
+          : "translate-x-full opacity-0 z-0"
+      );
+    }
+    
+    // Default: instant switch
+    return cn(baseClass, isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none");
+  };
+
+  if (loading || embedsLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">
+          {loading ? "Carregando slides..." : "Preparando apresentação..."}
+        </span>
       </div>
     );
   }
@@ -249,30 +361,31 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   return (
     <div 
       ref={containerRef}
-      className="flex-1 flex flex-col relative bg-black h-full"
+      className="flex-1 flex flex-col relative bg-black h-full overflow-hidden"
       onMouseMove={resetControlsTimer}
       onTouchStart={resetControlsTimer}
     >
-      {/* Embed Container */}
-      <div 
-        ref={embedContainerRef} 
-        className={cn(
-          "slider-embed-container absolute inset-0 w-full h-full transition-opacity duration-500",
-          currentSlide?.transition_type === "fade" && "animate-fadeIn"
-        )}
-      />
+      {/* All Embed Containers - stacked with transitions */}
+      {visibleSlides.map((slide, index) => (
+        <div
+          key={slide.id}
+          ref={(el) => setEmbedContainerRef(slide.id, el)}
+          className={cn(
+            "slider-embed-container",
+            getTransitionClass(slide, index === currentSlideIndex)
+          )}
+        />
+      ))}
 
-      {/* Loading overlay */}
-      {embedLoading && (
-        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+      {/* Transition overlay */}
+      {isTransitioning && currentSlide?.transition_type === "fade" && (
+        <div className="absolute inset-0 bg-black/50 z-20 pointer-events-none animate-pulse" />
       )}
 
       {/* Controls Overlay */}
       <div 
         className={cn(
-          "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300",
+          "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 z-30",
           showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
@@ -297,6 +410,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
               size="icon"
               onClick={goToPrevSlide}
               className="text-white hover:bg-white/20"
+              disabled={isTransitioning}
             >
               <SkipBack className="h-5 w-5" />
             </Button>
@@ -319,6 +433,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
               size="icon"
               onClick={goToNextSlide}
               className="text-white hover:bg-white/20"
+              disabled={isTransitioning}
             >
               <SkipForward className="h-5 w-5" />
             </Button>
@@ -372,10 +487,8 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
           {visibleSlides.map((_, index) => (
             <button
               key={index}
-              onClick={() => {
-                setProgress(0);
-                setCurrentSlideIndex(index);
-              }}
+              onClick={() => goToSlide(index)}
+              disabled={isTransitioning}
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
                 index === currentSlideIndex 
