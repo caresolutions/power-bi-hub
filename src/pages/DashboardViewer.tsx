@@ -553,9 +553,11 @@ const DashboardViewer = () => {
       />
 
       {/* Dashboard content */}
-      <div className="flex-1 w-full overflow-hidden">
+      <div className="flex-1 w-full h-full overflow-hidden">
         {dashboard.embed_type === "slider" ? (
-          <SliderViewer dashboardId={dashboard.id} />
+          <div className="w-full h-full">
+            <SliderViewer dashboardId={dashboard.id} />
+          </div>
         ) : dashboard.embed_type === "public_link" && dashboard.public_link ? (
           <iframe
             src={dashboard.public_link}

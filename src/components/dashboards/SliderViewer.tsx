@@ -142,6 +142,10 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
           pageNavigation: { visible: false },
         },
         background: pbi.models.BackgroundType.Default,
+        layoutType: pbi.models.LayoutType.Custom,
+        customLayout: {
+          displayOption: pbi.models.DisplayOption.FitToPage,
+        },
       },
     };
 
@@ -245,7 +249,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   return (
     <div 
       ref={containerRef}
-      className="flex-1 flex flex-col relative bg-black"
+      className="flex-1 flex flex-col relative bg-black h-full"
       onMouseMove={resetControlsTimer}
       onTouchStart={resetControlsTimer}
     >
@@ -253,10 +257,9 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
       <div 
         ref={embedContainerRef} 
         className={cn(
-          "flex-1 w-full transition-opacity duration-500",
+          "slider-embed-container absolute inset-0 w-full h-full transition-opacity duration-500",
           currentSlide?.transition_type === "fade" && "animate-fadeIn"
         )}
-        style={{ minHeight: "calc(100vh - 100px)" }}
       />
 
       {/* Loading overlay */}

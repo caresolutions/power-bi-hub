@@ -203,3 +203,13 @@ All colors MUST be HSL.
     background: hsl(var(--card) / 0.7);
   }
 }
+
+/* Power BI Embed - Full size */
+.slider-embed-container,
+.slider-embed-container iframe,
+.slider-embed-container > div,
+.slider-embed-container > div > iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
