@@ -59,6 +59,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   const [embedDataMap, setEmbedDataMap] = useState<Map<string, EmbedData>>(new Map());
   const [loadedSlides, setLoadedSlides] = useState<Set<string>>(new Set());
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-embed after refresh
   
   const containerRef = useRef<HTMLDivElement>(null);
   const embedContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -154,6 +155,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   // Refresh all embeds when sequence loops
   const refreshAllEmbeds = useCallback(async () => {
     console.log("Sequence completed - refreshing all embeds...");
+    setEmbedsLoading(true);
     
     // Reset all embed containers
     embedContainersRef.current.forEach((container) => {
@@ -170,16 +172,27 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
     if (visibleSlides.length > 0) {
       await prefetchAllEmbeds(visibleSlides);
     }
+    
+    // Increment refresh key to force re-embed
+    setRefreshKey(prev => prev + 1);
   }, [visibleSlides]);
 
   // Embed a slide into its container
-  const embedSlide = useCallback((slide: SliderSlide) => {
+  const embedSlide = useCallback((slide: SliderSlide, forceEmbed = false) => {
     const container = embedContainersRef.current.get(slide.id);
     const embedData = embedDataMap.get(slide.id);
     
-    if (!container || !embedData || !powerbiRef.current || loadedSlides.has(slide.id)) {
+    if (!container || !embedData || !powerbiRef.current) {
+      console.log("Cannot embed slide:", slide.id, { container: !!container, embedData: !!embedData });
       return;
     }
+    
+    // Skip if already loaded (unless force)
+    if (!forceEmbed && loadedSlides.has(slide.id)) {
+      return;
+    }
+
+    console.log("Embedding slide:", slide.id, slide.slide_name);
 
     const config: pbi.IEmbedConfiguration = {
       type: "report",
@@ -210,7 +223,9 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
 
   // Load current slide and preload adjacent slides
   useEffect(() => {
-    if (visibleSlides.length === 0 || embedDataMap.size === 0) return;
+    if (visibleSlides.length === 0 || embedDataMap.size === 0 || embedsLoading) return;
+
+    console.log("Loading slides, refreshKey:", refreshKey, "currentIndex:", currentSlideIndex);
 
     // Load current slide
     if (currentSlide) {
@@ -230,7 +245,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
     if (prevSlide && prevSlide.id !== currentSlide?.id) {
       embedSlide(prevSlide);
     }
-  }, [currentSlideIndex, embedDataMap, visibleSlides, currentSlide, embedSlide]);
+  }, [currentSlideIndex, embedDataMap, visibleSlides, currentSlide, embedSlide, refreshKey, embedsLoading]);
 
   // Auto-advance timer
   useEffect(() => {
