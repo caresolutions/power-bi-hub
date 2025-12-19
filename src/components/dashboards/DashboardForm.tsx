@@ -367,6 +367,28 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
             </div>
           )}
 
+          {/* Company Selector for Master Admin */}
+          {isMasterAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="companyId" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                Empresa
+              </Label>
+              <Select value={companyId} onValueChange={setCompanyId} required>
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder="Selecione uma empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {embedType === "workspace_id" && (
             <div className="space-y-2">
               <Label htmlFor="credentialId">Credencial do Power BI</Label>

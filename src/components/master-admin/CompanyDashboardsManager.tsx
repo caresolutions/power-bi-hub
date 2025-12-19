@@ -25,9 +25,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Plus, Trash2, Eye } from "lucide-react";
+import { LayoutDashboard, Plus, Trash2, Building2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,6 +44,12 @@ interface Dashboard {
   description: string | null;
   category: string | null;
   company_id: string | null;
+  companies?: { name: string } | null;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 interface CompanyDashboardsManagerProps {
@@ -47,14 +60,23 @@ interface CompanyDashboardsManagerProps {
 export function CompanyDashboardsManager({ companyId, companyName }: CompanyDashboardsManagerProps) {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [allDashboards, setAllDashboards] = useState<Dashboard[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState<string[]>([]);
   const [removeDashboardId, setRemoveDashboardId] = useState<string | null>(null);
+  const [transferDashboard, setTransferDashboard] = useState<Dashboard | null>(null);
+  const [targetCompanyId, setTargetCompanyId] = useState<string>("");
 
   useEffect(() => {
     fetchDashboards();
+    fetchCompanies();
   }, [companyId]);
+
+  const fetchCompanies = async () => {
+    const { data } = await supabase.from("companies").select("id, name").order("name");
+    setCompanies(data || []);
+  };
 
   const fetchDashboards = async () => {
     setLoading(true);
@@ -68,11 +90,11 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
       if (error) throw error;
       setDashboards(companyDashboards || []);
 
-      // Fetch all dashboards without company
+      // Fetch ALL dashboards (from all companies and unassigned)
       const { data: available, error: availableError } = await supabase
         .from("dashboards")
-        .select("id, name, description, category, company_id")
-        .is("company_id", null);
+        .select("id, name, description, category, company_id, companies(name)")
+        .neq("company_id", companyId);
 
       if (availableError) throw availableError;
       setAllDashboards(available || []);
@@ -122,6 +144,26 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
       fetchDashboards();
     } catch (error: any) {
       toast.error("Erro ao remover dashboard");
+    }
+  };
+
+  const handleTransferDashboard = async () => {
+    if (!transferDashboard || !targetCompanyId) return;
+
+    try {
+      const { error } = await supabase
+        .from("dashboards")
+        .update({ company_id: targetCompanyId })
+        .eq("id", transferDashboard.id);
+
+      if (error) throw error;
+
+      toast.success("Dashboard transferido com sucesso");
+      setTransferDashboard(null);
+      setTargetCompanyId("");
+      fetchDashboards();
+    } catch (error: any) {
+      toast.error("Erro ao transferir dashboard");
     }
   };
 
@@ -185,14 +227,24 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setRemoveDashboardId(dashboard.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Transferir para outra empresa"
+                      onClick={() => setTransferDashboard(dashboard)}
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setRemoveDashboardId(dashboard.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -206,7 +258,7 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
           <DialogHeader>
             <DialogTitle>Atribuir Dashboards</DialogTitle>
             <DialogDescription>
-              Selecione os dashboards que deseja atribuir à empresa
+              Selecione os dashboards que deseja atribuir à empresa (incluindo de outras empresas)
             </DialogDescription>
           </DialogHeader>
           
@@ -232,6 +284,14 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
                       {dashboard.description || "Sem descrição"}
                     </p>
                   </div>
+                  {dashboard.companies?.name ? (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      {dashboard.companies.name}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">Sem empresa</Badge>
+                  )}
                   {dashboard.category && (
                     <Badge variant="outline">{dashboard.category}</Badge>
                   )}
@@ -249,6 +309,44 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
               disabled={selectedDashboards.length === 0}
             >
               Atribuir {selectedDashboards.length > 0 && `(${selectedDashboards.length})`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Dashboard Dialog */}
+      <Dialog open={!!transferDashboard} onOpenChange={() => setTransferDashboard(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir Dashboard</DialogTitle>
+            <DialogDescription>
+              Selecione a empresa de destino para "{transferDashboard?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <Select value={targetCompanyId} onValueChange={setTargetCompanyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a empresa de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies
+                  .filter((c) => c.id !== companyId)
+                  .map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setTransferDashboard(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleTransferDashboard} disabled={!targetCompanyId}>
+              Transferir
             </Button>
           </div>
         </DialogContent>
