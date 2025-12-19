@@ -44,7 +44,12 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
   const [tenantId, setTenantId] = useState(credential?.tenant_id || "");
   const [username, setUsername] = useState(credential?.username || "");
   const [password, setPassword] = useState("");
-  const [companyId, setCompanyId] = useState(credential?.company_id || defaultCompanyId || "");
+  const [companyId, setCompanyId] = useState(() => {
+    if (credential) {
+      return credential.company_id || "global";
+    }
+    return defaultCompanyId || (isMasterAdmin ? "global" : "");
+  });
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -74,15 +79,6 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isMasterAdmin && !companyId) {
-      toast({
-        title: "Erro",
-        description: "Selecione uma empresa",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setLoading(true);
 
     try {
@@ -102,7 +98,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
               tenant_id: tenantId,
               username,
               password: password || undefined,
-              company_id: isMasterAdmin ? companyId : undefined,
+              company_id: isMasterAdmin ? (companyId === "global" ? null : companyId) : undefined,
             },
           },
         });
@@ -126,7 +122,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
               tenant_id: tenantId,
               username,
               password,
-              company_id: isMasterAdmin ? companyId : undefined,
+              company_id: isMasterAdmin ? (companyId === "global" ? null : companyId) : undefined,
             },
           },
         });
@@ -186,13 +182,14 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
             <div className="space-y-2">
               <Label htmlFor="company" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Empresa *
+                Empresa (opcional - deixe vazio para credencial global)
               </Label>
               <Select value={companyId} onValueChange={setCompanyId}>
                 <SelectTrigger className="bg-background/50">
-                  <SelectValue placeholder="Selecione uma empresa" />
+                  <SelectValue placeholder="Global (todas as empresas)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="global">🌐 Global (todas as empresas)</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
@@ -200,6 +197,9 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Credenciais globais podem ser usadas em dashboards de qualquer empresa
+              </p>
             </div>
           )}
 

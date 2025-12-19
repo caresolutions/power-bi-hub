@@ -210,19 +210,56 @@ const Dashboards = () => {
 
   const fetchCredentials = async () => {
     try {
-      let query = supabase
-        .from("power_bi_configs")
-        .select("id, name")
-        .order("name");
-
-      // For master admin, show all credentials or filtered by company
-      if (isMasterAdmin && selectedCompanyId !== "all") {
-        query = query.eq("company_id", selectedCompanyId);
+      if (isMasterAdmin) {
+        // Master Admin: show global credentials + company-specific credentials
+        if (selectedCompanyId !== "all") {
+          // Global credentials OR specific company credentials
+          const { data, error } = await supabase
+            .from("power_bi_configs")
+            .select("id, name, company_id")
+            .or(`company_id.is.null,company_id.eq.${selectedCompanyId}`)
+            .order("name");
+          
+          if (error) throw error;
+          
+          // Add indicator for global credentials
+          const credentialsWithLabel = (data || []).map(c => ({
+            ...c,
+            name: c.company_id ? c.name : `🌐 ${c.name} (Global)`
+          }));
+          setCredentials(credentialsWithLabel);
+        } else {
+          // All credentials
+          const { data, error } = await supabase
+            .from("power_bi_configs")
+            .select("id, name, company_id")
+            .order("name");
+          
+          if (error) throw error;
+          
+          const credentialsWithLabel = (data || []).map(c => ({
+            ...c,
+            name: c.company_id ? c.name : `🌐 ${c.name} (Global)`
+          }));
+          setCredentials(credentialsWithLabel);
+        }
+      } else {
+        // Regular admin: company credentials + global credentials
+        const { data, error } = await supabase
+          .from("power_bi_configs")
+          .select("id, name, company_id")
+          .order("name");
+        
+        if (error) throw error;
+        
+        // Filter: company credentials + global credentials
+        const filtered = (data || []).filter(c => !c.company_id || c.company_id === companyId);
+        const credentialsWithLabel = filtered.map(c => ({
+          ...c,
+          name: c.company_id ? c.name : `🌐 ${c.name} (Global)`
+        }));
+        setCredentials(credentialsWithLabel);
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setCredentials(data || []);
     } catch (error: any) {
       console.error("Error fetching credentials:", error);
     }

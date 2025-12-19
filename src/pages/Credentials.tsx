@@ -73,11 +73,12 @@ const Credentials = () => {
         .select("id, name, client_id, tenant_id, username, created_at, company_id")
         .order("created_at", { ascending: false });
 
-      // Filter by company for non-master admins
+      // Filter by company for non-master admins (include global credentials)
       if (!isMasterAdmin && companyId) {
-        query = query.eq("company_id", companyId);
+        query = query.or(`company_id.is.null,company_id.eq.${companyId}`);
       } else if (isMasterAdmin && selectedCompanyId !== "all") {
-        query = query.eq("company_id", selectedCompanyId);
+        // For master admin with specific company: show global + company-specific
+        query = query.or(`company_id.is.null,company_id.eq.${selectedCompanyId}`);
       }
 
       const { data, error } = await query;
@@ -287,10 +288,19 @@ const Credentials = () => {
                       <h3 className="text-xl font-bold mb-3">{credential.name}</h3>
                       
                       {/* Company badge for Master Admin */}
-                      {isMasterAdmin && credential.company && (
-                        <Badge variant="outline" className="mb-3 flex items-center gap-1 w-fit">
-                          <Building2 className="h-3 w-3" />
-                          {credential.company.name}
+                      {isMasterAdmin && (
+                        <Badge 
+                          variant={credential.company_id ? "outline" : "default"} 
+                          className={`mb-3 flex items-center gap-1 w-fit ${!credential.company_id ? "bg-accent text-accent-foreground" : ""}`}
+                        >
+                          {credential.company_id ? (
+                            <>
+                              <Building2 className="h-3 w-3" />
+                              {credential.company?.name || "Desconhecida"}
+                            </>
+                          ) : (
+                            <>🌐 Global</>
+                          )}
                         </Badge>
                       )}
                       
