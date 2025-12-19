@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
@@ -19,6 +19,21 @@ import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
 
 const queryClient = new QueryClient();
+
+// Wrapper to conditionally show SupportChat based on route
+const ConditionalSupportChat = () => {
+  const location = useLocation();
+  
+  // Hide support chat on dashboard viewer pages
+  const isDashboardViewer = location.pathname.startsWith('/dashboard/') && 
+    !location.pathname.includes('/subscriptions');
+  
+  if (isDashboardViewer) {
+    return null;
+  }
+  
+  return <SupportChat />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -42,7 +57,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <SupportChat />
+        <ConditionalSupportChat />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
