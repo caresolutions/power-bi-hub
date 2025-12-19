@@ -104,11 +104,18 @@ const Home = () => {
       color: "bg-purple-500/10 text-purple-500"
     },
     {
+      title: "Configuração de Ambiente",
+      description: "Gerencie credenciais do Power BI",
+      icon: Settings,
+      path: "/credentials",
+      color: "bg-primary/10 text-primary"
+    },
+    {
       title: "Visualizar Dashboards",
       description: "Acesse todos os dashboards",
       icon: LayoutDashboard,
       path: "/dashboards",
-      color: "bg-primary/10 text-primary"
+      color: "bg-accent/10 text-accent"
     }
   ];
 

@@ -27,13 +27,15 @@ const Settings = () => {
       return;
     }
 
-    const { data: roleData } = await supabase
+    const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleData?.role !== 'admin') {
+    const roles = rolesData?.map(r => r.role) || [];
+    const hasAccess = roles.includes('admin') || roles.includes('master_admin');
+    
+    if (!hasAccess) {
       navigate("/home");
       return;
     }
