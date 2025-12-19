@@ -6,6 +6,115 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Generic user-facing error messages (hide internal details)
+const USER_ERROR_MESSAGES = {
+  auth_failed: "Falha na autenticação. Verifique suas credenciais.",
+  resource_not_found: "Recurso não encontrado. Verifique as configurações.",
+  permission_denied: "Sem permissão para acessar este recurso.",
+  service_error: "Erro ao processar solicitação. Tente novamente mais tarde.",
+  query_error: "Erro ao executar a consulta. Verifique a sintaxe.",
+  ai_error: "Erro ao processar pergunta. Tente reformular.",
+  validation_error: "Consulta inválida detectada.",
+};
+
+// Categorize errors for safe user messages
+function categorizeError(error: Error | string): keyof typeof USER_ERROR_MESSAGES {
+  const message = typeof error === 'string' ? error : error.message;
+  const lowerMsg = message.toLowerCase();
+  
+  if (lowerMsg.includes('authentication') || lowerMsg.includes('token') || lowerMsg.includes('autenticação')) {
+    return 'auth_failed';
+  }
+  if (lowerMsg.includes('not found') || lowerMsg.includes('não encontrad')) {
+    return 'resource_not_found';
+  }
+  if (lowerMsg.includes('permission') || lowerMsg.includes('denied') || lowerMsg.includes('permissão')) {
+    return 'permission_denied';
+  }
+  if (lowerMsg.includes('dax') || lowerMsg.includes('query') || lowerMsg.includes('execute')) {
+    return 'query_error';
+  }
+  if (lowerMsg.includes('ia') || lowerMsg.includes('ai') || lowerMsg.includes('processar pergunta')) {
+    return 'ai_error';
+  }
+  return 'service_error';
+}
+
+// Allowed DAX functions whitelist for security
+const ALLOWED_DAX_FUNCTIONS = [
+  'EVALUATE', 'TOPN', 'SUMMARIZECOLUMNS', 'SUMMARIZE', 'ROW', 'FILTER', 
+  'CALCULATETABLE', 'CALCULATE', 'SUM', 'COUNT', 'COUNTROWS', 'AVERAGE', 
+  'MIN', 'MAX', 'DISTINCTCOUNT', 'VALUES', 'ALL', 'ALLEXCEPT', 'RELATED',
+  'SELECTEDVALUE', 'BLANK', 'IF', 'SWITCH', 'AND', 'OR', 'NOT',
+  'FORMAT', 'CONCATENATE', 'LEFT', 'RIGHT', 'MID', 'LEN', 'TRIM',
+  'UPPER', 'LOWER', 'YEAR', 'MONTH', 'DAY', 'TODAY', 'NOW', 'DATE',
+  'DATEDIFF', 'DATEADD', 'EOMONTH', 'DIVIDE', 'ROUND', 'ROUNDUP', 'ROUNDDOWN',
+  'ABS', 'POWER', 'SQRT', 'EXP', 'LOG', 'LOG10', 'INT',
+  'ADDCOLUMNS', 'SELECTCOLUMNS', 'GROUPBY', 'NATURALINNERJOIN', 'NATURALLEFTOUTERJOIN',
+  'UNION', 'INTERSECT', 'EXCEPT', 'TREATAS', 'CROSSJOIN', 'GENERATE', 'GENERATEALL',
+  'CONTAINS', 'CONTAINSROW', 'IN', 'ISBLANK', 'ISERROR', 'ISEMPTY',
+  'FIRSTNONBLANK', 'LASTNONBLANK', 'EARLIER', 'EARLIEST', 'VAR', 'RETURN',
+  'ORDERBY', 'DESC', 'ASC', 'KEEPFILTERS', 'REMOVEFILTERS', 'USERELATIONSHIP',
+  'INFO.TABLES', 'INFO.COLUMNS'
+];
+
+// Dangerous patterns that should be blocked
+const DANGEROUS_PATTERNS = [
+  /DEFINEMEASURE/i,
+  /DEFINE\s+MEASURE/i,
+  /PATH\(/i,
+  /PATHCONTAINS\(/i,
+  /PATHITEM\(/i,
+  /PATHLENGTH\(/i,
+  /LOOKUPVALUE\s*\([^)]*\bauth\b/i,
+  /USERNAME\s*\(/i,
+  /USERPRINCIPALNAME\s*\(/i,
+  /CUSTOMDATA\s*\(/i,
+  /SELECTEDMEASURE/i,
+  /SELECTEDMEASURENAME/i,
+];
+
+// Validate DAX query for security
+function validateDaxQuery(query: string): { isValid: boolean; error?: string } {
+  const trimmedQuery = query.trim().toUpperCase();
+  
+  // Must start with EVALUATE
+  if (!trimmedQuery.startsWith('EVALUATE')) {
+    return { isValid: false, error: 'Query must start with EVALUATE' };
+  }
+  
+  // Check for dangerous patterns
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(query)) {
+      console.error('[SECURITY] Blocked dangerous DAX pattern:', pattern.toString());
+      return { isValid: false, error: 'Query contains blocked operations' };
+    }
+  }
+  
+  // Check maximum query length (prevent resource abuse)
+  if (query.length > 5000) {
+    return { isValid: false, error: 'Query exceeds maximum length' };
+  }
+  
+  // Count nested functions (prevent complexity abuse)
+  const openParens = (query.match(/\(/g) || []).length;
+  if (openParens > 50) {
+    return { isValid: false, error: 'Query is too complex' };
+  }
+  
+  // Verify TOPN limit is present and reasonable
+  const topnMatch = query.match(/TOPN\s*\(\s*(\d+)/i);
+  if (topnMatch) {
+    const limit = parseInt(topnMatch[1], 10);
+    if (limit > 1000) {
+      return { isValid: false, error: 'TOPN limit exceeds maximum (1000)' };
+    }
+  }
+  
+  console.log('[SECURITY] DAX query validation passed');
+  return { isValid: true };
+}
+
 interface PowerBIConfig {
   client_id: string;
   client_secret: string;
@@ -52,7 +161,7 @@ async function decryptValue(ciphertext: string): Promise<string> {
     
     return new TextDecoder().decode(decrypted);
   } catch (error) {
-    console.error("Decryption failed:", error);
+    console.error("[AUDIT] Decryption failed:", error);
     return ciphertext;
   }
 }
@@ -78,8 +187,8 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("Token error:", error);
-    throw new Error("Falha na autenticação com Power BI");
+    console.error("[AUDIT] Azure AD token error:", error);
+    throw new Error(USER_ERROR_MESSAGES.auth_failed);
   }
 
   const data = await response.json();
@@ -88,7 +197,16 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
 
 // Execute DAX query against dataset
 async function executeDaxQuery(accessToken: string, datasetId: string, daxQuery: string): Promise<any> {
+  // Validate query before execution
+  const validation = validateDaxQuery(daxQuery);
+  if (!validation.isValid) {
+    console.error("[SECURITY] DAX validation failed:", validation.error);
+    throw new Error(USER_ERROR_MESSAGES.validation_error);
+  }
+  
   const url = `https://api.powerbi.com/v1.0/myorg/datasets/${datasetId}/executeQueries`;
+  
+  console.log("[AUDIT] Executing DAX query:", daxQuery.substring(0, 200));
   
   const response = await fetch(url, {
     method: "POST",
@@ -104,8 +222,8 @@ async function executeDaxQuery(accessToken: string, datasetId: string, daxQuery:
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("DAX query error:", error);
-    throw new Error("Falha ao executar query DAX: " + error);
+    console.error("[AUDIT] DAX query execution error:", error);
+    throw new Error(USER_ERROR_MESSAGES.query_error);
   }
 
   return await response.json();
@@ -131,7 +249,7 @@ async function getDatasetSchema(accessToken: string, datasetId: string): Promise
     
     if (!tablesResult.ok) {
       const errorText = await tablesResult.text();
-      console.error("Failed to get tables via DAX INFO:", errorText);
+      console.error("[AUDIT] Failed to get tables via DAX INFO:", errorText);
       
       // Return a prompt that tells AI to discover tables through exploration
       return `IMPORTANTE: Não foi possível obter o esquema do dataset automaticamente.
@@ -207,8 +325,8 @@ Ou tente uma agregação genérica se o usuário especificar um contexto.`;
     console.log("Dataset schema discovered:", schema.substring(0, 1500));
     return schema;
   } catch (error) {
-    console.error("Failed to get schema:", error);
-    return `Não foi possível obter o esquema do dataset. Erro: ${error instanceof Error ? error.message : "desconhecido"}`;
+    console.error("[AUDIT] Failed to get schema:", error);
+    return `Não foi possível obter o esquema do dataset.`;
   }
 }
 
@@ -249,7 +367,7 @@ function parseManualSchema(manualSchema: string): string {
 // Use Lovable AI to generate DAX query from natural language
 async function generateDaxQuery(question: string, tableSchema: string): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+  if (!LOVABLE_API_KEY) throw new Error(USER_ERROR_MESSAGES.service_error);
 
   const schemaFailed = schemaDiscoveryFailed(tableSchema);
   
@@ -285,6 +403,8 @@ REGRAS CRÍTICAS DE SINTAXE DAX:
    - CORRETO: [Numero de Chamados] (colchetes para colunas/aliases)
 10. NUNCA use tags XML como <oii>, </oii>, <tag>, etc. - APENAS texto puro DAX
 11. NUNCA use markdown, asteriscos, ou qualquer formatação
+12. NUNCA use funções como DEFINEMEASURE, USERNAME, USERPRINCIPALNAME, CUSTOMDATA
+13. Mantenha queries simples e diretas
 
 ${tableSchema}
 
@@ -312,8 +432,8 @@ Exemplos de sintaxe correta:
 
   if (!response.ok) {
     const error = await response.text();
-    console.error("AI error:", error);
-    throw new Error("Falha ao processar pergunta com IA");
+    console.error("[AUDIT] AI error:", error);
+    throw new Error(USER_ERROR_MESSAGES.ai_error);
   }
 
   const data = await response.json();
@@ -392,7 +512,7 @@ Responda APENAS com: bar, line, pie ou table`;
 // Use Lovable AI to format the response
 async function formatResponse(question: string, daxResult: any): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+  if (!LOVABLE_API_KEY) throw new Error(USER_ERROR_MESSAGES.service_error);
 
   const systemPrompt = `Você é um assistente de análise de dados amigável.
 Sua tarefa é interpretar resultados de queries e responder de forma clara e concisa em português.
@@ -420,7 +540,8 @@ REGRAS:
   });
 
   if (!response.ok) {
-    throw new Error("Falha ao formatar resposta");
+    console.error("[AUDIT] Format response error");
+    throw new Error(USER_ERROR_MESSAGES.ai_error);
   }
 
   const data = await response.json();
@@ -439,7 +560,7 @@ serve(async (req) => {
       throw new Error("dashboardId e question são obrigatórios");
     }
 
-    console.log(`Processing question for dashboard ${dashboardId}: ${question}`);
+    console.log(`[AUDIT] Processing question for dashboard ${dashboardId}: ${question}`);
 
     // Get authorization header
     const authHeader = req.headers.get("authorization");
@@ -462,7 +583,7 @@ serve(async (req) => {
       .single();
 
     if (dashboardError || !dashboard) {
-      throw new Error("Dashboard não encontrado");
+      throw new Error(USER_ERROR_MESSAGES.resource_not_found);
     }
 
     if (!dashboard.dataset_id) {
@@ -481,7 +602,7 @@ serve(async (req) => {
       .single();
 
     if (credError || !credential) {
-      throw new Error("Credenciais não encontradas");
+      throw new Error(USER_ERROR_MESSAGES.resource_not_found);
     }
 
     // Decrypt sensitive fields
@@ -510,7 +631,7 @@ serve(async (req) => {
     // Generate DAX query using AI
     console.log("Generating DAX query...");
     const daxQueryOrMessage = await generateDaxQuery(question, schema);
-    console.log("Generated DAX/Message:", daxQueryOrMessage);
+    console.log("[AUDIT] Generated DAX/Message:", daxQueryOrMessage.substring(0, 300));
 
     // Check if AI returned a message instead of a DAX query (schema discovery failed)
     const isDaxQuery = daxQueryOrMessage.toUpperCase().trim().startsWith("EVALUATE");
@@ -529,10 +650,10 @@ serve(async (req) => {
       );
     }
 
-    // Execute DAX query
+    // Execute DAX query (validation happens inside executeDaxQuery)
     console.log("Executing DAX query...");
     const queryResult = await executeDaxQuery(accessToken, dashboard.dataset_id, daxQueryOrMessage);
-    console.log("Query result:", JSON.stringify(queryResult).substring(0, 500));
+    console.log("[AUDIT] Query result rows:", queryResult?.results?.[0]?.tables?.[0]?.rows?.length || 0);
 
     // Extract chart data from result
     const chartData = queryResult?.results?.[0]?.tables?.[0]?.rows || [];
@@ -559,12 +680,17 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error in query-dataset-chat:", error);
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[AUDIT] Error in query-dataset-chat:", errorMessage);
+    
+    // Determine safe user-facing error message
+    const errorCategory = categorizeError(errorMessage);
+    const safeError = USER_ERROR_MESSAGES[errorCategory];
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
+        error: safeError,
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
