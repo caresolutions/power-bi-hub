@@ -111,6 +111,7 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
           workspaceId: slide.workspace_id,
           reportId: slide.report_id,
           credentialId: slide.credential_id,
+          reportSection: slide.report_section,
         },
       });
 
