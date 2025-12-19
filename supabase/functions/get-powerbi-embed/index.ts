@@ -87,7 +87,7 @@ async function decryptValue(ciphertext: string, keyString: string): Promise<stri
   }
 }
 
-// Retry logic with exponential backoff
+// Retry logic with exponential backoff for fetch calls
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
@@ -120,6 +120,35 @@ async function fetchWithRetry(
   }
   
   throw lastError || new Error("All retry attempts failed");
+}
+
+// Retry logic for Supabase queries (handles transient 502 errors)
+async function retrySupabaseQuery<T>(
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<{ data: T | null; error: any }> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const result = await queryFn();
+    
+    // Check if error is a transient 502/5xx error
+    const errorMsg = String(result.error?.message || '').toLowerCase();
+    const is5xxError = errorMsg.includes('502') || errorMsg.includes('503') || 
+                       errorMsg.includes('504') || errorMsg.includes('bad gateway') ||
+                       errorMsg.includes('service unavailable');
+    
+    if (result.error && is5xxError && attempt < maxRetries - 1) {
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`[RETRY] Supabase query attempt ${attempt + 1} failed with transient error, retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+    
+    return result;
+  }
+  
+  // This shouldn't be reached, but return a generic error just in case
+  return { data: null, error: { message: "All retry attempts failed" } };
 }
 
 // Master User authentication using ROPC flow
@@ -251,11 +280,21 @@ serve(async (req) => {
       // Mode 1: Lookup by dashboard ID
       console.log("[AUDIT] Processing embed request for dashboard:", dashboardId);
 
-      const { data: dashboard, error: dashboardError } = await supabase
-        .from("dashboards")
-        .select("workspace_id, dashboard_id, report_section, credential_id, owner_id")
-        .eq("id", dashboardId)
-        .single();
+      interface DashboardRow {
+        workspace_id: string;
+        dashboard_id: string;
+        report_section: string | null;
+        credential_id: string | null;
+        owner_id: string;
+      }
+
+      const { data: dashboard, error: dashboardError } = await retrySupabaseQuery<DashboardRow>(() =>
+        supabase
+          .from("dashboards")
+          .select("workspace_id, dashboard_id, report_section, credential_id, owner_id")
+          .eq("id", dashboardId)
+          .single()
+      );
 
       if (dashboardError || !dashboard) {
         console.error("[AUDIT] Dashboard not found:", dashboardError);
