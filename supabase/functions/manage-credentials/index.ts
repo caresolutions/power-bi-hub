@@ -97,16 +97,30 @@ serve(async (req) => {
     const { action, data } = await req.json();
 
     if (action === "create") {
-      // Get user's company_id
-      const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
+      // Check if user is master_admin
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      const isMasterAdmin = roleData?.some(r => r.role === "master_admin");
+      
+      let targetCompanyId = data.company_id;
+      
+      if (!isMasterAdmin) {
+        // Regular admin: use their company_id
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
+          .single();
 
-      if (profileErr || !profile?.company_id) {
-        throw new Error("Company not configured for user");
+        if (profileErr || !profile?.company_id) {
+          throw new Error("Company not configured for user");
+        }
+        targetCompanyId = profile.company_id;
       }
+      // For master admin: company_id can be null (global credential) or specific company
 
       // Encrypt sensitive fields before storing
       const encryptedClientSecret = await encrypt(data.client_secret);
@@ -122,7 +136,7 @@ serve(async (req) => {
           tenant_id: data.tenant_id,
           username: data.username,
           password: encryptedPassword,
-          company_id: profile.company_id,
+          company_id: targetCompanyId || null,
         })
         .select("id, name, client_id, tenant_id, username, created_at")
         .single();
@@ -136,23 +150,36 @@ serve(async (req) => {
     }
 
     if (action === "update") {
-      // First verify ownership
+      // Check if user is master_admin
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      const isMasterAdmin = roleData?.some(r => r.role === "master_admin");
+      
+      // First verify ownership or master admin
       const { data: existing } = await supabase
         .from("power_bi_configs")
         .select("user_id")
         .eq("id", data.id)
         .single();
 
-      if (!existing || existing.user_id !== user.id) {
+      if (!existing || (!isMasterAdmin && existing.user_id !== user.id)) {
         throw new Error("Credential not found or access denied");
       }
 
-      const updateData: Record<string, string> = {
+      const updateData: Record<string, string | null> = {
         name: data.name,
         client_id: data.client_id,
         tenant_id: data.tenant_id,
         username: data.username,
       };
+
+      // Allow master admin to update company_id
+      if (isMasterAdmin && data.company_id !== undefined) {
+        updateData.company_id = data.company_id || null;
+      }
 
       // Only update secrets if provided (encrypt them)
       if (data.client_secret) {
