@@ -1,0 +1,407 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
+  ArrowLeft, 
+  Building2, 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Users,
+  LayoutDashboard,
+  Shield
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+
+interface Company {
+  id: string;
+  name: string;
+  cnpj: string;
+  created_at: string;
+  _count?: {
+    users: number;
+    dashboards: number;
+  };
+}
+
+const MasterAdmin = () => {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: "", cnpj: "" });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    // Check if user is master_admin
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!roleData || roleData.role !== "master_admin") {
+      toast.error("Acesso negado. Apenas Master Admin pode acessar esta página.");
+      navigate("/home");
+      return;
+    }
+
+    fetchCompanies();
+  };
+
+  const fetchCompanies = async () => {
+    setLoading(true);
+    
+    // Fetch companies
+    const { data: companiesData, error } = await supabase
+      .from("companies")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Erro ao carregar empresas");
+      setLoading(false);
+      return;
+    }
+
+    // Fetch counts for each company
+    const companiesWithCounts = await Promise.all(
+      (companiesData || []).map(async (company) => {
+        const { count: usersCount } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("company_id", company.id);
+
+        const { count: dashboardsCount } = await supabase
+          .from("dashboards")
+          .select("*", { count: "exact", head: true })
+          .eq("company_id", company.id);
+
+        return {
+          ...company,
+          _count: {
+            users: usersCount || 0,
+            dashboards: dashboardsCount || 0,
+          },
+        };
+      })
+    );
+
+    setCompanies(companiesWithCounts);
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.cnpj) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    if (editingCompany) {
+      // Update
+      const { error } = await supabase
+        .from("companies")
+        .update({ name: formData.name, cnpj: formData.cnpj })
+        .eq("id", editingCompany.id);
+
+      if (error) {
+        toast.error("Erro ao atualizar empresa");
+        return;
+      }
+      toast.success("Empresa atualizada com sucesso");
+    } else {
+      // Create
+      const { error } = await supabase
+        .from("companies")
+        .insert({ name: formData.name, cnpj: formData.cnpj });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("CNPJ já cadastrado");
+        } else {
+          toast.error("Erro ao criar empresa");
+        }
+        return;
+      }
+      toast.success("Empresa criada com sucesso");
+    }
+
+    setDialogOpen(false);
+    setEditingCompany(null);
+    setFormData({ name: "", cnpj: "" });
+    fetchCompanies();
+  };
+
+  const handleEdit = (company: Company) => {
+    setEditingCompany(company);
+    setFormData({ name: company.name, cnpj: company.cnpj });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    const { error } = await supabase
+      .from("companies")
+      .delete()
+      .eq("id", deleteId);
+
+    if (error) {
+      toast.error("Erro ao excluir empresa. Verifique se não há usuários ou dashboards vinculados.");
+      return;
+    }
+
+    toast.success("Empresa excluída com sucesso");
+    setDeleteId(null);
+    fetchCompanies();
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+
+      {/* Header */}
+      <header className="relative z-10 border-b border-border/50 bg-card/80 backdrop-blur-md">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <Shield className="h-6 w-6 text-primary" />
+                <span className="text-xl font-bold">Master Admin</span>
+              </div>
+            </div>
+
+            <Button variant="ghost" onClick={handleLogout}>
+              Sair
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 container mx-auto px-6 py-12">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Gestão de Empresas</h1>
+            <p className="text-muted-foreground">
+              Crie e gerencie as empresas do sistema
+            </p>
+          </div>
+
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingCompany(null);
+              setFormData({ name: "", cnpj: "" });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Empresa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCompany ? "Editar Empresa" : "Nova Empresa"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingCompany 
+                    ? "Atualize os dados da empresa" 
+                    : "Preencha os dados para criar uma nova empresa"}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome da Empresa</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Nome da empresa"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj">CNPJ</Label>
+                  <Input
+                    id="cnpj"
+                    value={formData.cnpj}
+                    onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                    placeholder="00.000.000/0000-00"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    {editingCompany ? "Salvar" : "Criar"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Carregando...</p>
+          </div>
+        ) : companies.length === 0 ? (
+          <Card className="bg-card/80 backdrop-blur-md p-12 border-border/50 text-center">
+            <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Nenhuma empresa cadastrada</h3>
+            <p className="text-muted-foreground mb-4">
+              Clique em "Nova Empresa" para começar
+            </p>
+          </Card>
+        ) : (
+          <Card className="bg-card/80 backdrop-blur-md border-border/50">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>CNPJ</TableHead>
+                  <TableHead className="text-center">Usuários</TableHead>
+                  <TableHead className="text-center">Dashboards</TableHead>
+                  <TableHead className="text-center">Criado em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {companies.map((company, index) => (
+                  <motion.tr
+                    key={company.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group"
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2 rounded-lg">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </div>
+                        {company.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {company.cnpj}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {company._count?.users || 0}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                        {company._count?.dashboards || 0}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {new Date(company.created_at).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(company)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteId(company.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </main>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Empresa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todos os dados relacionados à empresa serão excluídos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default MasterAdmin;

@@ -13,6 +13,8 @@ import UsersManagement from "./pages/UsersManagement";
 import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import ReportSubscriptions from "./pages/ReportSubscriptions";
+import MasterAdmin from "./pages/MasterAdmin";
+import UserGroups from "./pages/UserGroups";
 import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
 
@@ -35,6 +37,8 @@ const App = () => (
           <Route path="/users" element={<UsersManagement />} />
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/master-admin" element={<MasterAdmin />} />
+          <Route path="/groups" element={<UserGroups />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
