@@ -75,14 +75,15 @@ const MasterAdmin = () => {
       return;
     }
 
-    // Check if user is master_admin
-    const { data: roleData } = await supabase
+    // Check if user has master_admin role (user may have multiple roles)
+    const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (!roleData || roleData.role !== "master_admin") {
+    const roles = rolesData?.map(r => r.role) || [];
+    
+    if (!roles.includes("master_admin")) {
       toast.error("Acesso negado. Apenas Master Admin pode acessar esta página.");
       navigate("/home");
       return;
