@@ -446,6 +446,69 @@ export type Database = {
           },
         ]
       }
+      slider_slides: {
+        Row: {
+          created_at: string
+          credential_id: string | null
+          dashboard_id: string
+          duration_seconds: number
+          id: string
+          is_visible: boolean
+          report_id: string
+          report_section: string | null
+          slide_name: string
+          slide_order: number
+          transition_type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id?: string | null
+          dashboard_id: string
+          duration_seconds?: number
+          id?: string
+          is_visible?: boolean
+          report_id: string
+          report_section?: string | null
+          slide_name: string
+          slide_order?: number
+          transition_type?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string | null
+          dashboard_id?: string
+          duration_seconds?: number
+          id?: string
+          is_visible?: boolean
+          report_id?: string
+          report_section?: string | null
+          slide_name?: string
+          slide_order?: number
+          transition_type?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slider_slides_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "power_bi_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slider_slides_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_logs: {
         Row: {
           completed_at: string | null
