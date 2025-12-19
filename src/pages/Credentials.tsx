@@ -12,10 +12,12 @@ import {
   Pencil, 
   Trash2,
   Key,
-  Building2
+  Building2,
+  Share2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import CredentialForm from "@/components/credentials/CredentialForm";
+import { CredentialCompanyAccessDialog } from "@/components/credentials/CredentialCompanyAccessDialog";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import {
@@ -28,6 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Credential {
   id: string;
@@ -40,6 +48,7 @@ interface Credential {
   company?: {
     name: string;
   };
+  accessCount?: number;
 }
 
 const Credentials = () => {
@@ -49,6 +58,7 @@ const Credentials = () => {
   const [editingCredential, setEditingCredential] = useState<Credential | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  const [accessDialogCredential, setAccessDialogCredential] = useState<Credential | null>(null);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -73,11 +83,20 @@ const Credentials = () => {
         .select("id, name, client_id, tenant_id, username, created_at, company_id")
         .order("created_at", { ascending: false });
 
-      // Filter by company for non-master admins (include global credentials)
+      // Filter by company for non-master admins
       if (!isMasterAdmin && companyId) {
-        query = query.or(`company_id.is.null,company_id.eq.${companyId}`);
+        // Get global credentials that are released to this company
+        const { data: accessData } = await supabase
+          .from("credential_company_access")
+          .select("credential_id")
+          .eq("company_id", companyId);
+        
+        const releasedCredentialIds = accessData?.map(a => a.credential_id) || [];
+        
+        // Get company credentials + released global credentials
+        query = query.or(`company_id.eq.${companyId}${releasedCredentialIds.length > 0 ? `,id.in.(${releasedCredentialIds.join(",")})` : ""}`);
       } else if (isMasterAdmin && selectedCompanyId !== "all") {
-        // For master admin with specific company: show global + company-specific
+        // For master admin with specific company filter: show global + company-specific
         query = query.or(`company_id.is.null,company_id.eq.${selectedCompanyId}`);
       }
 
@@ -85,26 +104,41 @@ const Credentials = () => {
 
       if (error) throw error;
 
-      // Fetch company names for master admin view
+      // Fetch company names and access counts for master admin view
       if (isMasterAdmin && data) {
         const companyIds = [...new Set(data.map(c => c.company_id).filter(Boolean))];
+        const globalCredentialIds = data.filter(c => !c.company_id).map(c => c.id);
+        
+        // Fetch company names
+        let companyMap = new Map<string, string>();
         if (companyIds.length > 0) {
           const { data: companies } = await supabase
             .from("companies")
             .select("id, name")
             .in("id", companyIds);
-
-          const companyMap = new Map(companies?.map(c => [c.id, c.name]) || []);
-          
-          const credentialsWithCompany = data.map(cred => ({
-            ...cred,
-            company: cred.company_id ? { name: companyMap.get(cred.company_id) || "Desconhecida" } : undefined
-          }));
-          
-          setCredentials(credentialsWithCompany);
-        } else {
-          setCredentials(data || []);
+          companyMap = new Map(companies?.map(c => [c.id, c.name]) || []);
         }
+        
+        // Fetch access counts for global credentials
+        let accessCountMap = new Map<string, number>();
+        if (globalCredentialIds.length > 0) {
+          const { data: accessCounts } = await supabase
+            .from("credential_company_access")
+            .select("credential_id")
+            .in("credential_id", globalCredentialIds);
+          
+          accessCounts?.forEach(a => {
+            accessCountMap.set(a.credential_id, (accessCountMap.get(a.credential_id) || 0) + 1);
+          });
+        }
+        
+        const credentialsWithData = data.map(cred => ({
+          ...cred,
+          company: cred.company_id ? { name: companyMap.get(cred.company_id) || "Desconhecida" } : undefined,
+          accessCount: accessCountMap.get(cred.id) || 0
+        }));
+        
+        setCredentials(credentialsWithData);
       } else {
         setCredentials(data || []);
       }
@@ -267,7 +301,26 @@ const Credentials = () => {
                         <div className="bg-primary/10 p-3 rounded-lg">
                           <Key className="h-6 w-6 text-primary" />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
+                          {/* Share button only for global credentials (master admin only) */}
+                          {isMasterAdmin && !credential.company_id && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setAccessDialogCredential(credential)}
+                                  >
+                                    <Share2 className="h-4 w-4 text-primary" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Liberar para empresas ({credential.accessCount || 0})</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -337,6 +390,21 @@ const Credentials = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Credential Company Access Dialog */}
+      {accessDialogCredential && (
+        <CredentialCompanyAccessDialog
+          open={!!accessDialogCredential}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAccessDialogCredential(null);
+              fetchCredentials();
+            }
+          }}
+          credentialId={accessDialogCredential.id}
+          credentialName={accessDialogCredential.name}
+        />
+      )}
     </div>
   );
 };

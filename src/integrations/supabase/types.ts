@@ -71,6 +71,45 @@ export type Database = {
         }
         Relationships: []
       }
+      credential_company_access: {
+        Row: {
+          company_id: string
+          created_at: string
+          credential_id: string
+          granted_by: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          credential_id: string
+          granted_by: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          credential_id?: string
+          granted_by?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_company_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_company_access_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "power_bi_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_refresh_history: {
         Row: {
           completed_at: string | null
