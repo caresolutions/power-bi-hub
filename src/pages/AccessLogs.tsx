@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -8,14 +8,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, BarChart3, Users, Building2, Eye, Shield, Download, Clock, Info } from "lucide-react";
-import { format } from "date-fns";
+import { ArrowLeft, BarChart3, Users, Building2, Eye, Shield, Download, Clock, Info, Calendar, TrendingUp } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 interface AccessLog {
   id: string;
@@ -54,12 +56,32 @@ interface UserWithPermission {
   has_permission: boolean;
 }
 
+interface ChartDataPoint {
+  month: string;
+  monthLabel: string;
+  total: number;
+  [key: string]: string | number;
+}
+
+interface UserData {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
+const PERIOD_OPTIONS = [
+  { value: "1", label: "Último mês" },
+  { value: "3", label: "Últimos 3 meses" },
+  { value: "6", label: "Últimos 6 meses" },
+  { value: "12", label: "Últimos 12 meses" },
+];
+
 const AccessLogs = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isMasterAdmin, isAdmin, loading: roleLoading, companyId, userId } = useUserRole();
   
-  const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [allLogs, setAllLogs] = useState<AccessLog[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [stats, setStats] = useState<DashboardStats[]>([]);
@@ -67,10 +89,85 @@ const AccessLogs = () => {
   const [exporting, setExporting] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedDashboard, setSelectedDashboard] = useState<string>("all");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("12");
   const [hasPermission, setHasPermission] = useState(false);
   const [companyUsers, setCompanyUsers] = useState<UserWithPermission[]>([]);
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
   const [savingPermissions, setSavingPermissions] = useState(false);
+  const [chartFilter, setChartFilter] = useState<string>("total");
+  const [chartFilterType, setChartFilterType] = useState<"user" | "dashboard">("dashboard");
+  const [allUsers, setAllUsers] = useState<UserData[]>([]);
+
+  // Calculate date range based on selected period
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const monthsAgo = parseInt(selectedPeriod);
+    return {
+      start: startOfMonth(subMonths(now, monthsAgo - 1)),
+      end: endOfMonth(now),
+    };
+  }, [selectedPeriod]);
+
+  // Filter logs by period
+  const logs = useMemo(() => {
+    return allLogs.filter((log) => {
+      const logDate = parseISO(log.accessed_at);
+      return isWithinInterval(logDate, { start: dateRange.start, end: dateRange.end });
+    });
+  }, [allLogs, dateRange]);
+
+  // Calculate stats based on filtered logs
+  const periodStats = useMemo(() => {
+    const totalAccesses = logs.length;
+    const uniqueDashboards = new Set(logs.map((l) => l.dashboard_id)).size;
+    const uniqueUsers = new Set(logs.map((l) => l.user_id)).size;
+    return { totalAccesses, uniqueDashboards, uniqueUsers };
+  }, [logs]);
+
+  // Generate chart data
+  const chartData = useMemo(() => {
+    const months = eachMonthOfInterval({ start: dateRange.start, end: dateRange.end });
+    
+    const data: ChartDataPoint[] = months.map((month) => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      
+      const monthLogs = logs.filter((log) => {
+        const logDate = parseISO(log.accessed_at);
+        return isWithinInterval(logDate, { start: monthStart, end: monthEnd });
+      });
+
+      const point: ChartDataPoint = {
+        month: format(month, "yyyy-MM"),
+        monthLabel: format(month, "MMM/yy", { locale: ptBR }),
+        total: monthLogs.length,
+      };
+
+      // Add filtered data if a specific user or dashboard is selected
+      if (chartFilter !== "total") {
+        if (chartFilterType === "dashboard") {
+          point.filtered = monthLogs.filter((l) => l.dashboard_id === chartFilter).length;
+        } else {
+          point.filtered = monthLogs.filter((l) => l.user_id === chartFilter).length;
+        }
+      }
+
+      return point;
+    });
+
+    return data;
+  }, [logs, dateRange, chartFilter, chartFilterType]);
+
+  // Get filtered item name for chart legend
+  const filteredItemName = useMemo(() => {
+    if (chartFilter === "total") return null;
+    if (chartFilterType === "dashboard") {
+      return dashboards.find((d) => d.id === chartFilter)?.name || "Dashboard";
+    } else {
+      const user = allUsers.find((u) => u.id === chartFilter);
+      return user?.full_name || user?.email || "Usuário";
+    }
+  }, [chartFilter, chartFilterType, dashboards, allUsers]);
 
   // Export to Excel/CSV function
   const exportToExcel = () => {
@@ -86,7 +183,6 @@ const AccessLogs = () => {
     setExporting(true);
 
     try {
-      // Create CSV content
       const headers = isMasterAdmin 
         ? ["Dashboard", "Usuário", "Nome", "Empresa", "Data/Hora"]
         : ["Dashboard", "Usuário", "Nome", "Data/Hora"];
@@ -107,14 +203,12 @@ const AccessLogs = () => {
         return baseRow;
       });
 
-      // Build CSV string with BOM for Excel UTF-8 compatibility
       const BOM = "\uFEFF";
       const csvContent = BOM + [
         headers.join(";"),
         ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(";")),
       ].join("\n");
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -153,7 +247,6 @@ const AccessLogs = () => {
       return;
     }
 
-    // Check if user has permission via access_log_permissions
     const { data: permission } = await supabase
       .from("access_log_permissions")
       .select("id")
@@ -176,14 +269,14 @@ const AccessLogs = () => {
       await Promise.all([
         fetchCompanies(),
         fetchAllDashboards(),
-        fetchLogs(),
-        fetchStats(),
+        fetchAllLogs(),
+        fetchAllUsers(),
       ]);
     } else {
       await Promise.all([
         fetchCompanyDashboards(),
-        fetchLogs(),
-        fetchStats(),
+        fetchAllLogs(),
+        fetchCompanyUsersForChart(),
       ]);
     }
     
@@ -220,7 +313,31 @@ const AccessLogs = () => {
     setDashboards(data || []);
   };
 
-  const fetchLogs = async () => {
+  const fetchAllUsers = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .order("email");
+    
+    setAllUsers(data || []);
+  };
+
+  const fetchCompanyUsersForChart = async () => {
+    if (!companyId) return;
+    
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .eq("company_id", companyId)
+      .order("email");
+    
+    setAllUsers(data || []);
+  };
+
+  const fetchAllLogs = async () => {
+    // Fetch all logs from last 12 months (max retention period)
+    const twelveMonthsAgo = subMonths(new Date(), 12);
+    
     let query = supabase
       .from("dashboard_access_logs")
       .select(`
@@ -230,8 +347,8 @@ const AccessLogs = () => {
         company_id,
         accessed_at
       `)
-      .order("accessed_at", { ascending: false })
-      .limit(100);
+      .gte("accessed_at", twelveMonthsAgo.toISOString())
+      .order("accessed_at", { ascending: false });
 
     if (selectedCompany !== "all" && isMasterAdmin) {
       query = query.eq("company_id", selectedCompany);
@@ -265,55 +382,36 @@ const AccessLogs = () => {
         })
       );
 
-      setLogs(enrichedLogs);
+      setAllLogs(enrichedLogs);
+      calculateStats(enrichedLogs);
     }
   };
 
-  const fetchStats = async () => {
-    // Fetch access counts per dashboard
-    const { data: logsData } = await supabase
-      .from("dashboard_access_logs")
-      .select("dashboard_id");
-
-    if (!logsData) return;
-
+  const calculateStats = (logsData: AccessLog[]) => {
     // Count accesses per dashboard
     const countMap = new Map<string, number>();
     logsData.forEach((log) => {
       countMap.set(log.dashboard_id, (countMap.get(log.dashboard_id) || 0) + 1);
     });
 
-    // Get dashboard and company info
-    const dashboardIds = Array.from(countMap.keys());
-    if (dashboardIds.length === 0) {
-      setStats([]);
-      return;
-    }
+    // Create stats from logs
+    const dashboardMap = new Map<string, { name: string; company: string }>();
+    logsData.forEach((log) => {
+      if (!dashboardMap.has(log.dashboard_id)) {
+        dashboardMap.set(log.dashboard_id, {
+          name: log.dashboard_name || "Dashboard removido",
+          company: log.company_name || "Sem empresa",
+        });
+      }
+    });
 
-    const { data: dashboardsData } = await supabase
-      .from("dashboards")
-      .select("id, name, company_id")
-      .in("id", dashboardIds);
-
-    if (!dashboardsData) return;
-
-    // Get company names
-    const companyIds = [...new Set(dashboardsData.map((d) => d.company_id).filter(Boolean))];
-    const { data: companiesData } = await supabase
-      .from("companies")
-      .select("id, name")
-      .in("id", companyIds as string[]);
-
-    const companyMap = new Map(companiesData?.map((c) => [c.id, c.name]) || []);
-
-    const statsData: DashboardStats[] = dashboardsData.map((d) => ({
-      dashboard_id: d.id,
-      dashboard_name: d.name,
-      company_name: d.company_id ? companyMap.get(d.company_id) || "Sem empresa" : "Sem empresa",
-      access_count: countMap.get(d.id) || 0,
+    const statsData: DashboardStats[] = Array.from(countMap.entries()).map(([dashboardId, count]) => ({
+      dashboard_id: dashboardId,
+      dashboard_name: dashboardMap.get(dashboardId)?.name || "Dashboard removido",
+      company_name: dashboardMap.get(dashboardId)?.company || "Sem empresa",
+      access_count: count,
     }));
 
-    // Sort by access count descending
     statsData.sort((a, b) => b.access_count - a.access_count);
     setStats(statsData.slice(0, 10));
   };
@@ -321,7 +419,6 @@ const AccessLogs = () => {
   const fetchCompanyUsers = async () => {
     if (!companyId) return;
 
-    // Get all users from the company
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, email, full_name")
@@ -329,7 +426,6 @@ const AccessLogs = () => {
 
     if (!profiles) return;
 
-    // Get existing permissions
     const { data: permissions } = await supabase
       .from("access_log_permissions")
       .select("user_id")
@@ -367,7 +463,6 @@ const AccessLogs = () => {
           .eq("company_id", companyId);
       }
 
-      // Update local state
       setCompanyUsers((prev) =>
         prev.map((u) =>
           u.id === targetUserId ? { ...u, has_permission: grant } : u
@@ -391,7 +486,7 @@ const AccessLogs = () => {
 
   useEffect(() => {
     if (!roleLoading && hasPermission) {
-      fetchLogs();
+      fetchAllLogs();
     }
   }, [selectedCompany, selectedDashboard]);
 
@@ -435,6 +530,17 @@ const AccessLogs = () => {
   const filteredDashboards = selectedCompany === "all" 
     ? dashboards 
     : dashboards.filter((d) => d.company_id === selectedCompany);
+
+  const chartConfig = {
+    total: {
+      label: "Total de Acessos",
+      color: "hsl(var(--primary))",
+    },
+    filtered: {
+      label: filteredItemName || "Selecionado",
+      color: "hsl(var(--chart-2))",
+    },
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -528,6 +634,29 @@ const AccessLogs = () => {
           </AlertDescription>
         </Alert>
 
+        {/* Period Filter */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Período:</span>
+          </div>
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Selecione o período" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">
+            {format(dateRange.start, "dd/MM/yyyy", { locale: ptBR })} - {format(dateRange.end, "dd/MM/yyyy", { locale: ptBR })}
+          </span>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
@@ -536,8 +665,8 @@ const AccessLogs = () => {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{logs.length}</div>
-              <p className="text-xs text-muted-foreground">Últimos 100 acessos</p>
+              <div className="text-2xl font-bold">{periodStats.totalAccesses.toLocaleString('pt-BR')}</div>
+              <p className="text-xs text-muted-foreground">No período selecionado</p>
             </CardContent>
           </Card>
 
@@ -547,8 +676,8 @@ const AccessLogs = () => {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{new Set(logs.map((l) => l.dashboard_id)).size}</div>
-              <p className="text-xs text-muted-foreground">Com acessos recentes</p>
+              <div className="text-2xl font-bold">{periodStats.uniqueDashboards.toLocaleString('pt-BR')}</div>
+              <p className="text-xs text-muted-foreground">Com acessos no período</p>
             </CardContent>
           </Card>
 
@@ -558,11 +687,101 @@ const AccessLogs = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{new Set(logs.map((l) => l.user_id)).size}</div>
-              <p className="text-xs text-muted-foreground">Nos últimos acessos</p>
+              <div className="text-2xl font-bold">{periodStats.uniqueUsers.toLocaleString('pt-BR')}</div>
+              <p className="text-xs text-muted-foreground">No período selecionado</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Chart */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Histórico de Acessos
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={chartFilterType} onValueChange={(v) => { setChartFilterType(v as "user" | "dashboard"); setChartFilter("total"); }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dashboard">Dashboard</SelectItem>
+                    <SelectItem value="user">Usuário</SelectItem>
+                  </SelectContent>
+                </Select>
+                {chartFilterType === "dashboard" ? (
+                  <Select value={chartFilter} onValueChange={setChartFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Todos os Dashboards</SelectItem>
+                      {dashboards.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select value={chartFilter} onValueChange={setChartFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="total">Todos os Usuários</SelectItem>
+                      {allUsers.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.full_name || u.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="monthLabel" 
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total de Acessos"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--primary))" }}
+                    activeDot={{ r: 6 }}
+                  />
+                  {chartFilter !== "total" && (
+                    <Line
+                      type="monotone"
+                      dataKey="filtered"
+                      name={filteredItemName || "Selecionado"}
+                      stroke="hsl(var(--chart-2))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--chart-2))" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
         {/* Filters and Rankings */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -587,7 +806,7 @@ const AccessLogs = () => {
                         <p className="text-xs text-muted-foreground truncate">{stat.company_name}</p>
                       )}
                     </div>
-                    <Badge variant="outline">{stat.access_count}</Badge>
+                    <Badge variant="outline">{stat.access_count.toLocaleString('pt-BR')}</Badge>
                   </div>
                 ))}
                 {stats.length === 0 && (
@@ -603,7 +822,7 @@ const AccessLogs = () => {
           <Card className="lg:col-span-2">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <CardTitle className="text-lg">Histórico de Acessos</CardTitle>
+                <CardTitle className="text-lg">Últimos Acessos</CardTitle>
                 <div className="flex gap-2">
                   {isMasterAdmin && (
                     <Select value={selectedCompany} onValueChange={setSelectedCompany}>
@@ -646,7 +865,7 @@ const AccessLogs = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map((log) => (
+                    {logs.slice(0, 100).map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-medium">{log.dashboard_name}</TableCell>
                         <TableCell>
@@ -668,13 +887,18 @@ const AccessLogs = () => {
                     {logs.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={isMasterAdmin ? 4 : 3} className="text-center py-8">
-                          <p className="text-muted-foreground">Nenhum acesso registrado</p>
+                          <p className="text-muted-foreground">Nenhum acesso registrado no período</p>
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
               </div>
+              {logs.length > 100 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Exibindo os 100 registros mais recentes de {logs.length.toLocaleString('pt-BR')} no período
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
