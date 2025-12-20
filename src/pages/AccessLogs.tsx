@@ -8,13 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, BarChart3, Users, Building2, Eye, UserPlus, UserMinus, Shield } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Building2, Eye, Shield, Download, Clock, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AccessLog {
   id: string;
@@ -63,12 +64,81 @@ const AccessLogs = () => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [stats, setStats] = useState<DashboardStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedDashboard, setSelectedDashboard] = useState<string>("all");
   const [hasPermission, setHasPermission] = useState(false);
   const [companyUsers, setCompanyUsers] = useState<UserWithPermission[]>([]);
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
   const [savingPermissions, setSavingPermissions] = useState(false);
+
+  // Export to Excel/CSV function
+  const exportToExcel = () => {
+    if (logs.length === 0) {
+      toast({
+        title: "Nenhum dado",
+        description: "Não há logs para exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      // Create CSV content
+      const headers = isMasterAdmin 
+        ? ["Dashboard", "Usuário", "Nome", "Empresa", "Data/Hora"]
+        : ["Dashboard", "Usuário", "Nome", "Data/Hora"];
+
+      const rows = logs.map((log) => {
+        const baseRow = [
+          log.dashboard_name || "",
+          log.user_email || "",
+          log.user_name || "",
+        ];
+        
+        if (isMasterAdmin) {
+          baseRow.push(log.company_name || "");
+        }
+        
+        baseRow.push(format(new Date(log.accessed_at), "dd/MM/yyyy HH:mm", { locale: ptBR }));
+        
+        return baseRow;
+      });
+
+      // Build CSV string with BOM for Excel UTF-8 compatibility
+      const BOM = "\uFEFF";
+      const csvContent = BOM + [
+        headers.join(";"),
+        ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(";")),
+      ].join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `access-logs-${format(new Date(), "yyyy-MM-dd-HHmm")}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Exportação concluída",
+        description: `${logs.length} registros exportados com sucesso`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Não foi possível exportar os dados",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (!roleLoading) {
@@ -370,7 +440,7 @@ const AccessLogs = () => {
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate("/home")}>
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -384,56 +454,79 @@ const AccessLogs = () => {
             </div>
           </div>
 
-          {isAdmin && !isMasterAdmin && (
-            <Dialog open={permissionDialogOpen} onOpenChange={setPermissionDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" onClick={fetchCompanyUsers}>
-                  <Users className="mr-2 h-4 w-4" />
-                  Gerenciar Permissões
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Permissões de Visualização</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="max-h-96">
-                  <div className="space-y-3">
-                    {companyUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium">{user.email}</p>
-                          {user.full_name && (
-                            <p className="text-sm text-muted-foreground">{user.full_name}</p>
-                          )}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={exportToExcel}
+              disabled={exporting || logs.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? "Exportando..." : "Exportar Excel"}
+            </Button>
+
+            {isAdmin && !isMasterAdmin && (
+              <Dialog open={permissionDialogOpen} onOpenChange={setPermissionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" onClick={fetchCompanyUsers}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Permissões
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Permissões de Visualização</DialogTitle>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-96">
+                    <div className="space-y-3">
+                      {companyUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div>
+                            <p className="font-medium">{user.email}</p>
+                            {user.full_name && (
+                              <p className="text-sm text-muted-foreground">{user.full_name}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={user.has_permission}
+                              disabled={savingPermissions}
+                              onCheckedChange={(checked) =>
+                                toggleUserPermission(user.id, checked as boolean)
+                              }
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {user.has_permission ? "Permitido" : "Bloqueado"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={user.has_permission}
-                            disabled={savingPermissions}
-                            onCheckedChange={(checked) =>
-                              toggleUserPermission(user.id, checked as boolean)
-                            }
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {user.has_permission ? "Permitido" : "Bloqueado"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {companyUsers.length === 0 && (
-                      <p className="text-center text-muted-foreground py-4">
-                        Nenhum usuário encontrado
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
-          )}
+                      ))}
+                      {companyUsers.length === 0 && (
+                        <p className="text-center text-muted-foreground py-4">
+                          Nenhum usuário encontrado
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
+
+        {/* Retention Info Alert */}
+        <Alert>
+          <Clock className="h-4 w-4" />
+          <AlertDescription className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-muted-foreground" />
+            <span>
+              Os logs de acesso são mantidos por <strong>12 meses</strong>. 
+              Registros mais antigos são removidos automaticamente para otimização do sistema.
+            </span>
+          </AlertDescription>
+        </Alert>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
