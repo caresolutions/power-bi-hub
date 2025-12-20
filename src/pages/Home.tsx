@@ -15,7 +15,8 @@ import {
   Star,
   BarChart3,
   Building2,
-  Users2
+  Users2,
+  Activity
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
@@ -116,6 +117,13 @@ const Home = () => {
       icon: LayoutDashboard,
       path: "/dashboards",
       color: "bg-accent/10 text-accent"
+    },
+    {
+      title: "Controle de Acessos",
+      description: "Monitore acessos aos dashboards",
+      icon: Activity,
+      path: "/access-logs",
+      color: "bg-rose-500/10 text-rose-500"
     }
   ];
 
@@ -147,6 +155,13 @@ const Home = () => {
       icon: Users2,
       path: "/groups",
       color: "bg-indigo-500/10 text-indigo-500"
+    },
+    {
+      title: "Controle de Acessos",
+      description: "Monitore acessos aos dashboards",
+      icon: Activity,
+      path: "/access-logs",
+      color: "bg-rose-500/10 text-rose-500"
     },
     {
       title: "Assinatura",
