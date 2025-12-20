@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
 
 interface AccessLog {
   id: string;
@@ -640,18 +641,14 @@ const AccessLogs = () => {
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Período:</span>
           </div>
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Selecione o período" />
-            </SelectTrigger>
-            <SelectContent>
-              {PERIOD_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={PERIOD_OPTIONS}
+            value={selectedPeriod}
+            onValueChange={setSelectedPeriod}
+            placeholder="Selecione o período"
+            searchPlaceholder="Buscar período..."
+            triggerClassName="w-48"
+          />
           <span className="text-sm text-muted-foreground">
             {format(dateRange.start, "dd/MM/yyyy", { locale: ptBR })} - {format(dateRange.end, "dd/MM/yyyy", { locale: ptBR })}
           </span>
@@ -702,41 +699,42 @@ const AccessLogs = () => {
                 Histórico de Acessos
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2">
-                <Select value={chartFilterType} onValueChange={(v) => { setChartFilterType(v as "user" | "dashboard"); setChartFilter("total"); }}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dashboard">Dashboard</SelectItem>
-                    <SelectItem value="user">Usuário</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "dashboard", label: "Dashboard" },
+                    { value: "user", label: "Usuário" },
+                  ]}
+                  value={chartFilterType}
+                  onValueChange={(v) => { setChartFilterType(v as "user" | "dashboard"); setChartFilter("total"); }}
+                  triggerClassName="w-32"
+                  searchPlaceholder="Buscar..."
+                />
                 {chartFilterType === "dashboard" ? (
-                  <Select value={chartFilter} onValueChange={setChartFilter}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="total">Todos os Dashboards</SelectItem>
-                      {dashboards.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "total", label: "Todos os Dashboards" },
+                      ...dashboards.map((d) => ({ value: d.id, label: d.name })),
+                    ]}
+                    value={chartFilter}
+                    onValueChange={setChartFilter}
+                    placeholder="Selecione"
+                    searchPlaceholder="Buscar dashboard..."
+                    triggerClassName="w-48"
+                    icon={<BarChart3 className="h-4 w-4" />}
+                  />
                 ) : (
-                  <Select value={chartFilter} onValueChange={setChartFilter}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="total">Todos os Usuários</SelectItem>
-                      {allUsers.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.full_name || u.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "total", label: "Todos os Usuários" },
+                      ...allUsers.map((u) => ({ value: u.id, label: u.full_name || u.email })),
+                    ]}
+                    value={chartFilter}
+                    onValueChange={setChartFilter}
+                    placeholder="Selecione"
+                    searchPlaceholder="Buscar usuário..."
+                    triggerClassName="w-48"
+                    icon={<Users className="h-4 w-4" />}
+                  />
                 )}
               </div>
             </div>
@@ -825,31 +823,31 @@ const AccessLogs = () => {
                 <CardTitle className="text-lg">Últimos Acessos</CardTitle>
                 <div className="flex gap-2">
                   {isMasterAdmin && (
-                    <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                      <SelectTrigger className="w-40">
-                        <Building2 className="h-4 w-4 mr-2" />
-                        <SelectValue placeholder="Empresa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas</SelectItem>
-                        {companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "all", label: "Todas as Empresas" },
+                        ...companies.map((c) => ({ value: c.id, label: c.name })),
+                      ]}
+                      value={selectedCompany}
+                      onValueChange={setSelectedCompany}
+                      placeholder="Empresa"
+                      searchPlaceholder="Buscar empresa..."
+                      triggerClassName="w-48"
+                      icon={<Building2 className="h-4 w-4" />}
+                    />
                   )}
-                  <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
-                    <SelectTrigger className="w-40">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Dashboard" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {filteredDashboards.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "all", label: "Todos os Dashboards" },
+                      ...filteredDashboards.map((d) => ({ value: d.id, label: d.name })),
+                    ]}
+                    value={selectedDashboard}
+                    onValueChange={setSelectedDashboard}
+                    placeholder="Dashboard"
+                    searchPlaceholder="Buscar dashboard..."
+                    triggerClassName="w-48"
+                    icon={<BarChart3 className="h-4 w-4" />}
+                  />
                 </div>
               </div>
             </CardHeader>
