@@ -286,12 +286,13 @@ serve(async (req) => {
         report_section: string | null;
         credential_id: string | null;
         owner_id: string;
+        company_id: string | null;
       }
 
       const { data: dashboard, error: dashboardError } = await retrySupabaseQuery<DashboardRow>(() =>
         supabase
           .from("dashboards")
-          .select("workspace_id, dashboard_id, report_section, credential_id, owner_id")
+          .select("workspace_id, dashboard_id, report_section, credential_id, owner_id, company_id")
           .eq("id", dashboardId)
           .single()
       );
@@ -301,28 +302,40 @@ serve(async (req) => {
         throw new Error(USER_ERROR_MESSAGES.resource_not_found);
       }
 
-      // Check if user has access (owner, direct access, or group access)
+      // Check if user has access (owner, same company, direct access, or group access)
       const isOwner = dashboard.owner_id === user.id;
       
       if (!isOwner) {
-        // Check direct user access
-        const { data: directAccess } = await supabase
-          .from("user_dashboard_access")
-          .select("id")
-          .eq("dashboard_id", dashboardId)
-          .eq("user_id", user.id)
+        // Check if user belongs to the same company as the dashboard
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", user.id)
           .maybeSingle();
 
-        if (!directAccess) {
-          // Check group access - user may be member of a group with dashboard access
-          const { data: groupAccess } = await supabase.rpc("has_group_dashboard_access", {
-            _user_id: user.id,
-            _dashboard_id: dashboardId
-          });
+        const isSameCompany = userProfile?.company_id && dashboard.company_id && 
+                              userProfile.company_id === dashboard.company_id;
 
-          if (!groupAccess) {
-            console.error("[AUDIT] Permission denied for user:", user.id, "on dashboard:", dashboardId);
-            throw new Error(USER_ERROR_MESSAGES.permission_denied);
+        if (!isSameCompany) {
+          // Check direct user access
+          const { data: directAccess } = await supabase
+            .from("user_dashboard_access")
+            .select("id")
+            .eq("dashboard_id", dashboardId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (!directAccess) {
+            // Check group access - user may be member of a group with dashboard access
+            const { data: groupAccess } = await supabase.rpc("has_group_dashboard_access", {
+              _user_id: user.id,
+              _dashboard_id: dashboardId
+            });
+
+            if (!groupAccess) {
+              console.error("[AUDIT] Permission denied for user:", user.id, "on dashboard:", dashboardId);
+              throw new Error(USER_ERROR_MESSAGES.permission_denied);
+            }
           }
         }
       }
