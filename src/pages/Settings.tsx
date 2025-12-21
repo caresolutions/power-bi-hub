@@ -47,9 +47,15 @@ const Settings = () => {
       .select("role")
       .eq("user_id", user.id);
 
+    console.log("User roles data:", rolesData);
+    
     const roles = rolesData?.map(r => r.role) || [];
+    console.log("Parsed roles:", roles);
+    
     const hasAdminAccess = roles.includes('admin') || roles.includes('master_admin');
     const hasMasterAccess = roles.includes('master_admin');
+    
+    console.log("Has admin access:", hasAdminAccess, "Has master access:", hasMasterAccess);
     
     if (!hasAdminAccess) {
       navigate("/home");
