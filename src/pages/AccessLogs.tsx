@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, BarChart3, Users, Building2, Eye, Shield, Download, Clock, Info, Calendar, TrendingUp } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, parseISO } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, startOfYear, endOfYear, eachMonthOfInterval, eachWeekOfInterval, eachDayOfInterval, eachYearOfInterval, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -58,11 +58,20 @@ interface UserWithPermission {
 }
 
 interface ChartDataPoint {
-  month: string;
-  monthLabel: string;
+  period: string;
+  periodLabel: string;
   total: number;
   [key: string]: string | number;
 }
+
+type ChartGranularity = "year" | "month" | "week" | "day";
+
+const GRANULARITY_OPTIONS = [
+  { value: "year", label: "Ano" },
+  { value: "month", label: "Mês" },
+  { value: "week", label: "Semana" },
+  { value: "day", label: "Dia" },
+];
 
 interface UserData {
   id: string;
@@ -97,6 +106,7 @@ const AccessLogs = () => {
   const [savingPermissions, setSavingPermissions] = useState(false);
   const [chartFilter, setChartFilter] = useState<string>("total");
   const [chartFilterType, setChartFilterType] = useState<"user" | "dashboard">("dashboard");
+  const [chartGranularity, setChartGranularity] = useState<ChartGranularity>("month");
   const [allUsers, setAllUsers] = useState<UserData[]>([]);
 
   // Calculate date range based on selected period
@@ -125,31 +135,67 @@ const AccessLogs = () => {
     return { totalAccesses, uniqueDashboards, uniqueUsers };
   }, [logs]);
 
-  // Generate chart data
+  // Generate chart data based on granularity
   const chartData = useMemo(() => {
-    const months = eachMonthOfInterval({ start: dateRange.start, end: dateRange.end });
-    
-    const data: ChartDataPoint[] = months.map((month) => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
+    let periods: Date[] = [];
+    let getStart: (date: Date) => Date;
+    let getEnd: (date: Date) => Date;
+    let formatLabel: (date: Date) => string;
+    let formatKey: (date: Date) => string;
+
+    switch (chartGranularity) {
+      case "year":
+        periods = eachYearOfInterval({ start: dateRange.start, end: dateRange.end });
+        getStart = startOfYear;
+        getEnd = endOfYear;
+        formatLabel = (d) => format(d, "yyyy");
+        formatKey = (d) => format(d, "yyyy");
+        break;
+      case "week":
+        periods = eachWeekOfInterval({ start: dateRange.start, end: dateRange.end }, { weekStartsOn: 0 });
+        getStart = (d) => startOfWeek(d, { weekStartsOn: 0 });
+        getEnd = (d) => endOfWeek(d, { weekStartsOn: 0 });
+        formatLabel = (d) => `${format(d, "dd/MM", { locale: ptBR })}`;
+        formatKey = (d) => format(d, "yyyy-ww");
+        break;
+      case "day":
+        periods = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
+        getStart = startOfDay;
+        getEnd = endOfDay;
+        formatLabel = (d) => format(d, "dd/MM", { locale: ptBR });
+        formatKey = (d) => format(d, "yyyy-MM-dd");
+        break;
+      case "month":
+      default:
+        periods = eachMonthOfInterval({ start: dateRange.start, end: dateRange.end });
+        getStart = startOfMonth;
+        getEnd = endOfMonth;
+        formatLabel = (d) => format(d, "MMM/yy", { locale: ptBR });
+        formatKey = (d) => format(d, "yyyy-MM");
+        break;
+    }
+
+    const data: ChartDataPoint[] = periods.map((period) => {
+      const periodStart = getStart(period);
+      const periodEnd = getEnd(period);
       
-      const monthLogs = logs.filter((log) => {
+      const periodLogs = logs.filter((log) => {
         const logDate = parseISO(log.accessed_at);
-        return isWithinInterval(logDate, { start: monthStart, end: monthEnd });
+        return isWithinInterval(logDate, { start: periodStart, end: periodEnd });
       });
 
       const point: ChartDataPoint = {
-        month: format(month, "yyyy-MM"),
-        monthLabel: format(month, "MMM/yy", { locale: ptBR }),
-        total: monthLogs.length,
+        period: formatKey(period),
+        periodLabel: formatLabel(period),
+        total: periodLogs.length,
       };
 
       // Add filtered data if a specific user or dashboard is selected
       if (chartFilter !== "total") {
         if (chartFilterType === "dashboard") {
-          point.filtered = monthLogs.filter((l) => l.dashboard_id === chartFilter).length;
+          point.filtered = periodLogs.filter((l) => l.dashboard_id === chartFilter).length;
         } else {
-          point.filtered = monthLogs.filter((l) => l.user_id === chartFilter).length;
+          point.filtered = periodLogs.filter((l) => l.user_id === chartFilter).length;
         }
       }
 
@@ -157,7 +203,7 @@ const AccessLogs = () => {
     });
 
     return data;
-  }, [logs, dateRange, chartFilter, chartFilterType]);
+  }, [logs, dateRange, chartFilter, chartFilterType, chartGranularity]);
 
   // Get filtered item name for chart legend
   const filteredItemName = useMemo(() => {
@@ -699,6 +745,16 @@ const AccessLogs = () => {
                 Histórico de Acessos
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2">
+                {/* Granularity selector */}
+                <SearchableSelect
+                  options={GRANULARITY_OPTIONS}
+                  value={chartGranularity}
+                  onValueChange={(v) => setChartGranularity(v as ChartGranularity)}
+                  triggerClassName="w-28"
+                  searchPlaceholder="Buscar..."
+                  icon={<Calendar className="h-4 w-4" />}
+                />
+                <div className="h-6 w-px bg-border mx-1" />
                 <SearchableSelect
                   options={[
                     { value: "dashboard", label: "Dashboard" },
@@ -745,9 +801,10 @@ const AccessLogs = () => {
                 <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
-                    dataKey="monthLabel" 
+                    dataKey="periodLabel" 
                     className="text-xs fill-muted-foreground"
                     tick={{ fontSize: 12 }}
+                    interval={chartGranularity === "day" ? "preserveStartEnd" : 0}
                   />
                   <YAxis 
                     className="text-xs fill-muted-foreground"
