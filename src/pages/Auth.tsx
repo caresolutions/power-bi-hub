@@ -168,26 +168,37 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // Check if admin needs company registration
+        // Check if user is active
         if (authData.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("company_id, is_active")
+            .eq("id", authData.user.id)
+            .single();
+
+          // Check if user is inactive
+          if (profile && profile.is_active === false) {
+            await supabase.auth.signOut();
+            toast({
+              title: "Acesso bloqueado",
+              description: "Sua conta está inativa. Entre em contato com o administrador.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Check if admin needs company registration
           const { data: role } = await supabase
             .from("user_roles")
             .select("role")
             .eq("user_id", authData.user.id)
             .single();
 
-          if (role?.role === 'admin') {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("company_id")
-              .eq("id", authData.user.id)
-              .single();
-
-            if (!profile?.company_id) {
-              setNeedsCompanyRegistration(true);
-              setLoading(false);
-              return;
-            }
+          if (role?.role === 'admin' && !profile?.company_id) {
+            setNeedsCompanyRegistration(true);
+            setLoading(false);
+            return;
           }
         }
 
