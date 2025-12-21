@@ -44,7 +44,7 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string | null;
-  role: 'admin' | 'user';
+  role: 'master_admin' | 'admin' | 'user';
   is_active: boolean;
 }
 
@@ -93,16 +93,24 @@ export const UsersSettings = () => {
       const usersWithRoles: UserProfile[] = [];
       
       for (const p of profiles) {
-        const { data: roleData } = await supabase
+        const { data: rolesData } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", p.id)
-          .single();
+          .eq("user_id", p.id);
+        
+        // Determine highest role
+        const roles = rolesData?.map(r => r.role) || [];
+        let highestRole: 'master_admin' | 'admin' | 'user' = 'user';
+        if (roles.includes('master_admin')) {
+          highestRole = 'master_admin';
+        } else if (roles.includes('admin')) {
+          highestRole = 'admin';
+        }
         
         usersWithRoles.push({
           ...p,
           is_active: p.is_active ?? true,
-          role: (roleData?.role as 'admin' | 'user') || 'user'
+          role: highestRole
         });
       }
       
@@ -248,10 +256,15 @@ export const UsersSettings = () => {
 
     // Create CSV content
     const headers = ["Nome", "Email", "Função", "Status"];
+    const getRoleName = (role: string) => {
+      if (role === 'master_admin') return 'Master Admin';
+      if (role === 'admin') return 'Admin';
+      return 'Usuário';
+    };
     const rows = filteredUsers.map(user => [
       user.full_name || "-",
       user.email,
-      user.role === 'admin' ? 'Admin' : 'Usuário',
+      getRoleName(user.role),
       user.is_active ? 'Ativo' : 'Inativo'
     ]);
 
@@ -334,12 +347,16 @@ export const UsersSettings = () => {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {user.role === 'admin' ? (
+                          {user.role === 'master_admin' ? (
+                            <Shield className="h-4 w-4 text-yellow-500" />
+                          ) : user.role === 'admin' ? (
                             <Shield className="h-4 w-4 text-primary" />
                           ) : (
                             <User className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <span className="capitalize">{user.role === 'admin' ? 'Admin' : 'Usuário'}</span>
+                          <span className="capitalize">
+                            {user.role === 'master_admin' ? 'Master Admin' : user.role === 'admin' ? 'Admin' : 'Usuário'}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -427,6 +444,7 @@ export const UsersSettings = () => {
                   <SelectValue placeholder="Selecione a função" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="master_admin">Master Admin</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="user">Usuário</SelectItem>
                 </SelectContent>
