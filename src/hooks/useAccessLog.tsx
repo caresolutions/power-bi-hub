@@ -1,23 +1,21 @@
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Module-level tracking to prevent duplicate logs across hook instances
-const loggedDashboardsThisSession = new Set<string>();
+// Module-level tracking with timestamps to prevent duplicate logs from React StrictMode
+// but allow multiple genuine accesses throughout the day
+const recentLogs = new Map<string, number>();
+
+// Debounce time in milliseconds (5 seconds should be enough to catch StrictMode double-mounting)
+const DEBOUNCE_MS = 5000;
 
 export function useAccessLog() {
   const logDashboardAccess = useCallback(async (dashboardId: string) => {
-    // Create a unique key combining dashboard ID with current date to allow daily logging
-    const today = new Date().toISOString().split('T')[0];
-    const logKey = `${dashboardId}_${today}`;
+    const now = Date.now();
+    const lastLogTime = recentLogs.get(dashboardId);
 
-    // Check sessionStorage first (persists across component remounts)
-    const storageKey = 'logged_dashboards';
-    const storedLogs = sessionStorage.getItem(storageKey);
-    const loggedSet = storedLogs ? new Set(JSON.parse(storedLogs)) : new Set();
-
-    // Prevent duplicate logs for the same dashboard on the same day
-    if (loggedSet.has(logKey) || loggedDashboardsThisSession.has(logKey)) {
-      console.log("Access already logged for this dashboard today:", dashboardId);
+    // If this dashboard was logged less than DEBOUNCE_MS ago, skip (likely StrictMode duplicate)
+    if (lastLogTime && now - lastLogTime < DEBOUNCE_MS) {
+      console.log("Skipping duplicate access log (debounce):", dashboardId);
       return;
     }
 
@@ -26,9 +24,7 @@ export function useAccessLog() {
       if (!user) return;
 
       // Mark as logged immediately to prevent race conditions
-      loggedDashboardsThisSession.add(logKey);
-      loggedSet.add(logKey);
-      sessionStorage.setItem(storageKey, JSON.stringify([...loggedSet]));
+      recentLogs.set(dashboardId, now);
 
       // Get user's company_id from profile
       const { data: profile } = await supabase
@@ -49,9 +45,7 @@ export function useAccessLog() {
     } catch (error) {
       console.error("Error logging dashboard access:", error);
       // Remove from tracking if insertion failed
-      loggedDashboardsThisSession.delete(logKey);
-      loggedSet.delete(logKey);
-      sessionStorage.setItem(storageKey, JSON.stringify([...loggedSet]));
+      recentLogs.delete(dashboardId);
     }
   }, []);
 
