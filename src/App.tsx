@@ -16,8 +16,10 @@ import ReportSubscriptions from "./pages/ReportSubscriptions";
 import MasterAdmin from "./pages/MasterAdmin";
 import UserGroups from "./pages/UserGroups";
 import AccessLogs from "./pages/AccessLogs";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
+import { ConsentProvider } from "./components/consent/ConsentProvider";
 
 const queryClient = new QueryClient();
 
@@ -42,24 +44,27 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/credentials" element={<Credentials />} />
-          <Route path="/dashboards" element={<Dashboards />} />
-          <Route path="/dashboard/:id" element={<DashboardViewer />} />
-          <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
-          <Route path="/users" element={<UsersManagement />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/master-admin" element={<MasterAdmin />} />
-          <Route path="/groups" element={<UserGroups />} />
-          <Route path="/access-logs" element={<AccessLogs />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <ConditionalSupportChat />
+        <ConsentProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/credentials" element={<Credentials />} />
+            <Route path="/dashboards" element={<Dashboards />} />
+            <Route path="/dashboard/:id" element={<DashboardViewer />} />
+            <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
+            <Route path="/users" element={<UsersManagement />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/master-admin" element={<MasterAdmin />} />
+            <Route path="/groups" element={<UserGroups />} />
+            <Route path="/access-logs" element={<AccessLogs />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <ConditionalSupportChat />
+        </ConsentProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
