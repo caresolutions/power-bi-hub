@@ -48,7 +48,11 @@ interface UserProfile {
   is_active: boolean;
 }
 
-export const UsersSettings = () => {
+interface UsersSettingsProps {
+  companyId?: string | null;
+}
+
+export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -62,31 +66,42 @@ export const UsersSettings = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [companyId]);
 
   const fetchUsers = async () => {
+    setLoading(true);
+    
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    setCurrentUserId(user.id);
-
-    // Get current user's company_id
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.company_id) {
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    // Fetch all profiles in the same company
+    setCurrentUserId(user.id);
+
+    let targetCompanyId = companyId;
+
+    // If no companyId provided, get from current user's profile
+    if (!targetCompanyId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      targetCompanyId = profile?.company_id;
+    }
+
+    if (!targetCompanyId) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch all profiles in the target company
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, email, full_name, is_active")
-      .eq("company_id", profile.company_id);
+      .eq("company_id", targetCompanyId);
 
     if (profiles) {
       // Fetch roles for each user
