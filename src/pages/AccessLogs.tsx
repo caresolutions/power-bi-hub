@@ -26,6 +26,7 @@ interface AccessLog {
   user_id: string;
   company_id: string | null;
   accessed_at: string;
+  report_page: string | null;
   dashboard_name?: string;
   user_email?: string;
   user_name?: string;
@@ -231,12 +232,13 @@ const AccessLogs = () => {
 
     try {
       const headers = isMasterAdmin 
-        ? ["Dashboard", "Usuário", "Nome", "Empresa", "Data/Hora"]
-        : ["Dashboard", "Usuário", "Nome", "Data/Hora"];
+        ? ["Dashboard", "Página", "Usuário", "Nome", "Empresa", "Data/Hora"]
+        : ["Dashboard", "Página", "Usuário", "Nome", "Data/Hora"];
 
       const rows = logs.map((log) => {
         const baseRow = [
           log.dashboard_name || "",
+          log.report_page || "",
           log.user_email || "",
           log.user_name || "",
         ];
@@ -392,7 +394,8 @@ const AccessLogs = () => {
         dashboard_id,
         user_id,
         company_id,
-        accessed_at
+        accessed_at,
+        report_page
       `)
       .gte("accessed_at", twelveMonthsAgo.toISOString())
       .order("accessed_at", { ascending: false });
@@ -914,6 +917,7 @@ const AccessLogs = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Dashboard</TableHead>
+                      <TableHead>Página</TableHead>
                       <TableHead>Usuário</TableHead>
                       {isMasterAdmin && <TableHead>Empresa</TableHead>}
                       <TableHead>Data/Hora</TableHead>
@@ -923,6 +927,15 @@ const AccessLogs = () => {
                     {logs.slice(0, 100).map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-medium">{log.dashboard_name}</TableCell>
+                        <TableCell>
+                          {log.report_page ? (
+                            <Badge variant="outline" className="text-xs">
+                              {log.report_page}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="text-sm">{log.user_email}</p>
@@ -941,7 +954,7 @@ const AccessLogs = () => {
                     ))}
                     {logs.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={isMasterAdmin ? 4 : 3} className="text-center py-8">
+                        <TableCell colSpan={isMasterAdmin ? 5 : 4} className="text-center py-8">
                           <p className="text-muted-foreground">Nenhum acesso registrado no período</p>
                         </TableCell>
                       </TableRow>

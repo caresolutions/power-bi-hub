@@ -10,6 +10,7 @@ import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
 import SliderViewer from "@/components/dashboards/SliderViewer";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
+import { useAccessLog } from "@/hooks/useAccessLog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
@@ -66,6 +67,7 @@ const DashboardViewer = () => {
   const reportRef = useRef<pbi.Report | null>(null);
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
+  const { logPageAccess } = useAccessLog();
 
   useEffect(() => {
     powerbiRef.current = new pbi.service.Service(
@@ -341,7 +343,7 @@ const DashboardViewer = () => {
   };
 
   const handlePageChange = async (pageName: string) => {
-    if (!reportRef.current) return;
+    if (!reportRef.current || !id) return;
     
     try {
       const pages = await reportRef.current.getPages();
@@ -349,6 +351,9 @@ const DashboardViewer = () => {
       if (targetPage) {
         await targetPage.setActive();
         setCurrentPage(pageName);
+        
+        // Log page access
+        logPageAccess(id, targetPage.displayName || pageName);
       }
     } catch (err) {
       console.error("Error changing page:", err);

@@ -149,6 +149,7 @@ export type Database = {
           dashboard_id: string
           id: string
           ip_address: string | null
+          report_page: string | null
           user_agent: string | null
           user_id: string
         }
@@ -158,6 +159,7 @@ export type Database = {
           dashboard_id: string
           id?: string
           ip_address?: string | null
+          report_page?: string | null
           user_agent?: string | null
           user_id: string
         }
@@ -167,6 +169,7 @@ export type Database = {
           dashboard_id?: string
           id?: string
           ip_address?: string | null
+          report_page?: string | null
           user_agent?: string | null
           user_id?: string
         }
