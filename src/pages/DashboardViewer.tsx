@@ -10,7 +10,6 @@ import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
 import SliderViewer from "@/components/dashboards/SliderViewer";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
-import { useAccessLog } from "@/hooks/useAccessLog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
@@ -67,7 +66,6 @@ const DashboardViewer = () => {
   const reportRef = useRef<pbi.Report | null>(null);
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
-  const { logDashboardAccess } = useAccessLog();
 
   useEffect(() => {
     powerbiRef.current = new pbi.service.Service(
@@ -95,8 +93,6 @@ const DashboardViewer = () => {
         fetchDashboard(id, user.id);
         checkRefreshPermission(id, user.id);
         fetchLastRefresh(id);
-        // Log dashboard access
-        logDashboardAccess(id);
       }
     };
 

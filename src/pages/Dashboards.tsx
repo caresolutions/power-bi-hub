@@ -14,6 +14,7 @@ import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAccessLog } from "@/hooks/useAccessLog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,7 @@ const Dashboards = () => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
+  const { logDashboardAccess } = useAccessLog();
 
   // Extract unique categories and tags
   const categories = useMemo(() => {
@@ -449,7 +451,10 @@ const Dashboards = () => {
                   >
                     <Card 
                       className="glass border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer overflow-hidden"
-                      onClick={() => navigate(`/dashboard/${dashboard.id}`)}
+                      onClick={() => {
+                        logDashboardAccess(dashboard.id);
+                        navigate(`/dashboard/${dashboard.id}`);
+                      }}
                     >
                       {/* Thumbnail Preview */}
                       <div className="relative h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
