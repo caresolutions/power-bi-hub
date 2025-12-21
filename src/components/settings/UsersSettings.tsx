@@ -36,14 +36,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Pencil, Save, Shield, User, Trash2 } from "lucide-react";
+import { Users, Pencil, Save, Shield, User, Trash2, Download, UserCheck, UserX } from "lucide-react";
 
 interface UserProfile {
   id: string;
   email: string;
   full_name: string | null;
   role: 'admin' | 'user';
+  is_active: boolean;
 }
 
 export const UsersSettings = () => {
@@ -55,6 +57,7 @@ export const UsersSettings = () => {
   const [editForm, setEditForm] = useState({ full_name: "", role: "" });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportFilter, setExportFilter] = useState<"all" | "active" | "inactive">("all");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export const UsersSettings = () => {
     // Fetch all profiles in the same company
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, full_name, is_active")
       .eq("company_id", profile.company_id);
 
     if (profiles) {
@@ -98,6 +101,7 @@ export const UsersSettings = () => {
         
         usersWithRoles.push({
           ...p,
+          is_active: p.is_active ?? true,
           role: (roleData?.role as 'admin' | 'user') || 'user'
         });
       }
@@ -110,6 +114,31 @@ export const UsersSettings = () => {
   const handleEdit = (user: UserProfile) => {
     setEditingUser(user);
     setEditForm({ full_name: user.full_name || "", role: user.role });
+  };
+
+  const handleToggleActive = async (user: UserProfile) => {
+    const newActiveState = !user.is_active;
+    
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_active: newActiveState })
+      .eq("id", user.id);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status do usuário",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Sucesso",
+      description: newActiveState ? "Usuário ativado" : "Usuário inativado",
+    });
+    
+    fetchUsers();
   };
 
   const handleSave = async () => {
@@ -208,6 +237,45 @@ export const UsersSettings = () => {
     fetchUsers();
   };
 
+  const handleExport = () => {
+    let filteredUsers = users;
+    
+    if (exportFilter === "active") {
+      filteredUsers = users.filter(u => u.is_active);
+    } else if (exportFilter === "inactive") {
+      filteredUsers = users.filter(u => !u.is_active);
+    }
+
+    // Create CSV content
+    const headers = ["Nome", "Email", "Função", "Status"];
+    const rows = filteredUsers.map(user => [
+      user.full_name || "-",
+      user.email,
+      user.role === 'admin' ? 'Admin' : 'Usuário',
+      user.is_active ? 'Ativo' : 'Inativo'
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    // Add BOM for UTF-8 encoding
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `usuarios_${exportFilter}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Exportação concluída",
+      description: `${filteredUsers.length} usuários exportados`,
+    });
+  };
+
   if (loading) {
     return <div className="text-muted-foreground">Carregando...</div>;
   }
@@ -216,9 +284,27 @@ export const UsersSettings = () => {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <CardTitle>Usuários da Empresa</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <CardTitle>Usuários da Empresa</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={exportFilter} onValueChange={(v) => setExportFilter(v as "all" | "active" | "inactive")}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Somente ativos</SelectItem>
+                  <SelectItem value="inactive">Somente inativos</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+            </div>
           </div>
           <CardDescription>
             Visualize, edite ou remova os usuários cadastrados na sua empresa
@@ -235,12 +321,13 @@ export const UsersSettings = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
-                    <TableHead className="w-[120px]">Ações</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[150px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.id} className={!user.is_active ? "opacity-60" : ""}>
                       <TableCell className="font-medium">
                         {user.full_name || "-"}
                       </TableCell>
@@ -256,7 +343,26 @@ export const UsersSettings = () => {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-2">
+                          {user.is_active ? (
+                            <UserCheck className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <UserX className="h-4 w-4 text-destructive" />
+                          )}
+                          <span className={user.is_active ? "text-green-500" : "text-destructive"}>
+                            {user.is_active ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-1">
+                          {user.id !== currentUserId && (
+                            <Switch
+                              checked={user.is_active}
+                              onCheckedChange={() => handleToggleActive(user)}
+                              title={user.is_active ? "Desativar usuário" : "Ativar usuário"}
+                            />
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
