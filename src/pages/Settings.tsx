@@ -42,20 +42,20 @@ const Settings = () => {
       setSelectedCompanyId(profile.company_id);
     }
 
+    // Check if user is master admin using RPC function
+    const { data: isMaster } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+    
+    // Also fetch all roles for admin check
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id);
 
     console.log("User roles data:", rolesData);
+    console.log("Is master admin (RPC):", isMaster);
     
     const roles = rolesData?.map(r => r.role) || [];
-    console.log("Parsed roles:", roles);
-    
-    const hasAdminAccess = roles.includes('admin') || roles.includes('master_admin');
-    const hasMasterAccess = roles.includes('master_admin');
-    
-    console.log("Has admin access:", hasAdminAccess, "Has master access:", hasMasterAccess);
+    const hasAdminAccess = roles.includes('admin') || roles.includes('master_admin') || isMaster;
     
     if (!hasAdminAccess) {
       navigate("/home");
@@ -63,7 +63,7 @@ const Settings = () => {
     }
 
     setIsAdmin(true);
-    setIsMasterAdmin(hasMasterAccess);
+    setIsMasterAdmin(isMaster === true);
     setLoading(false);
   };
 
