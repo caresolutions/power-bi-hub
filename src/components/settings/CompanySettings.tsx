@@ -13,7 +13,11 @@ interface Company {
   cnpj: string;
 }
 
-export const CompanySettings = () => {
+interface CompanySettingsProps {
+  companyId?: string | null;
+}
+
+export const CompanySettings = ({ companyId }: CompanySettingsProps) => {
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,23 +26,35 @@ export const CompanySettings = () => {
 
   useEffect(() => {
     fetchCompany();
-  }, []);
+  }, [companyId]);
 
   const fetchCompany = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    
+    let targetCompanyId = companyId;
+    
+    // If no companyId provided, get from current user's profile
+    if (!targetCompanyId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
 
-    if (profile?.company_id) {
+      targetCompanyId = profile?.company_id;
+    }
+
+    if (targetCompanyId) {
       const { data: companyData } = await supabase
         .from("companies")
         .select("*")
-        .eq("id", profile.company_id)
+        .eq("id", targetCompanyId)
         .single();
 
       if (companyData) {

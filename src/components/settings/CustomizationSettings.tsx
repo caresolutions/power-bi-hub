@@ -70,7 +70,11 @@ const colorFields: ColorField[] = [
   { key: "border_color", label: "Bordas", description: "Contornos de elementos" },
 ];
 
-export const CustomizationSettings = () => {
+interface CustomizationSettingsProps {
+  companyId?: string | null;
+}
+
+export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps) => {
   const [company, setCompany] = useState<CompanyCustomization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,23 +85,35 @@ export const CustomizationSettings = () => {
 
   useEffect(() => {
     fetchCompany();
-  }, []);
+  }, [companyId]);
 
   const fetchCompany = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    
+    let targetCompanyId = companyId;
+    
+    // If no companyId provided, get from current user's profile
+    if (!targetCompanyId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
 
-    if (profile?.company_id) {
+      targetCompanyId = profile?.company_id;
+    }
+
+    if (targetCompanyId) {
       const { data: companyData } = await supabase
         .from("companies")
         .select("id, logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color")
-        .eq("id", profile.company_id)
+        .eq("id", targetCompanyId)
         .single();
 
       if (companyData) {

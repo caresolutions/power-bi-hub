@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Building2, Users, Palette } from "lucide-react";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UsersSettings } from "@/components/settings/UsersSettings";
 import { CustomizationSettings } from "@/components/settings/CustomizationSettings";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
+import { CompanyFilter } from "@/components/CompanyFilter";
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const navigate = useNavigate();
   useCompanyCustomization();
 
@@ -27,21 +30,39 @@ const Settings = () => {
       return;
     }
 
+    // Get user's company
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.company_id) {
+      setUserCompanyId(profile.company_id);
+      setSelectedCompanyId(profile.company_id);
+    }
+
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id);
 
     const roles = rolesData?.map(r => r.role) || [];
-    const hasAccess = roles.includes('admin') || roles.includes('master_admin');
+    const hasAdminAccess = roles.includes('admin') || roles.includes('master_admin');
+    const hasMasterAccess = roles.includes('master_admin');
     
-    if (!hasAccess) {
+    if (!hasAdminAccess) {
       navigate("/home");
       return;
     }
 
     setIsAdmin(true);
+    setIsMasterAdmin(hasMasterAccess);
     setLoading(false);
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
   };
 
   if (loading) {
@@ -52,6 +73,9 @@ const Settings = () => {
     );
   }
 
+  // Determine which company to show - for master admin use selected, for regular admin use their company
+  const effectiveCompanyId = isMasterAdmin ? (selectedCompanyId || null) : userCompanyId;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
@@ -59,11 +83,23 @@ const Settings = () => {
       {/* Header */}
       <header className="relative z-10 border-b border-border/50 bg-card/80 backdrop-blur-md">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold">Configurações</h1>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-2xl font-bold">Configurações</h1>
+            </div>
+            
+            {/* Company selector for Master Admins */}
+            {isMasterAdmin && (
+              <CompanyFilter
+                value={selectedCompanyId}
+                onChange={handleCompanyChange}
+                showAll={false}
+                allLabel="Selecione uma empresa"
+              />
+            )}
           </div>
         </div>
       </header>
@@ -87,15 +123,15 @@ const Settings = () => {
           </TabsList>
 
           <TabsContent value="company">
-            <CompanySettings />
+            <CompanySettings companyId={effectiveCompanyId} />
           </TabsContent>
 
           <TabsContent value="users">
-            <UsersSettings />
+            <UsersSettings companyId={effectiveCompanyId} />
           </TabsContent>
 
           <TabsContent value="customization">
-            <CustomizationSettings />
+            <CustomizationSettings companyId={effectiveCompanyId} />
           </TabsContent>
         </Tabs>
       </main>
