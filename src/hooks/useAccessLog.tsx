@@ -1,13 +1,23 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useAccessLog() {
-  // Track which dashboards have been logged in this session to prevent duplicates
-  const loggedDashboards = useRef<Set<string>>(new Set());
+// Module-level tracking to prevent duplicate logs across hook instances
+const loggedDashboardsThisSession = new Set<string>();
 
+export function useAccessLog() {
   const logDashboardAccess = useCallback(async (dashboardId: string) => {
-    // Prevent duplicate logs for the same dashboard in the same session
-    if (loggedDashboards.current.has(dashboardId)) {
+    // Create a unique key combining dashboard ID with current date to allow daily logging
+    const today = new Date().toISOString().split('T')[0];
+    const logKey = `${dashboardId}_${today}`;
+
+    // Check sessionStorage first (persists across component remounts)
+    const storageKey = 'logged_dashboards';
+    const storedLogs = sessionStorage.getItem(storageKey);
+    const loggedSet = storedLogs ? new Set(JSON.parse(storedLogs)) : new Set();
+
+    // Prevent duplicate logs for the same dashboard on the same day
+    if (loggedSet.has(logKey) || loggedDashboardsThisSession.has(logKey)) {
+      console.log("Access already logged for this dashboard today:", dashboardId);
       return;
     }
 
@@ -15,8 +25,10 @@ export function useAccessLog() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Mark as logged before making the request to prevent race conditions
-      loggedDashboards.current.add(dashboardId);
+      // Mark as logged immediately to prevent race conditions
+      loggedDashboardsThisSession.add(logKey);
+      loggedSet.add(logKey);
+      sessionStorage.setItem(storageKey, JSON.stringify([...loggedSet]));
 
       // Get user's company_id from profile
       const { data: profile } = await supabase
@@ -32,16 +44,16 @@ export function useAccessLog() {
         company_id: profile?.company_id || null,
         user_agent: navigator.userAgent,
       });
+      
+      console.log("Dashboard access logged successfully:", dashboardId);
     } catch (error) {
       console.error("Error logging dashboard access:", error);
-      // Remove from logged set if insertion failed
-      loggedDashboards.current.delete(dashboardId);
+      // Remove from tracking if insertion failed
+      loggedDashboardsThisSession.delete(logKey);
+      loggedSet.delete(logKey);
+      sessionStorage.setItem(storageKey, JSON.stringify([...loggedSet]));
     }
   }, []);
 
-  const resetLoggedDashboards = useCallback(() => {
-    loggedDashboards.current.clear();
-  }, []);
-
-  return { logDashboardAccess, resetLoggedDashboards };
+  return { logDashboardAccess };
 }
