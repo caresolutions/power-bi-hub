@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, UserPlus, Mail } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_PLANS } from "./CompanyForm";
@@ -57,6 +58,8 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteFromAuth, setDeleteFromAuth] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: "",
     full_name: "",
@@ -199,33 +202,28 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
 
   const handleRemoveUser = async () => {
     if (!deleteUserId) return;
+    setDeleting(true);
 
     try {
-      // Remove user from company
-      const { error } = await supabase
-        .from("profiles")
-        .update({ company_id: null })
-        .eq("id", deleteUserId);
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: {
+          userId: deleteUserId,
+          deleteFromAuth: deleteFromAuth,
+        },
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Erro ao remover usuário");
+      }
 
-      // Remove dashboard access
-      await supabase
-        .from("user_dashboard_access")
-        .delete()
-        .eq("user_id", deleteUserId);
-
-      // Remove group memberships
-      await supabase
-        .from("user_group_members")
-        .delete()
-        .eq("user_id", deleteUserId);
-
-      toast.success("Usuário removido da empresa");
+      toast.success(deleteFromAuth ? "Usuário excluído completamente" : "Usuário removido da empresa");
       setDeleteUserId(null);
+      setDeleteFromAuth(false);
       fetchUsers();
     } catch (error: any) {
-      toast.error("Erro ao remover usuário");
+      toast.error(error.message || "Erro ao remover usuário");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -387,22 +385,43 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteUserId(null);
+          setDeleteFromAuth(false);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover Usuário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O usuário será removido desta empresa e perderá acesso a todos os
-              dashboards e grupos.
+            <AlertDialogDescription className="space-y-4">
+              <p>
+                O usuário será removido desta empresa e perderá acesso a todos os
+                dashboards e grupos.
+              </p>
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="deleteFromAuth"
+                  checked={deleteFromAuth}
+                  onCheckedChange={(checked) => setDeleteFromAuth(checked === true)}
+                />
+                <label
+                  htmlFor="deleteFromAuth"
+                  className="text-sm font-medium leading-none cursor-pointer text-foreground"
+                >
+                  Excluir completamente (permitir novo cadastro com este e-mail)
+                </label>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveUser}
+              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Remover
+              {deleting ? "Removendo..." : deleteFromAuth ? "Excluir Completamente" : "Remover da Empresa"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
