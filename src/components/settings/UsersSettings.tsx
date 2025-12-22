@@ -196,7 +196,7 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
       // Insert new role
       const { error: roleError } = await supabase
         .from("user_roles")
-        .insert({ user_id: editingUser.id, role: editForm.role as 'admin' | 'user' });
+        .insert({ user_id: editingUser.id, role: editForm.role as 'admin' | 'user' | 'master_admin' });
 
       if (roleError) {
         toast({
