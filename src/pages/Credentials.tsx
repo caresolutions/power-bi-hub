@@ -20,6 +20,7 @@ import CredentialForm from "@/components/credentials/CredentialForm";
 import { CredentialCompanyAccessDialog } from "@/components/credentials/CredentialCompanyAccessDialog";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,10 @@ const Credentials = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
+  const { checkLimit, currentPlan, refetch: refetchPlan } = useSubscriptionPlan();
+  
+  // Check credential limit
+  const credentialLimit = checkLimit("credentials");
 
   useEffect(() => {
     if (!roleLoading && userId) {
@@ -185,6 +190,19 @@ const Credentials = () => {
     setShowForm(false);
     setEditingCredential(null);
     fetchCredentials();
+    refetchPlan(); // Refresh usage counts
+  };
+
+  const handleNewCredential = () => {
+    if (!credentialLimit.allowed && !credentialLimit.isUnlimited) {
+      toast({
+        title: "Limite atingido",
+        description: `Você atingiu o limite de ${credentialLimit.limit} credenciais do plano ${currentPlan?.name || "atual"}. Faça upgrade para criar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowForm(true);
   };
 
   if (roleLoading) {
@@ -218,11 +236,17 @@ const Credentials = () => {
             
             {!showForm && (
               <Button
-                onClick={() => setShowForm(true)}
+                onClick={handleNewCredential}
                 className="bg-primary hover:bg-primary/90 shadow-glow"
+                disabled={!credentialLimit.allowed && !credentialLimit.isUnlimited}
               >
                 <Plus className="mr-2 h-5 w-5" />
                 Nova Credencial
+                {!credentialLimit.isUnlimited && (
+                  <Badge variant="secondary" className="ml-2">
+                    {credentialLimit.current}/{credentialLimit.limit}
+                  </Badge>
+                )}
               </Button>
             )}
           </div>

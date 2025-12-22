@@ -60,6 +60,7 @@ import { CompanyGroupsManager } from "@/components/master-admin/CompanyGroupsMan
 import { CompanySubscriptionManager } from "@/components/master-admin/CompanySubscriptionManager";
 import { SubscriptionsManager } from "@/components/master-admin/SubscriptionsManager";
 import { LegalTermsEditor } from "@/components/settings/LegalTermsEditor";
+import { PlansManager } from "@/components/master-admin/PlansManager";
 
 interface Company {
   id: string;
@@ -226,6 +227,10 @@ const MasterAdmin = () => {
               <FileText className="h-4 w-4" />
               Termos Legais
             </TabsTrigger>
+            <TabsTrigger value="plans" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Planos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="companies">
@@ -383,6 +388,10 @@ const MasterAdmin = () => {
 
           <TabsContent value="subscriptions">
             <SubscriptionsManager />
+          </TabsContent>
+
+          <TabsContent value="plans">
+            <PlansManager />
           </TabsContent>
         </Tabs>
       </main>

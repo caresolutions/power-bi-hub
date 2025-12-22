@@ -15,6 +15,8 @@ import { CompanyFilter } from "@/components/CompanyFilter";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAccessLog } from "@/hooks/useAccessLog";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { PlanLimitAlert } from "@/components/subscription/PlanLimitAlert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,6 +72,10 @@ const Dashboards = () => {
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
   const { logDashboardAccess } = useAccessLog();
+  const { checkLimit, currentPlan, refetch: refetchPlan } = useSubscriptionPlan();
+  
+  // Check dashboard limit
+  const dashboardLimit = checkLimit("dashboards");
 
   // Extract unique categories and tags
   const categories = useMemo(() => {
@@ -299,6 +305,19 @@ const Dashboards = () => {
     setShowForm(false);
     setEditingDashboard(null);
     fetchDashboards();
+    refetchPlan(); // Refresh usage counts
+  };
+
+  const handleNewDashboard = () => {
+    if (!dashboardLimit.allowed && !dashboardLimit.isUnlimited) {
+      toast({
+        title: "Limite atingido",
+        description: `Você atingiu o limite de ${dashboardLimit.limit} dashboards do plano ${currentPlan?.name || "atual"}. Faça upgrade para criar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowForm(true);
   };
 
   const getCredentialName = (credentialId: string | null) => {
@@ -338,11 +357,17 @@ const Dashboards = () => {
             
             {isAdmin && !showForm && (
               <Button
-                onClick={() => setShowForm(true)}
+                onClick={handleNewDashboard}
                 className="bg-primary hover:bg-primary/90 shadow-glow"
+                disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
               >
                 <Plus className="mr-2 h-5 w-5" />
                 Novo Dashboard
+                {!dashboardLimit.isUnlimited && (
+                  <Badge variant="secondary" className="ml-2">
+                    {dashboardLimit.current}/{dashboardLimit.limit}
+                  </Badge>
+                )}
               </Button>
             )}
           </div>
