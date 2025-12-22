@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 interface AccessLog {
   id: string;
@@ -975,4 +976,26 @@ const AccessLogs = () => {
   );
 };
 
-export default AccessLogs;
+const AccessLogsWithGuard = () => {
+  const { isMasterAdmin, loading } = useUserRole();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMasterAdmin) {
+    return <AccessLogs />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <AccessLogs />
+    </SubscriptionGuard>
+  );
+};
+
+export default AccessLogsWithGuard;

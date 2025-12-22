@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 interface Company {
   id: string;
@@ -1127,4 +1128,39 @@ const UsersManagement = () => {
   );
 };
 
-export default UsersManagement;
+const UsersManagementWithGuard = () => {
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+        setIsMaster(!!data);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMaster) {
+    return <UsersManagement />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <UsersManagement />
+    </SubscriptionGuard>
+  );
+};
+
+export default UsersManagementWithGuard;

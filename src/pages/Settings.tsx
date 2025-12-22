@@ -10,6 +10,7 @@ import { CustomizationSettings } from "@/components/settings/CustomizationSettin
 import { CancellationSettings } from "@/components/settings/CancellationSettings";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { CompanyFilter } from "@/components/CompanyFilter";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 const Settings = () => {
   const [loading, setLoading] = useState(true);
@@ -154,4 +155,39 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+const SettingsWithGuard = () => {
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+        setIsMaster(!!data);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMaster) {
+    return <Settings />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <Settings />
+    </SubscriptionGuard>
+  );
+};
+
+export default SettingsWithGuard;
