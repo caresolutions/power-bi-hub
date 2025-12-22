@@ -112,10 +112,16 @@ serve(async (req) => {
       console.error("Error updating profile:", profileError);
     }
 
-    // Assign role
+    // Delete any existing roles first (to avoid trigger-added roles)
+    await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    // Assign the correct role
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .upsert({
+      .insert({
         user_id: userId,
         role: invitedRole || "user",
       });
