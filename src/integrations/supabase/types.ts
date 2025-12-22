@@ -385,6 +385,79 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_features: {
+        Row: {
+          created_at: string
+          feature_description: string | null
+          feature_key: string
+          id: string
+          is_enabled: boolean
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_description?: string | null
+          feature_key: string
+          id?: string
+          is_enabled?: boolean
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_description?: string | null
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_limits: {
+        Row: {
+          created_at: string
+          id: string
+          is_unlimited: boolean
+          limit_key: string
+          limit_value: number | null
+          plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_unlimited?: boolean
+          limit_key: string
+          limit_value?: number | null
+          plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_unlimited?: boolean
+          limit_key?: string
+          limit_value?: number | null
+          plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       power_bi_configs: {
         Row: {
           client_id: string
@@ -695,6 +768,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          is_custom: boolean
+          name: string
+          plan_key: string
+          price_additional_user: number | null
+          price_monthly: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          is_custom?: boolean
+          name: string
+          plan_key: string
+          price_additional_user?: number | null
+          price_monthly?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          is_custom?: boolean
+          name?: string
+          plan_key?: string
+          price_additional_user?: number | null
+          price_monthly?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       subscription_recipients: {
         Row: {
