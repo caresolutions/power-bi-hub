@@ -4,81 +4,41 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, CreditCard, Check, Crown, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Check, Crown, Settings, Loader2, Infinity } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Stripe product and price mappings
-const STRIPE_PLANS = {
-  free: {
-    productId: "prod_TXiAfvNuN13Bdj",
-    priceId: "price_1SackXIanwCICrsHO7wfG1WM",
-  },
-  pro: {
-    productId: "prod_TXiBsq6Urco479",
-    priceId: "price_1SackmIanwCICrsHPUOabQqQ",
-  },
-  enterprise: {
-    productId: "prod_TXiB1hRL7kIi0Z",
-    priceId: "price_1Sacl7IanwCICrsHcwxFlClE",
-  },
-};
+interface SubscriptionPlan {
+  id: string;
+  plan_key: string;
+  name: string;
+  price_monthly: number;
+  description: string | null;
+  stripe_price_id: string | null;
+  stripe_product_id: string | null;
+  is_custom: boolean;
+  trial_days: number;
+}
 
-const plans = [
-  {
-    id: "free",
-    name: "Free",
-    price: "R$ 1",
-    period: "/mês",
-    trial: "7 dias grátis",
-    features: [
-      "1 Credencial Power BI",
-      "3 Dashboards",
-      "5 Usuários",
-      "Suporte por e-mail"
-    ],
-    highlighted: false
-  },
-  {
-    id: "pro",
-    name: "Profissional",
-    price: "R$ 2",
-    period: "/mês",
-    trial: "7 dias grátis",
-    features: [
-      "5 Credenciais Power BI",
-      "20 Dashboards",
-      "50 Usuários",
-      "Suporte prioritário",
-      "API de integração"
-    ],
-    highlighted: true
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: "R$ 3",
-    period: "/mês",
-    trial: "7 dias grátis",
-    features: [
-      "Credenciais ilimitadas",
-      "Dashboards ilimitados",
-      "Usuários ilimitados",
-      "Suporte 24/7",
-      "API de integração",
-      "SLA garantido"
-    ],
-    highlighted: false
-  }
-];
+interface PlanLimit {
+  limit_key: string;
+  limit_value: number | null;
+  is_unlimited: boolean;
+}
 
 interface SubscriptionStatus {
   subscribed: boolean;
+  status: string;
+  planKey: string | null;
   productId: string | null;
   subscriptionEnd: string | null;
   isTrialing: boolean;
+  isMasterManaged: boolean;
+  trialDaysRemaining: number;
 }
 
 const Subscription = () => {
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [planLimits, setPlanLimits] = useState<Record<string, PlanLimit[]>>({});
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -89,7 +49,7 @@ const Subscription = () => {
 
   useEffect(() => {
     checkAuth();
-    checkSubscription();
+    fetchPlansAndSubscription();
     
     // Handle success/cancel from Stripe
     if (searchParams.get("success") === "true") {
@@ -97,7 +57,10 @@ const Subscription = () => {
         title: "Assinatura realizada!",
         description: "Sua assinatura foi processada com sucesso.",
       });
-      checkSubscription();
+      // Refresh subscription status
+      setTimeout(() => {
+        checkSubscription();
+      }, 2000);
     } else if (searchParams.get("canceled") === "true") {
       toast({
         title: "Checkout cancelado",
@@ -125,6 +88,45 @@ const Subscription = () => {
     }
   };
 
+  const fetchPlansAndSubscription = async () => {
+    try {
+      // Fetch plans from database
+      const { data: plansData, error: plansError } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order");
+
+      if (plansError) throw plansError;
+
+      setPlans(plansData || []);
+
+      // Fetch limits for each plan
+      const limitsMap: Record<string, PlanLimit[]> = {};
+      for (const plan of plansData || []) {
+        const { data: limits } = await supabase
+          .from("plan_limits")
+          .select("limit_key, limit_value, is_unlimited")
+          .eq("plan_id", plan.id);
+        
+        limitsMap[plan.id] = limits || [];
+      }
+      setPlanLimits(limitsMap);
+
+      // Check subscription status
+      await checkSubscription();
+    } catch (error: any) {
+      console.error("Error fetching plans:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar planos.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkSubscription = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
@@ -133,20 +135,30 @@ const Subscription = () => {
       setSubscriptionStatus(data);
     } catch (error: any) {
       console.error("Error checking subscription:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleSelectPlan = async (planId: string) => {
-    const plan = STRIPE_PLANS[planId as keyof typeof STRIPE_PLANS];
-    if (!plan) return;
+  const handleSelectPlan = async (plan: SubscriptionPlan) => {
+    // Enterprise is custom - contact sales
+    if (plan.is_custom) {
+      window.location.href = "mailto:contato@care-business.com?subject=Interesse no plano Enterprise";
+      return;
+    }
 
-    setCheckoutLoading(planId);
+    if (!plan.stripe_price_id) {
+      toast({
+        title: "Erro",
+        description: "Este plano ainda não está configurado para pagamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCheckoutLoading(plan.id);
     
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: plan.priceId }
+        body: { priceId: plan.stripe_price_id }
       });
 
       if (error) throw error;
@@ -189,18 +201,32 @@ const Subscription = () => {
     }
   };
 
-  const getCurrentPlanId = (): string | null => {
-    if (!subscriptionStatus?.productId) return null;
-    
-    for (const [key, value] of Object.entries(STRIPE_PLANS)) {
-      if (value.productId === subscriptionStatus.productId) {
-        return key;
-      }
-    }
-    return null;
+  const isCurrentPlan = (plan: SubscriptionPlan): boolean => {
+    if (!subscriptionStatus?.planKey) return false;
+    return plan.plan_key === subscriptionStatus.planKey;
   };
 
-  const currentPlanId = getCurrentPlanId();
+  const getLimitLabel = (limitKey: string): string => {
+    const labels: Record<string, string> = {
+      users: "Usuários",
+      dashboards: "Dashboards",
+      credentials: "Credenciais Power BI"
+    };
+    return labels[limitKey] || limitKey;
+  };
+
+  const formatLimitValue = (limit: PlanLimit): string => {
+    if (limit.is_unlimited) return "Ilimitado";
+    return String(limit.limit_value || 0);
+  };
+
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -223,7 +249,7 @@ const Subscription = () => {
               </div>
             </div>
             
-            {subscriptionStatus?.subscribed && (
+            {subscriptionStatus?.subscribed && !subscriptionStatus.isMasterManaged && (
               <Button
                 variant="outline"
                 onClick={handleManageSubscription}
@@ -246,18 +272,28 @@ const Subscription = () => {
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">Escolha seu plano</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Selecione o plano ideal para suas necessidades
+            Selecione o plano ideal para suas necessidades. Todos incluem 7 dias de trial gratuito.
           </p>
-          {subscriptionStatus?.subscribed && currentPlanId && (
+          {subscriptionStatus?.subscribed && subscriptionStatus.planKey && (
             <div className="mt-4 inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
               <Crown className="h-4 w-4 text-primary" />
               <span className="text-sm">
-                Plano atual: <span className="font-bold capitalize">
-                  {plans.find(p => p.id === currentPlanId)?.name}
+                Plano atual: <span className="font-bold">
+                  {plans.find(p => p.plan_key === subscriptionStatus.planKey)?.name || subscriptionStatus.planKey}
                 </span>
                 {subscriptionStatus.isTrialing && (
-                  <span className="ml-2 text-amber-500">(Trial)</span>
+                  <span className="ml-2 text-amber-500">
+                    (Trial - {subscriptionStatus.trialDaysRemaining} dias restantes)
+                  </span>
                 )}
+              </span>
+            </div>
+          )}
+          {subscriptionStatus?.isMasterManaged && (
+            <div className="mt-4 inline-flex items-center gap-2 bg-purple-500/10 px-4 py-2 rounded-full">
+              <Crown className="h-4 w-4 text-purple-500" />
+              <span className="text-sm text-purple-500">
+                Assinatura gerenciada pelo administrador master
               </span>
             </div>
           )}
@@ -266,12 +302,14 @@ const Subscription = () => {
         {loading ? (
           <div className="text-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground mt-4">Carregando...</p>
+            <p className="text-muted-foreground mt-4">Carregando planos...</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {plans.map((plan, index) => {
-              const isCurrentPlan = currentPlanId === plan.id;
+              const current = isCurrentPlan(plan);
+              const limits = planLimits[plan.id] || [];
+              const isHighlighted = plan.plan_key === 'growth';
               
               return (
                 <motion.div
@@ -281,65 +319,89 @@ const Subscription = () => {
                   transition={{ delay: index * 0.1 }}
                 >
                   <Card 
-                    className={`glass p-8 border-border/50 relative overflow-hidden ${
-                      isCurrentPlan 
+                    className={`glass p-6 border-border/50 relative overflow-hidden h-full flex flex-col ${
+                      current 
                         ? "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]" 
-                        : plan.highlighted 
+                        : isHighlighted 
                           ? "border-primary shadow-glow" 
                           : "hover:border-primary/50"
                     } transition-all duration-300`}
                   >
-                    {isCurrentPlan && (
+                    {current && (
                       <div className="absolute top-4 right-4">
                         <span className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium">
                           Seu plano
                         </span>
                       </div>
                     )}
-                    {!isCurrentPlan && plan.highlighted && (
+                    {!current && isHighlighted && (
                       <div className="absolute top-4 right-4">
                         <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium">
-                          Mais popular
+                          Popular
                         </span>
                       </div>
                     )}
                     
-                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                    <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                     
-                    <div className="mb-6">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground">{plan.period}</span>
-                      <p className="text-sm text-primary mt-2 font-medium">{plan.trial}</p>
+                    <div className="mb-4">
+                      {plan.is_custom ? (
+                        <div>
+                          <span className="text-2xl font-bold">Sob consulta</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-3xl font-bold">{formatPrice(plan.price_monthly)}</span>
+                          <span className="text-muted-foreground">/mês</span>
+                        </div>
+                      )}
+                      {!plan.is_custom && (
+                        <p className="text-sm text-primary mt-1 font-medium">
+                          {plan.trial_days} dias grátis
+                        </p>
+                      )}
                     </div>
                     
-                    <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
+                    {plan.description && (
+                      <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+                    )}
+                    
+                    <ul className="space-y-2 mb-6 flex-grow">
+                      {limits.map((limit) => (
+                        <li key={limit.limit_key} className="flex items-center gap-2">
+                          {limit.is_unlimited ? (
+                            <Infinity className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          ) : (
+                            <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          )}
+                          <span className="text-sm">
+                            {formatLimitValue(limit)} {getLimitLabel(limit.limit_key)}
+                          </span>
                         </li>
                       ))}
                     </ul>
                     
                     <Button
                       className={`w-full ${
-                        plan.highlighted && !isCurrentPlan
+                        isHighlighted && !current
                           ? "bg-primary hover:bg-primary/90 shadow-glow" 
                           : ""
                       }`}
-                      variant={plan.highlighted && !isCurrentPlan ? "default" : "outline"}
-                      onClick={() => handleSelectPlan(plan.id)}
-                      disabled={isCurrentPlan || checkoutLoading !== null}
+                      variant={isHighlighted && !current ? "default" : "outline"}
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={current || checkoutLoading !== null || subscriptionStatus?.isMasterManaged}
                     >
                       {checkoutLoading === plan.id ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Processando...
                         </>
-                      ) : isCurrentPlan ? (
+                      ) : current ? (
                         "Plano atual"
+                      ) : plan.is_custom ? (
+                        "Falar com vendas"
                       ) : (
-                        "Selecionar"
+                        "Assinar"
                       )}
                     </Button>
                   </Card>
