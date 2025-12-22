@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 interface UserGroup {
   id: string;
@@ -775,4 +776,39 @@ const UserGroups = () => {
   );
 };
 
-export default UserGroups;
+const UserGroupsWithGuard = () => {
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+        setIsMaster(!!data);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMaster) {
+    return <UserGroups />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <UserGroups />
+    </SubscriptionGuard>
+  );
+};
+
+export default UserGroupsWithGuard;

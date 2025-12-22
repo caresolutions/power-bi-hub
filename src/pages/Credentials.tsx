@@ -21,6 +21,7 @@ import { CredentialCompanyAccessDialog } from "@/components/credentials/Credenti
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -433,4 +434,26 @@ const Credentials = () => {
   );
 };
 
-export default Credentials;
+const CredentialsWithGuard = () => {
+  const { isMasterAdmin, loading } = useUserRole();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMasterAdmin) {
+    return <Credentials />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <Credentials />
+    </SubscriptionGuard>
+  );
+};
+
+export default CredentialsWithGuard;

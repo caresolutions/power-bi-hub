@@ -17,6 +17,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useAccessLog } from "@/hooks/useAccessLog";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import { PlanLimitAlert } from "@/components/subscription/PlanLimitAlert";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -663,4 +664,26 @@ const Dashboards = () => {
   );
 };
 
-export default Dashboards;
+const DashboardsWithGuard = () => {
+  const { isMasterAdmin, loading } = useUserRole();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMasterAdmin) {
+    return <Dashboards />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <Dashboards />
+    </SubscriptionGuard>
+  );
+};
+
+export default DashboardsWithGuard;

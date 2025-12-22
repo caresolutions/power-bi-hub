@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 interface Subscription {
   id: string;
@@ -446,4 +447,39 @@ const ReportSubscriptions = () => {
   );
 };
 
-export default ReportSubscriptions;
+const ReportSubscriptionsWithGuard = () => {
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+        setIsMaster(!!data);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMaster) {
+    return <ReportSubscriptions />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <ReportSubscriptions />
+    </SubscriptionGuard>
+  );
+};
+
+export default ReportSubscriptionsWithGuard;

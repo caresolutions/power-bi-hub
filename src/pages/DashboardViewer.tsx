@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 import { cn } from "@/lib/utils";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 interface Dashboard {
   id: string;
@@ -612,4 +613,39 @@ const DashboardViewer = () => {
   );
 };
 
-export default DashboardViewer;
+const DashboardViewerWithGuard = () => {
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('is_master_admin', { _user_id: user.id });
+        setIsMaster(!!data);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, []);
+
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (isMaster) {
+    return <DashboardViewer />;
+  }
+
+  return (
+    <SubscriptionGuard>
+      <DashboardViewer />
+    </SubscriptionGuard>
+  );
+};
+
+export default DashboardViewerWithGuard;
