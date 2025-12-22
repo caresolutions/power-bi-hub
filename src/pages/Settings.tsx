@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Users, Palette } from "lucide-react";
+import { ArrowLeft, Building2, Users, Palette, FileX } from "lucide-react";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { UsersSettings } from "@/components/settings/UsersSettings";
 import { CustomizationSettings } from "@/components/settings/CustomizationSettings";
+import { CancellationSettings } from "@/components/settings/CancellationSettings";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { CompanyFilter } from "@/components/CompanyFilter";
 
@@ -113,7 +114,7 @@ const Settings = () => {
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-8">
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-lg grid-cols-4">
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
@@ -125,6 +126,10 @@ const Settings = () => {
             <TabsTrigger value="customization" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               <span className="hidden sm:inline">Personalização</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="flex items-center gap-2">
+              <FileX className="h-4 w-4" />
+              <span className="hidden sm:inline">Assinatura</span>
             </TabsTrigger>
           </TabsList>
 
@@ -138,6 +143,10 @@ const Settings = () => {
 
           <TabsContent value="customization">
             <CustomizationSettings companyId={effectiveCompanyId} />
+          </TabsContent>
+
+          <TabsContent value="subscription">
+            <CancellationSettings />
           </TabsContent>
         </Tabs>
       </main>

@@ -58,6 +58,7 @@ import { CompanyUsersManager } from "@/components/master-admin/CompanyUsersManag
 import { CompanyDashboardsManager } from "@/components/master-admin/CompanyDashboardsManager";
 import { CompanyGroupsManager } from "@/components/master-admin/CompanyGroupsManager";
 import { CompanySubscriptionManager } from "@/components/master-admin/CompanySubscriptionManager";
+import { SubscriptionsManager } from "@/components/master-admin/SubscriptionsManager";
 import { LegalTermsEditor } from "@/components/settings/LegalTermsEditor";
 
 interface Company {
@@ -217,6 +218,10 @@ const MasterAdmin = () => {
               <Building2 className="h-4 w-4" />
               Empresas
             </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Assinaturas
+            </TabsTrigger>
             <TabsTrigger value="legal-terms" className="gap-2">
               <FileText className="h-4 w-4" />
               Termos Legais
@@ -374,6 +379,10 @@ const MasterAdmin = () => {
               </p>
             </div>
             <LegalTermsEditor />
+          </TabsContent>
+
+          <TabsContent value="subscriptions">
+            <SubscriptionsManager />
           </TabsContent>
         </Tabs>
       </main>
