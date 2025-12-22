@@ -234,6 +234,7 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
         }
 
         const temporaryPassword = createData.temporaryPassword;
+        const isExistingUser = createData.isExistingUser;
 
         // Build dashboard list for email
         const selectedDashboardNames = dashboards
@@ -246,67 +247,111 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
         const loginLink = `${window.location.origin}/auth`;
 
-        const roleDescription = selectedRole === "admin" 
-          ? "Como administrador, você terá acesso completo para gerenciar dashboards, credenciais e usuários."
-          : "Como visualizador, você terá acesso aos dashboards selecionados abaixo:";
+        if (isExistingUser) {
+          // Send email for existing user - no password included
+          const roleDescription = selectedRole === "admin" 
+            ? "Agora você tem acesso de administrador nesta empresa."
+            : "Você recebeu acesso a novos dashboards:";
 
-        const dashboardSection = selectedRole === "user" && selectedDashboards.length > 0 
-          ? `
+          const dashboardSection = selectedRole === "user" && selectedDashboards.length > 0 
+            ? `
+              <ul style="margin: 16px 0; padding-left: 24px;">
+                ${dashboardListHtml}
+              </ul>
+            ` 
+            : "";
+
+          const emailContent = `
+            <h2 style="color: #0891b2; margin-bottom: 24px;">Novo Acesso Concedido</h2>
+            <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+              Você foi adicionado a uma nova empresa na plataforma Care BI.
+            </p>
             <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-              <strong>Dashboards disponíveis para você:</strong>
+              ${roleDescription}
             </p>
-            <ul style="margin: 16px 0; padding-left: 24px;">
-              ${dashboardListHtml}
-            </ul>
-          ` 
-          : "";
-
-        const emailContent = `
-          <h2 style="color: #0891b2; margin-bottom: 24px;">Bem-vindo ao Care BI!</h2>
-          <p style="color: #334155; font-size: 16px; line-height: 1.6;">
-            Você foi cadastrado na plataforma Care BI como <strong>${roleLabel}</strong>.
-          </p>
-          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-            ${roleDescription}
-          </p>
-          ${dashboardSection}
-          <div style="background-color: #f0f9ff; border: 1px solid #0891b2; border-radius: 8px; padding: 20px; margin: 24px 0;">
-            <p style="color: #0891b2; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
-              Suas credenciais de acesso:
+            ${dashboardSection}
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+              Use suas credenciais existentes para acessar a plataforma:
             </p>
-            <p style="color: #334155; font-size: 16px; margin: 0;">
-              <strong>E-mail:</strong> ${email}<br/>
-              <strong>Senha provisória:</strong> ${temporaryPassword}
-            </p>
-          </div>
-          <p style="color: #dc2626; font-size: 14px; line-height: 1.6; margin-top: 16px;">
-            <strong>Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
-          </p>
-          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
-            Clique no botão abaixo para acessar a plataforma:
-          </p>
-        `;
+          `;
 
-        const { error: emailError } = await supabase.functions.invoke("send-email", {
-          body: {
-            to: email,
-            subject: "Bem-vindo ao Care BI - Suas credenciais de acesso",
-            htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
-          },
-        });
+          await supabase.functions.invoke("send-email", {
+            body: {
+              to: email,
+              subject: "Novo Acesso Concedido - Care BI",
+              htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
+            },
+          });
 
-        if (emailError) {
-          console.error("Error sending email:", emailError);
           toast({
-            title: "Usuário criado",
-            description: `E-mail não pôde ser enviado. Senha provisória: ${temporaryPassword}`,
-            variant: "default",
+            title: "Acesso concedido!",
+            description: `Usuário existente adicionado à empresa. E-mail enviado para ${email}`,
           });
         } else {
-          toast({
-            title: "Usuário criado!",
-            description: `Credenciais enviadas para ${email}`,
+          // Send email for new user with password
+          const roleLabel = selectedRole === "admin" ? "Administrador" : "Visualizador";
+          const roleDescription = selectedRole === "admin" 
+            ? "Como administrador, você terá acesso completo para gerenciar dashboards, credenciais e usuários."
+            : "Como visualizador, você terá acesso aos dashboards selecionados abaixo:";
+
+          const dashboardSection = selectedRole === "user" && selectedDashboards.length > 0 
+            ? `
+              <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+                <strong>Dashboards disponíveis para você:</strong>
+              </p>
+              <ul style="margin: 16px 0; padding-left: 24px;">
+                ${dashboardListHtml}
+              </ul>
+            ` 
+            : "";
+
+          const emailContent = `
+            <h2 style="color: #0891b2; margin-bottom: 24px;">Bem-vindo ao Care BI!</h2>
+            <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+              Você foi cadastrado na plataforma Care BI como <strong>${roleLabel}</strong>.
+            </p>
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+              ${roleDescription}
+            </p>
+            ${dashboardSection}
+            <div style="background-color: #f0f9ff; border: 1px solid #0891b2; border-radius: 8px; padding: 20px; margin: 24px 0;">
+              <p style="color: #0891b2; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+                Suas credenciais de acesso:
+              </p>
+              <p style="color: #334155; font-size: 16px; margin: 0;">
+                <strong>E-mail:</strong> ${email}<br/>
+                <strong>Senha provisória:</strong> ${temporaryPassword}
+              </p>
+            </div>
+            <p style="color: #dc2626; font-size: 14px; line-height: 1.6; margin-top: 16px;">
+              <strong>Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
+            </p>
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+              Clique no botão abaixo para acessar a plataforma:
+            </p>
+          `;
+
+          const { error: emailError } = await supabase.functions.invoke("send-email", {
+            body: {
+              to: email,
+              subject: "Bem-vindo ao Care BI - Suas credenciais de acesso",
+              htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
+            },
           });
+
+          if (emailError) {
+            console.error("Error sending email:", emailError);
+            toast({
+              title: "Usuário criado",
+              description: `E-mail não pôde ser enviado. Senha provisória: ${temporaryPassword}`,
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: "Usuário criado!",
+              description: `Credenciais enviadas para ${email}`,
+            });
+          }
         }
 
         onSuccess();
