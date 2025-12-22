@@ -187,7 +187,7 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
 
     // Update role if changed
     if (editForm.role !== editingUser.role) {
-      // First delete ALL existing roles for the user
+      // First delete ALL existing roles for the user and wait for completion
       const { error: deleteError } = await supabase
         .from("user_roles")
         .delete()
@@ -195,23 +195,28 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
 
       if (deleteError) {
         console.error("Error deleting roles:", deleteError);
-      }
-
-      // Wait a moment to ensure deletion is committed
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Insert new role using upsert to avoid conflicts
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .upsert(
-          { user_id: editingUser.id, role: editForm.role as 'admin' | 'user' | 'master_admin' },
-          { onConflict: 'user_id,role' }
-        );
-
-      if (roleError) {
         toast({
           title: "Erro",
-          description: "Não foi possível atualizar a função",
+          description: "Não foi possível remover a função anterior",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
+      // Insert new role with simple insert (not upsert)
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ 
+          user_id: editingUser.id, 
+          role: editForm.role as 'admin' | 'user' | 'master_admin' 
+        });
+
+      if (roleError) {
+        console.error("Error inserting role:", roleError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar a função: " + roleError.message,
           variant: "destructive",
         });
         setSaving(false);
