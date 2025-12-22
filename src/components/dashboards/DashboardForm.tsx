@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2, Play } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2, Play, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import SliderSlidesManager, { SliderSlide } from "./SliderSlidesManager";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 
 interface Dashboard {
   id: string;
@@ -55,6 +56,8 @@ interface DashboardFormProps {
 }
 
 const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAdmin = false, defaultCompanyId }: DashboardFormProps) => {
+  const { hasFeature } = useSubscriptionPlan();
+  const canUseSlider = hasFeature("slider_tv");
   const [url, setUrl] = useState("");
   const [name, setName] = useState(dashboard?.name || "");
   const [embedType, setEmbedType] = useState(dashboard?.embed_type || "workspace_id");
@@ -382,17 +385,29 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           {/* Embed Type Selector */}
           <div className="space-y-2">
             <Label>Tipo de Integração</Label>
-            <Select value={embedType} onValueChange={setEmbedType}>
+            <Select value={embedType} onValueChange={(value) => {
+              if (value === "slider" && !canUseSlider) {
+                return; // Don't allow changing to slider if not available
+              }
+              setEmbedType(value);
+            }}>
               <SelectTrigger className="bg-background/50">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="workspace_id">ID do Workspace (Power BI Embedded)</SelectItem>
                 <SelectItem value="public_link">Link Público</SelectItem>
-                <SelectItem value="slider">
+                <SelectItem value="slider" disabled={!canUseSlider}>
                   <div className="flex items-center gap-2">
-                    <Play className="h-4 w-4" />
+                    {canUseSlider ? (
+                      <Play className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    )}
                     Slider (Múltiplos Dashboards)
+                    {!canUseSlider && (
+                      <Badge variant="secondary" className="text-xs ml-1">Upgrade</Badge>
+                    )}
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -404,6 +419,12 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
                 ? "Mescle múltiplos dashboards em uma apresentação rotativa para exibição em TVs"
                 : "Use as credenciais do Power BI para incorporar dashboards privados"}
             </p>
+            {!canUseSlider && (
+              <p className="text-xs text-amber-500 flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                Slider TV disponível a partir do plano Growth
+              </p>
+            )}
           </div>
 
           {/* Slider Section */}
