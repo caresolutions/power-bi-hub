@@ -245,21 +245,28 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
       };
 
       if (isEditing) {
-        const { error } = await (supabase as any)
+        const updateData: any = {
+          name,
+          embed_type: embedType,
+          public_link: publicLink || null,
+          workspace_id: getWorkspaceId(),
+          dashboard_id: getDashboardId(),
+          report_section: reportSection || null,
+          credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
+          description: description || null,
+          category: category || null,
+          tags: tags.length > 0 ? tags : null,
+          dataset_schema: datasetSchema || null,
+        };
+
+        // Allow master admin to change company
+        if (isMasterAdmin && companyId) {
+          updateData.company_id = companyId;
+        }
+
+        const { error } = await supabase
           .from("dashboards")
-          .update({
-            name,
-            embed_type: embedType,
-            public_link: publicLink || null,
-            workspace_id: getWorkspaceId(),
-            dashboard_id: getDashboardId(),
-            report_section: reportSection || null,
-            credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
-            description: description || null,
-            category: category || null,
-            tags: tags.length > 0 ? tags : null,
-            dataset_schema: datasetSchema || null,
-          })
+          .update(updateData)
           .eq("id", dashboard.id);
 
         if (error) throw error;
