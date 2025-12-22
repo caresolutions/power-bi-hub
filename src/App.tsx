@@ -17,6 +17,7 @@ import MasterAdmin from "./pages/MasterAdmin";
 import UserGroups from "./pages/UserGroups";
 import AccessLogs from "./pages/AccessLogs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CancellationPolicy from "./pages/CancellationPolicy";
 import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
 import { ConsentProvider } from "./components/consent/ConsentProvider";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/groups" element={<UserGroups />} />
             <Route path="/access-logs" element={<AccessLogs />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/cancellation-policy" element={<CancellationPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

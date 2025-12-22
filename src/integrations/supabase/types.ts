@@ -352,6 +352,39 @@ export type Database = {
           },
         ]
       }
+      legal_terms: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          last_update: string
+          term_type: string
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          last_update: string
+          term_type: string
+          title: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          last_update?: string
+          term_type?: string
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       power_bi_configs: {
         Row: {
           client_id: string

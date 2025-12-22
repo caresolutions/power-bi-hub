@@ -48,7 +48,8 @@ import {
   Shield,
   Settings,
   CreditCard,
-  FolderOpen
+  FolderOpen,
+  FileText
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ import { CompanyUsersManager } from "@/components/master-admin/CompanyUsersManag
 import { CompanyDashboardsManager } from "@/components/master-admin/CompanyDashboardsManager";
 import { CompanyGroupsManager } from "@/components/master-admin/CompanyGroupsManager";
 import { CompanySubscriptionManager } from "@/components/master-admin/CompanySubscriptionManager";
+import { LegalTermsEditor } from "@/components/settings/LegalTermsEditor";
 
 interface Company {
   id: string;
@@ -209,52 +211,65 @@ const MasterAdmin = () => {
 
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Gestão de Empresas</h1>
-            <p className="text-muted-foreground">
-              Crie e gerencie as empresas, usuários, grupos, dashboards e assinaturas
-            </p>
-          </div>
+        <Tabs defaultValue="companies" className="space-y-8">
+          <TabsList>
+            <TabsTrigger value="companies" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Empresas
+            </TabsTrigger>
+            <TabsTrigger value="legal-terms" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Termos Legais
+            </TabsTrigger>
+          </TabsList>
 
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditingCompany(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Empresa
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCompany ? "Editar Empresa" : "Nova Empresa"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingCompany 
-                    ? "Atualize os dados da empresa" 
-                    : "Preencha os dados para criar uma nova empresa"}
-                </DialogDescription>
-              </DialogHeader>
-              <CompanyForm 
-                editingCompany={editingCompany}
-                onSuccess={() => {
-                  setDialogOpen(false);
+          <TabsContent value="companies">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Gestão de Empresas</h1>
+                <p className="text-muted-foreground">
+                  Crie e gerencie as empresas, usuários, grupos, dashboards e assinaturas
+                </p>
+              </div>
+
+              <Dialog open={dialogOpen} onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) {
                   setEditingCompany(null);
-                  fetchCompanies();
-                }}
-                onCancel={() => {
-                  setDialogOpen(false);
-                  setEditingCompany(null);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova Empresa
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingCompany ? "Editar Empresa" : "Nova Empresa"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingCompany 
+                        ? "Atualize os dados da empresa" 
+                        : "Preencha os dados para criar uma nova empresa"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CompanyForm 
+                    editingCompany={editingCompany}
+                    onSuccess={() => {
+                      setDialogOpen(false);
+                      setEditingCompany(null);
+                      fetchCompanies();
+                    }}
+                    onCancel={() => {
+                      setDialogOpen(false);
+                      setEditingCompany(null);
+                    }}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -349,6 +364,18 @@ const MasterAdmin = () => {
             </Table>
           </Card>
         )}
+          </TabsContent>
+
+          <TabsContent value="legal-terms">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold mb-2">Termos Legais</h1>
+              <p className="text-muted-foreground">
+                Gerencie as políticas e termos legais da plataforma
+              </p>
+            </div>
+            <LegalTermsEditor />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Company Management Sheet */}
