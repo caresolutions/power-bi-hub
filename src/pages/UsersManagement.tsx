@@ -167,18 +167,23 @@ const UsersManagement = () => {
       return;
     }
 
-    const { data: roleData } = await supabase
+    // Fetch ALL roles for the user to handle multiple roles correctly
+    const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleData?.role !== 'admin' && roleData?.role !== 'master_admin') {
+    const roles = rolesData?.map((r) => r.role) || [];
+    
+    // Check if user has admin or master_admin role
+    const hasAdminAccess = roles.includes('admin') || roles.includes('master_admin');
+    if (!hasAdminAccess) {
       navigate("/home");
       return;
     }
 
-    const isMaster = roleData?.role === 'master_admin';
+    // Determine highest role - master_admin takes precedence
+    const isMaster = roles.includes('master_admin');
     setIsMasterAdmin(isMaster);
 
     if (isMaster) {
