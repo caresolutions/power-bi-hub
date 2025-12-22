@@ -101,32 +101,47 @@ export const SubscriptionsManager = () => {
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
-      // Fetch all subscriptions with profile and company info
-      const { data, error } = await supabase
+      // Fetch all subscriptions
+      const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          profile:profiles!subscriptions_user_id_fkey (
-            email,
-            full_name,
-            company:companies (
-              name
-            )
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (subsError) throw subsError;
 
-      // Transform data to handle the nested structure
-      const transformedData = (data || []).map((sub: any) => ({
-        ...sub,
-        profile: sub.profile ? {
-          email: sub.profile.email,
-          full_name: sub.profile.full_name,
-          company: sub.profile.company
-        } : undefined
-      }));
+      // Fetch profiles with companies for all user_ids
+      const userIds = (subsData || []).map(s => s.user_id);
+      
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          email,
+          full_name,
+          company:companies (
+            name
+          )
+        `);
+
+      if (profilesError) throw profilesError;
+
+      // Map profiles by id for quick lookup
+      const profilesMap = new Map(
+        (profilesData || []).map((p: any) => [p.id, p])
+      );
+
+      // Combine subscriptions with profiles
+      const transformedData = (subsData || []).map((sub: any) => {
+        const profile = profilesMap.get(sub.user_id);
+        return {
+          ...sub,
+          profile: profile ? {
+            email: profile.email,
+            full_name: profile.full_name,
+            company: profile.company
+          } : undefined
+        };
+      });
 
       setSubscriptions(transformedData);
     } catch (error) {
