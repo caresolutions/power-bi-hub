@@ -214,7 +214,7 @@ const MasterAdmin = () => {
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-12">
         <Tabs defaultValue="companies" className="space-y-8">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="companies" className="gap-2">
               <Building2 className="h-4 w-4" />
               Empresas
@@ -223,13 +223,13 @@ const MasterAdmin = () => {
               <CreditCard className="h-4 w-4" />
               Assinaturas
             </TabsTrigger>
-            <TabsTrigger value="legal-terms" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Termos Legais
-            </TabsTrigger>
             <TabsTrigger value="plans" className="gap-2">
               <Settings className="h-4 w-4" />
               Planos
+            </TabsTrigger>
+            <TabsTrigger value="legal-terms" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Termos Legais
             </TabsTrigger>
           </TabsList>
 
