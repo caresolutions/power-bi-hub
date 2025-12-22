@@ -235,6 +235,13 @@ const Home = () => {
                 <span>{getRoleLabel()}</span>
               </div>
               
+              {userRole === 'master_admin' && (
+                <Button variant="ghost" onClick={() => navigate("/master-admin")}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Master Admin
+                </Button>
+              )}
+              
               {(userRole === 'admin' || userRole === 'master_admin') && (
                 <Button variant="ghost" onClick={() => navigate("/settings")}>
                   <Cog className="mr-2 h-4 w-4" />
