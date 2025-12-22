@@ -67,9 +67,9 @@ serve(async (req) => {
     });
 
     if (authError) {
-      // Check if user already exists
+      // Check if user already exists in auth
       if (authError.message.includes("already been registered")) {
-        console.log("User already exists, fetching existing user...");
+        console.log("User already exists in auth, checking profile...");
         
         // Find existing user by email
         const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
@@ -85,9 +85,47 @@ serve(async (req) => {
           throw new Error("Usuário não encontrado");
         }
         
-        userId = existingUser.id;
-        isExistingUser = true;
-        console.log("Found existing user:", userId);
+        // Check if user has a profile (meaning they're active in the system)
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("id", existingUser.id)
+          .maybeSingle();
+        
+        if (existingProfile) {
+          // User exists and has profile - treat as existing user
+          userId = existingUser.id;
+          isExistingUser = true;
+          console.log("Found existing user with profile:", userId);
+        } else {
+          // User exists in auth but no profile - was deleted, so delete from auth and recreate
+          console.log("User exists in auth but no profile, deleting from auth to recreate...");
+          
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+          
+          if (deleteError) {
+            console.error("Error deleting orphan user:", deleteError);
+            throw new Error("Erro ao limpar usuário órfão");
+          }
+          
+          // Now create the user fresh
+          const { data: newAuthData, error: newAuthError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password: temporaryPassword,
+            email_confirm: true,
+            user_metadata: {
+              invited_by: invitedBy,
+            },
+          });
+          
+          if (newAuthError || !newAuthData.user) {
+            console.error("Error creating user after cleanup:", newAuthError);
+            throw new Error(newAuthError?.message || "Erro ao criar usuário");
+          }
+          
+          userId = newAuthData.user.id;
+          console.log("Created new user after cleanup:", userId);
+        }
       } else {
         console.error("Error creating user:", authError);
         throw new Error(authError.message);
