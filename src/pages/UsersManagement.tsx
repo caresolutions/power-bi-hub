@@ -128,8 +128,22 @@ const UsersManagement = () => {
     const dashboardParam = searchParams.get("dashboard");
     if (dashboardParam) {
       setSelectedDashboard(dashboardParam);
+      // Fetch the dashboard's company_id to auto-select company for master admin
+      fetchDashboardCompany(dashboardParam);
     }
   }, [searchParams]);
+
+  const fetchDashboardCompany = async (dashboardId: string) => {
+    const { data } = await supabase
+      .from("dashboards")
+      .select("company_id")
+      .eq("id", dashboardId)
+      .single();
+    
+    if (data?.company_id) {
+      setSelectedCompany(data.company_id);
+    }
+  };
 
   useEffect(() => {
     if (selectedCompany) {
