@@ -21,6 +21,8 @@ import {
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
+import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 type UserRole = 'admin' | 'user' | 'master_admin';
 
@@ -56,14 +58,12 @@ const Home = () => {
       return;
     }
 
-    // Check user roles - get all roles and use highest privilege
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id);
 
     if (rolesData && rolesData.length > 0) {
-      // Priority: master_admin > admin > user
       const roles = rolesData.map(r => r.role);
       if (roles.includes('master_admin')) {
         setUserRole('master_admin');
@@ -95,7 +95,6 @@ const Home = () => {
     navigate("/");
   };
 
-  // Master Admin menu
   const masterAdminMenuItems = [
     {
       title: "Gestão de Empresas",
@@ -204,7 +203,7 @@ const Home = () => {
     );
   }
 
-  return (
+  const content = (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
       
@@ -260,6 +259,9 @@ const Home = () => {
 
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-12">
+        {/* Subscription Alert */}
+        {userRole !== 'master_admin' && <SubscriptionAlert />}
+
         <div className="mb-12 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
             Bem-vindo ao <span className="text-primary">Care BI</span>
@@ -334,6 +336,13 @@ const Home = () => {
       </main>
     </div>
   );
+
+  // Master admins don't need subscription guard
+  if (userRole === 'master_admin') {
+    return content;
+  }
+
+  return <SubscriptionGuard>{content}</SubscriptionGuard>;
 };
 
 export default Home;
