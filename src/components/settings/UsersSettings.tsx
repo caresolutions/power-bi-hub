@@ -187,16 +187,26 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
 
     // Update role if changed
     if (editForm.role !== editingUser.role) {
-      // Delete existing role
-      await supabase
+      // First delete ALL existing roles for the user
+      const { error: deleteError } = await supabase
         .from("user_roles")
         .delete()
         .eq("user_id", editingUser.id);
 
-      // Insert new role
+      if (deleteError) {
+        console.error("Error deleting roles:", deleteError);
+      }
+
+      // Wait a moment to ensure deletion is committed
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Insert new role using upsert to avoid conflicts
       const { error: roleError } = await supabase
         .from("user_roles")
-        .insert({ user_id: editingUser.id, role: editForm.role as 'admin' | 'user' | 'master_admin' });
+        .upsert(
+          { user_id: editingUser.id, role: editForm.role as 'admin' | 'user' | 'master_admin' },
+          { onConflict: 'user_id,role' }
+        );
 
       if (roleError) {
         toast({
