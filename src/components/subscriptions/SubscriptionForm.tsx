@@ -13,7 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, X, Plus, Trash2 } from "lucide-react";
+import { Save, X, Plus, Trash2, Lock } from "lucide-react";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Recipient {
   email: string;
@@ -55,6 +58,8 @@ export const SubscriptionForm = ({
   onSuccess,
   onCancel,
 }: SubscriptionFormProps) => {
+  const { hasFeature } = useSubscriptionPlan();
+  const canUseRlsEmail = hasFeature("rls_email");
   const [saving, setSaving] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -410,16 +415,40 @@ export const SubscriptionForm = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-6">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`rls-${index}`}
-                      checked={recipient.apply_rls}
-                      onCheckedChange={(checked) => updateRecipient(index, "apply_rls", !!checked)}
-                    />
-                    <Label htmlFor={`rls-${index}`} className="text-xs">
-                      Aplicar RLS
-                    </Label>
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`rls-${index}`}
+                            checked={recipient.apply_rls}
+                            onCheckedChange={(checked) => {
+                              if (!canUseRlsEmail && checked) {
+                                return; // Don't allow enabling if feature not available
+                              }
+                              updateRecipient(index, "apply_rls", !!checked);
+                            }}
+                            disabled={!canUseRlsEmail}
+                          />
+                          <Label 
+                            htmlFor={`rls-${index}`} 
+                            className={`text-xs flex items-center gap-1 ${!canUseRlsEmail ? 'text-muted-foreground' : ''}`}
+                          >
+                            {!canUseRlsEmail && <Lock className="h-3 w-3" />}
+                            Aplicar RLS
+                            {!canUseRlsEmail && (
+                              <Badge variant="secondary" className="text-[10px] py-0 px-1 ml-1">Upgrade</Badge>
+                            )}
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      {!canUseRlsEmail && (
+                        <TooltipContent>
+                          <p>RLS por e-mail disponível a partir do plano Scale</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                   {recipients.length > 1 && (
                     <Button
                       type="button"
