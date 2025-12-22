@@ -212,43 +212,39 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
         onSuccess();
       } else {
-        // User doesn't exist - create invitation
-        // Check if invitation already exists
-        const { data: existingInvite } = await supabase
-          .from("user_invitations")
-          .select("id")
-          .eq("email", email)
-          .is("accepted_at", null)
-          .gt("expires_at", new Date().toISOString())
-          .maybeSingle();
+        // User doesn't exist - create user directly with temporary password
+        const roleLabel = selectedRole === "admin" ? "Administrador" : "Visualizador";
 
-        if (existingInvite) {
-          toast({
-            title: "Aviso",
-            description: "Já existe um convite pendente para este e-mail",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
+        // Call edge function to create user with temporary password
+        const { data: createData, error: createError } = await supabase.functions.invoke(
+          "create-invited-user",
+          {
+            body: {
+              email,
+              companyId: adminProfile.company_id,
+              dashboardIds: selectedRole === "user" ? selectedDashboards : [],
+              invitedBy: user.id,
+              invitedRole: selectedRole,
+            },
+          }
+        );
+
+        if (createError || !createData?.success) {
+          throw new Error(createError?.message || createData?.error || "Erro ao criar usuário");
         }
 
-        // Create invitation with role and company
-        const token = generateToken();
-        const { error } = await supabase
-          .from("user_invitations")
-          .insert({
-            email,
-            invited_by: user.id,
-            dashboard_ids: selectedRole === "user" ? selectedDashboards : [],
-            token,
-            company_id: adminProfile.company_id,
-            invited_role: selectedRole,
-          });
+        const temporaryPassword = createData.temporaryPassword;
 
-        if (error) throw error;
+        // Build dashboard list for email
+        const selectedDashboardNames = dashboards
+          .filter(d => selectedDashboards.includes(d.id))
+          .map(d => d.name);
 
-        // Send invitation email
-        const inviteLink = `${window.location.origin}/auth?invite=${token}`;
+        const dashboardListHtml = selectedDashboardNames
+          .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
+          .join('');
+
+        const loginLink = `${window.location.origin}/auth`;
 
         const roleDescription = selectedRole === "admin" 
           ? "Como administrador, você terá acesso completo para gerenciar dashboards, credenciais e usuários."
@@ -266,38 +262,50 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           : "";
 
         const emailContent = `
-          <h2 style="color: #0891b2; margin-bottom: 24px;">Você foi convidado!</h2>
+          <h2 style="color: #0891b2; margin-bottom: 24px;">Bem-vindo ao Care BI!</h2>
           <p style="color: #334155; font-size: 16px; line-height: 1.6;">
-            Você recebeu um convite para acessar a plataforma Care BI como <strong>${roleLabel}</strong>.
+            Você foi cadastrado na plataforma Care BI como <strong>${roleLabel}</strong>.
           </p>
           <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 16px;">
             ${roleDescription}
           </p>
           ${dashboardSection}
+          <div style="background-color: #f0f9ff; border: 1px solid #0891b2; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="color: #0891b2; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+              Suas credenciais de acesso:
+            </p>
+            <p style="color: #334155; font-size: 16px; margin: 0;">
+              <strong>E-mail:</strong> ${email}<br/>
+              <strong>Senha provisória:</strong> ${temporaryPassword}
+            </p>
+          </div>
+          <p style="color: #dc2626; font-size: 14px; line-height: 1.6; margin-top: 16px;">
+            <strong>Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
+          </p>
           <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
-            Clique no botão abaixo para criar sua conta:
+            Clique no botão abaixo para acessar a plataforma:
           </p>
         `;
 
         const { error: emailError } = await supabase.functions.invoke("send-email", {
           body: {
             to: email,
-            subject: "Convite para acessar Care BI",
-            htmlContent: getEmailTemplate(emailContent, inviteLink, "Criar Conta"),
+            subject: "Bem-vindo ao Care BI - Suas credenciais de acesso",
+            htmlContent: getEmailTemplate(emailContent, loginLink, "Acessar Plataforma"),
           },
         });
 
         if (emailError) {
           console.error("Error sending email:", emailError);
           toast({
-            title: "Convite criado",
-            description: `E-mail não pôde ser enviado. Link: ${inviteLink}`,
+            title: "Usuário criado",
+            description: `E-mail não pôde ser enviado. Senha provisória: ${temporaryPassword}`,
             variant: "default",
           });
         } else {
           toast({
-            title: "Convite enviado!",
-            description: `E-mail de convite enviado para ${email}`,
+            title: "Usuário criado!",
+            description: `Credenciais enviadas para ${email}`,
           });
         }
 
