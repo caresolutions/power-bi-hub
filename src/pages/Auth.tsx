@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, ChevronRight } from "lucide-react";
+import { ArrowLeft, Mail, Lock, ChevronRight, Shield, Eye, UserPlus, AlertCircle } from "lucide-react";
 import { z } from "zod";
 import CompanyRegistrationForm from "@/components/company/CompanyRegistrationForm";
+import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
 
 const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
@@ -31,16 +33,26 @@ const signupSchema = z.object({
     .max(100, "Nome deve ter no máximo 100 caracteres"),
 });
 
+type SignupStep = "role-selection" | "form";
+type SelectedRole = "admin" | "user" | null;
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [needsCompanyRegistration, setNeedsCompanyRegistration] = useState(false);
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // New signup flow states
+  const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
+  const [selectedRole, setSelectedRole] = useState<SelectedRole>(null);
+  const [showUserAlert, setShowUserAlert] = useState(false);
+  
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -53,6 +65,19 @@ const Auth = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        // Check if user needs to change password
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("company_id, must_change_password")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.must_change_password) {
+          setNeedsPasswordChange(true);
+          setCheckingAuth(false);
+          return;
+        }
+
         // Check if user is admin and needs company registration
         const { data: role } = await supabase
           .from("user_roles")
@@ -61,12 +86,6 @@ const Auth = () => {
           .single();
 
         if (role?.role === 'admin') {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("company_id")
-            .eq("id", user.id)
-            .single();
-
           if (!profile?.company_id) {
             setNeedsCompanyRegistration(true);
             setCheckingAuth(false);
@@ -81,6 +100,11 @@ const Auth = () => {
     } finally {
       setCheckingAuth(false);
     }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    setNeedsPasswordChange(false);
+    navigate("/home");
   };
 
   const handleCompanyRegistrationSuccess = () => {
@@ -168,11 +192,11 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // Check if user is active
+        // Check if user is active and needs password change
         if (authData.user) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("company_id, is_active")
+            .select("company_id, is_active, must_change_password")
             .eq("id", authData.user.id)
             .single();
 
@@ -184,6 +208,13 @@ const Auth = () => {
               description: "Sua conta está inativa. Entre em contato com o administrador.",
               variant: "destructive",
             });
+            setLoading(false);
+            return;
+          }
+
+          // Check if needs password change
+          if (profile?.must_change_password) {
+            setNeedsPasswordChange(true);
             setLoading(false);
             return;
           }
@@ -209,6 +240,7 @@ const Auth = () => {
         
         navigate("/home");
       } else {
+        // Only admins can self-register
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -241,10 +273,42 @@ const Auth = () => {
     }
   };
 
+  const handleRoleSelection = (role: SelectedRole) => {
+    if (role === "user") {
+      setShowUserAlert(true);
+    } else {
+      setSelectedRole(role);
+      setSignupStep("form");
+    }
+  };
+
+  const resetSignupFlow = () => {
+    setSignupStep("role-selection");
+    setSelectedRole(null);
+    setShowUserAlert(false);
+    setEmail("");
+    setPassword("");
+    setFullName("");
+    setErrors({});
+  };
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
+
+  // Show password change dialog
+  if (needsPasswordChange) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        <ChangePasswordDialog 
+          open={true} 
+          onSuccess={handlePasswordChangeSuccess}
+        />
       </div>
     );
   }
@@ -260,6 +324,105 @@ const Auth = () => {
     );
   }
 
+  // Render role selection for signup
+  const renderRoleSelection = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-semibold mb-2">Como você deseja se cadastrar?</h2>
+        <p className="text-sm text-muted-foreground">
+          Selecione o tipo de conta que deseja criar
+        </p>
+      </div>
+
+      {showUserAlert ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="space-y-4"
+        >
+          <Alert className="border-primary/50 bg-primary/5">
+            <AlertCircle className="h-4 w-4 text-primary" />
+            <AlertTitle>Convite necessário</AlertTitle>
+            <AlertDescription className="mt-2">
+              Para se cadastrar como <strong>Usuário</strong>, você precisa receber um convite de um administrador da sua empresa.
+              <br /><br />
+              Solicite ao administrador que envie um convite para o seu e-mail. Você receberá uma senha provisória para acessar o sistema.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => setShowUserAlert(false)}
+            >
+              Voltar
+            </Button>
+            <Button 
+              className="flex-1"
+              onClick={() => {
+                setShowUserAlert(false);
+                setIsLogin(true);
+              }}
+            >
+              Já tenho convite
+            </Button>
+          </div>
+        </motion.div>
+      ) : (
+        <div className="grid gap-4">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleRoleSelection("admin")}
+            className="flex items-center gap-4 p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card/80 hover:border-primary/50 transition-all text-left"
+          >
+            <div className="bg-primary/10 p-3 rounded-lg">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold">Administrador</h3>
+              <p className="text-sm text-muted-foreground">
+                Crie sua empresa e gerencie dashboards, usuários e assinaturas. Teste grátis por 7 dias.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleRoleSelection("user")}
+            className="flex items-center gap-4 p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card/80 hover:border-primary/50 transition-all text-left"
+          >
+            <div className="bg-muted/50 p-3 rounded-lg">
+              <Eye className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold">Usuário</h3>
+              <p className="text-sm text-muted-foreground">
+                Acesse dashboards compartilhados pela sua empresa. Requer convite do administrador.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </motion.button>
+        </div>
+      )}
+
+      <div className="text-center pt-4">
+        <button
+          onClick={() => {
+            setIsLogin(true);
+            resetSignupFlow();
+          }}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Já tem uma conta? Entre
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
@@ -273,7 +436,13 @@ const Auth = () => {
         <Button
           variant="ghost"
           className="mb-6"
-          onClick={() => navigate("/")}
+          onClick={() => {
+            if (!isLogin && signupStep === "form") {
+              resetSignupFlow();
+            } else {
+              navigate("/");
+            }
+          }}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
@@ -291,14 +460,18 @@ const Auth = () => {
                 ? "Recuperar senha" 
                 : isLogin 
                   ? "Bem-vindo de volta" 
-                  : "Criar conta"}
+                  : signupStep === "role-selection"
+                    ? "Criar conta"
+                    : "Cadastro de Administrador"}
             </h1>
             <p className="text-muted-foreground text-sm">
               {isForgotPassword
                 ? "Digite seu e-mail para receber o link de recuperação"
                 : isLogin
                   ? "Entre com suas credenciais"
-                  : "Comece sua jornada conosco"}
+                  : signupStep === "role-selection"
+                    ? "Escolha como deseja acessar a plataforma"
+                    : "Crie sua conta e configure sua empresa"}
             </p>
           </div>
 
@@ -343,6 +516,8 @@ const Auth = () => {
                 </button>
               </div>
             </form>
+          ) : !isLogin && signupStep === "role-selection" ? (
+            renderRoleSelection()
           ) : (
             <>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -431,8 +606,13 @@ const Auth = () => {
               <div className="mt-6 text-center">
                 <button
                   onClick={() => {
-                    setIsLogin(!isLogin);
-                    setErrors({});
+                    if (isLogin) {
+                      setIsLogin(false);
+                      resetSignupFlow();
+                    } else {
+                      setIsLogin(true);
+                      resetSignupFlow();
+                    }
                   }}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
