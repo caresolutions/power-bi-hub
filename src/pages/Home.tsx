@@ -229,10 +229,12 @@ const Home = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                <span>{getRoleLabel()}</span>
-              </div>
+              {userRole !== 'master_admin' && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Shield className="h-4 w-4" />
+                  <span>{getRoleLabel()}</span>
+                </div>
+              )}
               
               {userRole === 'master_admin' && (
                 <Button variant="ghost" onClick={() => navigate("/master-admin")}>
