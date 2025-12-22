@@ -53,7 +53,10 @@ serve(async (req) => {
     // Generate temporary password
     const temporaryPassword = generateSecurePassword();
 
-    // Create user with admin API
+    let userId: string;
+    let isExistingUser = false;
+
+    // Try to create user with admin API
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: temporaryPassword,
@@ -64,15 +67,37 @@ serve(async (req) => {
     });
 
     if (authError) {
-      console.error("Error creating user:", authError);
-      throw new Error(authError.message);
+      // Check if user already exists
+      if (authError.message.includes("already been registered")) {
+        console.log("User already exists, fetching existing user...");
+        
+        // Find existing user by email
+        const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error("Error listing users:", listError);
+          throw new Error("Erro ao buscar usuário existente");
+        }
+        
+        const existingUser = existingUsers.users.find(u => u.email === email);
+        
+        if (!existingUser) {
+          throw new Error("Usuário não encontrado");
+        }
+        
+        userId = existingUser.id;
+        isExistingUser = true;
+        console.log("Found existing user:", userId);
+      } else {
+        console.error("Error creating user:", authError);
+        throw new Error(authError.message);
+      }
+    } else {
+      if (!authData.user) {
+        throw new Error("Failed to create user");
+      }
+      userId = authData.user.id;
     }
-
-    if (!authData.user) {
-      throw new Error("Failed to create user");
-    }
-
-    const userId = authData.user.id;
 
     // Update profile with company_id and must_change_password
     const { error: profileError } = await supabaseAdmin
@@ -120,7 +145,11 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true,
         userId,
-        temporaryPassword,
+        temporaryPassword: isExistingUser ? null : temporaryPassword,
+        isExistingUser,
+        message: isExistingUser 
+          ? "Usuário existente adicionado à empresa com sucesso" 
+          : "Novo usuário criado com sucesso",
       }),
       {
         status: 200,
