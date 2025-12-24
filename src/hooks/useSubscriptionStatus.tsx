@@ -183,11 +183,7 @@ export function useSubscriptionStatus(): UseSubscriptionStatusReturn {
 
   useEffect(() => {
     checkSubscription();
-    
-    // Check subscription every minute
-    const interval = setInterval(checkSubscription, 60000);
-    
-    return () => clearInterval(interval);
+    // Remove periodic check - only check on mount and when explicitly called
   }, [checkSubscription]);
 
   // Determine if access is blocked and why
