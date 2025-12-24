@@ -148,6 +148,13 @@ export function useSubscriptionStatus(): UseSubscriptionStatusReturn {
         }
       } else {
         // Call edge function for current user (admin)
+        // Ensure we have a valid session before calling
+        if (!session?.session?.access_token) {
+          console.log("No active session, skipping subscription check");
+          setLoading(false);
+          return;
+        }
+        
         const { data, error: funcError } = await supabase.functions.invoke('check-subscription');
         
         if (funcError) throw funcError;
