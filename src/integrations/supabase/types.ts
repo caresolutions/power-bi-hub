@@ -51,10 +51,13 @@ export type Database = {
           accent_color: string | null
           background_color: string | null
           border_color: string | null
+          border_radius: string | null
           card_color: string | null
           cnpj: string
           created_at: string
           destructive_color: string | null
+          font_primary: string | null
+          font_secondary: string | null
           foreground_color: string | null
           id: string
           logo_url: string | null
@@ -69,10 +72,13 @@ export type Database = {
           accent_color?: string | null
           background_color?: string | null
           border_color?: string | null
+          border_radius?: string | null
           card_color?: string | null
           cnpj: string
           created_at?: string
           destructive_color?: string | null
+          font_primary?: string | null
+          font_secondary?: string | null
           foreground_color?: string | null
           id?: string
           logo_url?: string | null
@@ -87,10 +93,13 @@ export type Database = {
           accent_color?: string | null
           background_color?: string | null
           border_color?: string | null
+          border_radius?: string | null
           card_color?: string | null
           cnpj?: string
           created_at?: string
           destructive_color?: string | null
+          font_primary?: string | null
+          font_secondary?: string | null
           foreground_color?: string | null
           id?: string
           logo_url?: string | null

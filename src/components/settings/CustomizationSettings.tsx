@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Upload, Save, X, FileText, Loader2, Sparkles } from "lucide-react";
+import { Palette, Upload, Save, X, FileText, Loader2, Sparkles, Type, Lightbulb, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CompanyCustomization {
   id: string;
@@ -21,6 +23,9 @@ interface CompanyCustomization {
   success_color: string | null;
   card_color: string | null;
   border_color: string | null;
+  font_primary: string | null;
+  font_secondary: string | null;
+  border_radius: string | null;
 }
 
 interface ColorField {
@@ -41,6 +46,25 @@ interface FormData {
   success_color: string;
   card_color: string;
   border_color: string;
+  font_primary: string;
+  font_secondary: string;
+  border_radius: string;
+}
+
+interface ExtractedData {
+  brand_name?: string;
+  fonts?: {
+    primary?: string;
+    secondary?: string;
+  };
+  style?: {
+    border_radius?: string;
+    visual_tone?: string;
+    contrast_level?: string;
+  };
+  logo_description?: string;
+  design_recommendations?: string[];
+  confidence?: string;
 }
 
 const defaultColors: FormData = {
@@ -55,6 +79,9 @@ const defaultColors: FormData = {
   success_color: "#22c55e",
   card_color: "#ffffff",
   border_color: "#e2e8f0",
+  font_primary: "",
+  font_secondary: "",
+  border_radius: "md",
 };
 
 const colorFields: ColorField[] = [
@@ -70,6 +97,38 @@ const colorFields: ColorField[] = [
   { key: "border_color", label: "Bordas", description: "Contornos de elementos" },
 ];
 
+const popularFonts = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Montserrat",
+  "Poppins",
+  "Nunito",
+  "Raleway",
+  "Source Sans Pro",
+  "Ubuntu",
+  "Playfair Display",
+  "Merriweather",
+  "Oswald",
+  "DM Sans",
+  "Space Grotesk",
+  "Manrope",
+  "Work Sans",
+  "Outfit",
+  "Plus Jakarta Sans",
+  "Figtree",
+];
+
+const borderRadiusOptions = [
+  { value: "none", label: "Reto", css: "0" },
+  { value: "sm", label: "Pequeno", css: "0.125rem" },
+  { value: "md", label: "Médio", css: "0.375rem" },
+  { value: "lg", label: "Grande", css: "0.5rem" },
+  { value: "xl", label: "Extra Grande", css: "0.75rem" },
+  { value: "full", label: "Arredondado", css: "9999px" },
+];
+
 interface CustomizationSettingsProps {
   companyId?: string | null;
 }
@@ -81,6 +140,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [formData, setFormData] = useState<FormData>(defaultColors);
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -92,7 +152,6 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
     
     let targetCompanyId = companyId;
     
-    // If no companyId provided, get from current user's profile
     if (!targetCompanyId) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -112,7 +171,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
     if (targetCompanyId) {
       const { data: companyData } = await supabase
         .from("companies")
-        .select("id, logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color")
+        .select("id, logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color, font_primary, font_secondary, border_radius")
         .eq("id", targetCompanyId)
         .single();
 
@@ -130,6 +189,9 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
           success_color: companyData.success_color || defaultColors.success_color,
           card_color: companyData.card_color || defaultColors.card_color,
           border_color: companyData.border_color || defaultColors.border_color,
+          font_primary: companyData.font_primary || "",
+          font_secondary: companyData.font_secondary || "",
+          border_radius: companyData.border_radius || "md",
         });
       }
     }
@@ -196,9 +258,9 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
     }
 
     setExtracting(true);
+    setExtractedData(null);
     
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(file);
       
@@ -217,26 +279,42 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
           throw new Error(data?.error || 'Erro ao extrair dados do brandbook');
         }
 
-        // Update form with extracted colors
-        const extractedData = data.data;
+        const extracted = data.data;
+        
+        // Update form with extracted data
         setFormData(prev => ({
           ...prev,
-          primary_color: extractedData.primary_color,
-          secondary_color: extractedData.secondary_color,
-          accent_color: extractedData.accent_color,
-          background_color: extractedData.background_color,
-          foreground_color: extractedData.foreground_color,
-          muted_color: extractedData.muted_color,
-          destructive_color: extractedData.destructive_color,
-          success_color: extractedData.success_color,
-          card_color: extractedData.card_color,
-          border_color: extractedData.border_color,
+          primary_color: extracted.primary_color,
+          secondary_color: extracted.secondary_color,
+          accent_color: extracted.accent_color,
+          background_color: extracted.background_color,
+          foreground_color: extracted.foreground_color,
+          muted_color: extracted.muted_color,
+          destructive_color: extracted.destructive_color,
+          success_color: extracted.success_color,
+          card_color: extracted.card_color,
+          border_color: extracted.border_color,
+          font_primary: extracted.fonts?.primary || prev.font_primary,
+          font_secondary: extracted.fonts?.secondary || prev.font_secondary,
+          border_radius: extracted.style?.border_radius || prev.border_radius,
         }));
 
-        toast({
-          title: "Brandbook Analisado!",
-          description: `Cores extraídas com confiança ${extractedData.confidence === 'high' ? 'alta' : extractedData.confidence === 'medium' ? 'média' : 'baixa'}. Revise e ajuste se necessário.`,
+        // Store extracted metadata for display
+        setExtractedData({
+          brand_name: extracted.brand_name,
+          fonts: extracted.fonts,
+          style: extracted.style,
+          logo_description: extracted.logo_description,
+          design_recommendations: extracted.design_recommendations,
+          confidence: extracted.confidence,
         });
+
+        toast({
+          title: "Brandbook Analisado com Sucesso!",
+          description: `Identidade visual extraída com confiança ${extracted.confidence === 'high' ? 'alta' : extracted.confidence === 'medium' ? 'média' : 'baixa'}`,
+        });
+        
+        setExtracting(false);
       };
 
       reader.onerror = () => {
@@ -249,7 +327,6 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
         description: error instanceof Error ? error.message : "Não foi possível processar o brandbook",
         variant: "destructive",
       });
-    } finally {
       setExtracting(false);
     }
   };
@@ -268,6 +345,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
       ...defaultColors,
       logo_url: prev.logo_url,
     }));
+    setExtractedData(null);
     toast({
       title: "Cores Resetadas",
       description: "As cores foram restauradas para os valores padrão",
@@ -292,6 +370,9 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
         success_color: formData.success_color,
         card_color: formData.card_color,
         border_color: formData.border_color,
+        font_primary: formData.font_primary || null,
+        font_secondary: formData.font_secondary || null,
+        border_radius: formData.border_radius || 'md',
       })
       .eq("id", company.id);
 
@@ -389,6 +470,33 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
     root.style.setProperty("--sidebar-background", hexToHSL(colors.card_color));
     root.style.setProperty("--sidebar-foreground", hexToHSL(colors.foreground_color));
     root.style.setProperty("--sidebar-border", hexToHSL(colors.border_color));
+
+    // Border radius
+    const radiusOption = borderRadiusOptions.find(opt => opt.value === colors.border_radius);
+    if (radiusOption) {
+      root.style.setProperty("--radius", radiusOption.css);
+    }
+
+    // Fonts - add Google Font links dynamically
+    if (colors.font_primary) {
+      loadGoogleFont(colors.font_primary);
+      root.style.setProperty("--font-heading", `"${colors.font_primary}", sans-serif`);
+    }
+    if (colors.font_secondary) {
+      loadGoogleFont(colors.font_secondary);
+      root.style.setProperty("--font-body", `"${colors.font_secondary}", sans-serif`);
+    }
+  };
+
+  const loadGoogleFont = (fontName: string) => {
+    const existingLink = document.querySelector(`link[data-font="${fontName}"]`);
+    if (existingLink) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+    link.dataset.font = fontName;
+    document.head.appendChild(link);
   };
 
   if (loading) {
@@ -412,13 +520,13 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle>Extração Automática</CardTitle>
+            <CardTitle>Extração Automática com IA</CardTitle>
           </div>
           <CardDescription>
-            Faça upload do brandbook (PDF) da sua empresa para extrair automaticamente as cores e elementos visuais
+            Faça upload do brandbook (PDF) da sua empresa para extrair automaticamente cores, fontes e estilos visuais
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <Input
               type="file"
@@ -434,7 +542,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                   {extracting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Analisando com IA...
+                      Analisando brandbook...
                     </>
                   ) : (
                     <>
@@ -446,9 +554,66 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
               </Button>
             </Label>
             <p className="text-sm text-muted-foreground">
-              Máximo 10MB. A IA extrairá cores automaticamente.
+              Máximo 10MB. A IA extrairá cores, fontes e estilos automaticamente.
             </p>
           </div>
+
+          {/* Extracted Data Display */}
+          {extractedData && (
+            <div className="mt-4 space-y-4 rounded-lg border p-4 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-500" />
+                <span className="font-medium">Análise Concluída</span>
+                <Badge variant={extractedData.confidence === 'high' ? 'default' : extractedData.confidence === 'medium' ? 'secondary' : 'outline'}>
+                  Confiança {extractedData.confidence === 'high' ? 'Alta' : extractedData.confidence === 'medium' ? 'Média' : 'Baixa'}
+                </Badge>
+              </div>
+
+              {extractedData.brand_name && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Marca identificada: </span>
+                  <span className="font-medium">{extractedData.brand_name}</span>
+                </div>
+              )}
+
+              {extractedData.fonts && (extractedData.fonts.primary || extractedData.fonts.secondary) && (
+                <div className="flex flex-wrap gap-2">
+                  <Type className="h-4 w-4 text-muted-foreground" />
+                  {extractedData.fonts.primary && (
+                    <Badge variant="outline">Títulos: {extractedData.fonts.primary}</Badge>
+                  )}
+                  {extractedData.fonts.secondary && (
+                    <Badge variant="outline">Textos: {extractedData.fonts.secondary}</Badge>
+                  )}
+                </div>
+              )}
+
+              {extractedData.style && (
+                <div className="flex flex-wrap gap-2">
+                  {extractedData.style.visual_tone && (
+                    <Badge variant="secondary">Tom: {extractedData.style.visual_tone}</Badge>
+                  )}
+                  {extractedData.style.contrast_level && (
+                    <Badge variant="secondary">Contraste: {extractedData.style.contrast_level}</Badge>
+                  )}
+                </div>
+              )}
+
+              {extractedData.design_recommendations && extractedData.design_recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm font-medium">Recomendações de Design:</span>
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1 ml-6">
+                    {extractedData.design_recommendations.map((rec, index) => (
+                      <li key={index} className="list-disc">{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -461,11 +626,11 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
               <CardTitle>Personalização Visual</CardTitle>
             </div>
             <Button variant="ghost" size="sm" onClick={handleResetColors}>
-              Resetar Cores
+              Resetar Tudo
             </Button>
           </div>
           <CardDescription>
-            Personalize a aparência da plataforma com o logo e as cores da sua empresa
+            Personalize a aparência da plataforma com o logo, cores e fontes da sua empresa
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -520,6 +685,85 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           <Separator />
 
+          {/* Typography Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
+              <Label className="text-base font-medium">Tipografia</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="font_primary">Fonte para Títulos</Label>
+                <Select
+                  value={formData.font_primary}
+                  onValueChange={(value) => handleColorChange("font_primary", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma fonte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {popularFonts.map((font) => (
+                      <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                        {font}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="font_secondary">Fonte para Textos</Label>
+                <Select
+                  value={formData.font_secondary}
+                  onValueChange={(value) => handleColorChange("font_secondary", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma fonte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {popularFonts.map((font) => (
+                      <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                        {font}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Border Radius Settings */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Arredondamento de Cantos</Label>
+            <div className="flex flex-wrap gap-2">
+              {borderRadiusOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={formData.border_radius === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleColorChange("border_radius", option.value)}
+                  className="gap-2"
+                >
+                  <div 
+                    className="w-4 h-4 border-2"
+                    style={{ 
+                      borderRadius: option.value === 'none' ? '0' : 
+                                   option.value === 'sm' ? '2px' : 
+                                   option.value === 'md' ? '4px' : 
+                                   option.value === 'lg' ? '6px' : 
+                                   option.value === 'xl' ? '8px' : '50%',
+                      borderColor: formData.border_radius === option.value ? 'white' : 'currentColor'
+                    }}
+                  />
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Color Palette */}
           <div className="space-y-4">
             <Label className="text-base font-medium">Paleta de Cores</Label>
@@ -555,17 +799,24 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           <Separator />
 
-          {/* Preview */}
+          {/* Enhanced Preview */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Pré-visualização</Label>
             <div 
               className="rounded-lg p-6 space-y-4"
-              style={{ backgroundColor: formData.background_color }}
+              style={{ 
+                backgroundColor: formData.background_color,
+                fontFamily: formData.font_secondary ? `"${formData.font_secondary}", sans-serif` : undefined,
+                borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+              }}
             >
               {/* Header Preview */}
               <div 
-                className="rounded-lg p-4 flex items-center gap-4"
-                style={{ backgroundColor: formData.primary_color }}
+                className="p-4 flex items-center gap-4"
+                style={{ 
+                  backgroundColor: formData.primary_color,
+                  borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                }}
               >
                 {formData.logo_url && (
                   <img
@@ -574,47 +825,82 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                     className="h-10 w-auto max-w-[100px] object-contain"
                   />
                 )}
-                <span className="text-white font-semibold">Sua Empresa</span>
+                <span 
+                  className="text-white font-semibold"
+                  style={{ fontFamily: formData.font_primary ? `"${formData.font_primary}", sans-serif` : undefined }}
+                >
+                  {extractedData?.brand_name || 'Sua Empresa'}
+                </span>
               </div>
               
               {/* Card Preview */}
               <div 
-                className="rounded-lg p-4 space-y-3"
+                className="p-4 space-y-3"
                 style={{ 
                   backgroundColor: formData.card_color,
                   borderColor: formData.border_color,
                   borderWidth: '1px',
-                  borderStyle: 'solid'
+                  borderStyle: 'solid',
+                  borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                 }}
               >
-                <h3 style={{ color: formData.foreground_color }} className="font-semibold">
+                <h3 
+                  style={{ 
+                    color: formData.foreground_color,
+                    fontFamily: formData.font_primary ? `"${formData.font_primary}", sans-serif` : undefined
+                  }} 
+                  className="font-semibold text-lg"
+                >
                   Título do Card
                 </h3>
                 <p style={{ color: formData.muted_color }} className="text-sm">
-                  Texto secundário de exemplo
+                  Este é um exemplo de texto secundário para demonstrar como ficará a aparência visual da sua plataforma.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
-                    className="px-3 py-1 rounded text-white text-sm"
-                    style={{ backgroundColor: formData.primary_color }}
+                    className="px-4 py-2 text-white text-sm font-medium transition-colors"
+                    style={{ 
+                      backgroundColor: formData.primary_color,
+                      borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                    }}
                   >
                     Primário
                   </button>
                   <button 
-                    className="px-3 py-1 rounded text-white text-sm"
-                    style={{ backgroundColor: formData.accent_color }}
+                    className="px-4 py-2 text-white text-sm font-medium"
+                    style={{ 
+                      backgroundColor: formData.accent_color,
+                      borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                    }}
                   >
-                    Acento
+                    Destaque
                   </button>
                   <button 
-                    className="px-3 py-1 rounded text-white text-sm"
-                    style={{ backgroundColor: formData.success_color }}
+                    className="px-4 py-2 text-sm font-medium border"
+                    style={{ 
+                      backgroundColor: 'transparent',
+                      color: formData.foreground_color,
+                      borderColor: formData.border_color,
+                      borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                    }}
+                  >
+                    Secundário
+                  </button>
+                  <button 
+                    className="px-4 py-2 text-white text-sm font-medium"
+                    style={{ 
+                      backgroundColor: formData.success_color,
+                      borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                    }}
                   >
                     Sucesso
                   </button>
                   <button 
-                    className="px-3 py-1 rounded text-white text-sm"
-                    style={{ backgroundColor: formData.destructive_color }}
+                    className="px-4 py-2 text-white text-sm font-medium"
+                    style={{ 
+                      backgroundColor: formData.destructive_color,
+                      borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
+                    }}
                   >
                     Excluir
                   </button>
