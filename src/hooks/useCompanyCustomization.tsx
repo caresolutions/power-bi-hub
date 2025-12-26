@@ -13,7 +13,19 @@ interface CompanyCustomization {
   success_color: string | null;
   card_color: string | null;
   border_color: string | null;
+  font_primary: string | null;
+  font_secondary: string | null;
+  border_radius: string | null;
 }
+
+const borderRadiusMap: Record<string, string> = {
+  'none': '0',
+  'sm': '0.125rem',
+  'md': '0.375rem',
+  'lg': '0.5rem',
+  'xl': '0.75rem',
+  'full': '9999px',
+};
 
 // Convert hex to HSL
 const hexToHSL = (hex: string): string => {
@@ -49,6 +61,17 @@ const hexToHSL = (hex: string): string => {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 };
 
+const loadGoogleFont = (fontName: string) => {
+  const existingLink = document.querySelector(`link[data-font="${fontName}"]`);
+  if (existingLink) return;
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+  link.dataset.font = fontName;
+  document.head.appendChild(link);
+};
+
 export const useCompanyCustomization = () => {
   const [customization, setCustomization] = useState<CompanyCustomization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +96,7 @@ export const useCompanyCustomization = () => {
     if (profile?.company_id) {
       const { data: companyData } = await supabase
         .from("companies")
-        .select("logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color")
+        .select("logo_url, primary_color, secondary_color, accent_color, background_color, foreground_color, muted_color, destructive_color, success_color, card_color, border_color, font_primary, font_secondary, border_radius")
         .eq("id", profile.company_id)
         .single();
 
@@ -90,6 +113,9 @@ export const useCompanyCustomization = () => {
           success_color: companyData.success_color || "#22c55e",
           card_color: companyData.card_color || "#ffffff",
           border_color: companyData.border_color || "#e2e8f0",
+          font_primary: companyData.font_primary || null,
+          font_secondary: companyData.font_secondary || null,
+          border_radius: companyData.border_radius || "md",
         });
 
         // Apply colors to CSS variables
@@ -153,6 +179,21 @@ export const useCompanyCustomization = () => {
     root.style.setProperty("--sidebar-background", cardHSL);
     root.style.setProperty("--sidebar-foreground", foregroundHSL);
     root.style.setProperty("--sidebar-border", borderHSL);
+
+    // Border radius
+    const borderRadius = colors.border_radius || 'md';
+    const radiusCss = borderRadiusMap[borderRadius] || '0.375rem';
+    root.style.setProperty("--radius", radiusCss);
+
+    // Fonts
+    if (colors.font_primary) {
+      loadGoogleFont(colors.font_primary);
+      root.style.setProperty("--font-heading", `"${colors.font_primary}", sans-serif`);
+    }
+    if (colors.font_secondary) {
+      loadGoogleFont(colors.font_secondary);
+      root.style.setProperty("--font-body", `"${colors.font_secondary}", sans-serif`);
+    }
   };
 
   return { customization, loading, refetch: fetchCustomization };
