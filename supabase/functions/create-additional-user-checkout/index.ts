@@ -88,9 +88,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+    // Build session params - only use customer OR customer_email, not both
+    const sessionParams: any = {
       line_items: [
         {
           price: planData.stripe_additional_user_price_id,
@@ -106,7 +105,16 @@ serve(async (req) => {
       },
       success_url: `${origin}/add-users?success=true&quantity=${quantity}`,
       cancel_url: `${origin}/add-users?canceled=true`,
-    });
+    };
+
+    // Only set one of customer or customer_email
+    if (customerId) {
+      sessionParams.customer = customerId;
+    } else {
+      sessionParams.customer_email = user.email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
