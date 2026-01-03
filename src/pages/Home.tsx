@@ -93,7 +93,7 @@ const Home = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    window.location.href = "/auth";
   };
 
   const masterAdminMenuItems = [
