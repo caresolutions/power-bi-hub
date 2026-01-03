@@ -84,26 +84,55 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No Stripe customer found");
       
-      // Check if local trial is active
-      if (localSub?.status === "trial") {
-        const trialDaysRemaining = calculateTrialDaysRemaining(localSub);
-        const isBlocked = trialDaysRemaining <= 0;
+      // Check if local subscription is active or trial
+      if (localSub?.status === "active" || localSub?.status === "trial") {
+        const isTrialing = localSub.status === "trial";
+        
+        // Check if subscription period is still valid
+        let isBlocked = false;
+        let trialDaysRemaining = 0;
+        
+        if (localSub.current_period_end) {
+          const endDate = new Date(localSub.current_period_end);
+          const now = new Date();
+          const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (isTrialing) {
+            trialDaysRemaining = daysRemaining;
+            isBlocked = daysRemaining <= 0;
+          } else {
+            // Active subscription - check if period ended
+            isBlocked = daysRemaining < 0;
+          }
+        } else if (isTrialing) {
+          // No end date set for trial, calculate from created_at
+          trialDaysRemaining = calculateTrialDaysRemaining(localSub);
+          isBlocked = trialDaysRemaining <= 0;
+        }
 
-        // Update subscription status if trial expired
-        if (isBlocked && localSub.status === "trial") {
+        // Update subscription status if expired
+        if (isBlocked && (localSub.status === "trial" || localSub.status === "active")) {
           await supabaseClient
             .from("subscriptions")
             .update({ status: "expired" })
             .eq("id", localSub.id);
         }
 
+        // Get plan details
+        const { data: planData } = await supabaseClient
+          .from("subscription_plans")
+          .select("*")
+          .eq("plan_key", localSub.plan)
+          .maybeSingle();
+
         return new Response(JSON.stringify({ 
           subscribed: !isBlocked,
-          status: isBlocked ? "expired" : "trial",
+          status: isBlocked ? "expired" : localSub.status,
           planKey: localSub.plan,
-          productId: null, 
+          planName: planData?.name || localSub.plan,
+          productId: planData?.stripe_product_id || null, 
           subscriptionEnd: localSub.current_period_end, 
-          isTrialing: !isBlocked,
+          isTrialing: isTrialing && !isBlocked,
           isMasterManaged: false,
           isBlocked,
           trialDaysRemaining: Math.max(0, trialDaysRemaining),
