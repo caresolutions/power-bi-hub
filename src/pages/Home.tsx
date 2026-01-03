@@ -16,7 +16,8 @@ import {
   BarChart3,
   Building2,
   Users2,
-  Activity
+  Activity,
+  UserPlus
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
@@ -168,6 +169,13 @@ const Home = () => {
       icon: CreditCard,
       path: "/subscription",
       color: "bg-amber-500/10 text-amber-500"
+    },
+    {
+      title: "Contratar Usuários",
+      description: "Adicione mais usuários à sua conta",
+      icon: UserPlus,
+      path: "/add-users",
+      color: "bg-teal-500/10 text-teal-500"
     }
   ];
 

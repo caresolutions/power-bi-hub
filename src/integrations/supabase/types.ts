@@ -790,6 +790,7 @@ export type Database = {
           plan_key: string
           price_additional_user: number | null
           price_monthly: number
+          stripe_additional_user_price_id: string | null
           stripe_price_id: string | null
           stripe_product_id: string | null
           trial_days: number
@@ -806,6 +807,7 @@ export type Database = {
           plan_key: string
           price_additional_user?: number | null
           price_monthly?: number
+          stripe_additional_user_price_id?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           trial_days?: number
@@ -822,6 +824,7 @@ export type Database = {
           plan_key?: string
           price_additional_user?: number | null
           price_monthly?: number
+          stripe_additional_user_price_id?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           trial_days?: number
