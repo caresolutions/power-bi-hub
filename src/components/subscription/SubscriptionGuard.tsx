@@ -1,10 +1,10 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CreditCard, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubscriptionGuardProps {
   children: ReactNode;
@@ -71,7 +71,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => window.location.href = "/auth"}
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = "/auth";
+                  }}
                 >
                   Sair
                 </Button>
