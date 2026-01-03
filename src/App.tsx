@@ -11,6 +11,7 @@ import Dashboards from "./pages/Dashboards";
 import DashboardViewer from "./pages/DashboardViewer";
 import UsersManagement from "./pages/UsersManagement";
 import Subscription from "./pages/Subscription";
+import AddUsers from "./pages/AddUsers";
 import Settings from "./pages/Settings";
 import ReportSubscriptions from "./pages/ReportSubscriptions";
 import MasterAdmin from "./pages/MasterAdmin";
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
             <Route path="/users" element={<UsersManagement />} />
             <Route path="/subscription" element={<Subscription />} />
+            <Route path="/add-users" element={<AddUsers />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/master-admin" element={<MasterAdmin />} />
             <Route path="/groups" element={<UserGroups />} />
