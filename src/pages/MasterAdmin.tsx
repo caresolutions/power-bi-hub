@@ -183,7 +183,7 @@ const MasterAdmin = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    window.location.href = "/auth";
   };
 
   return (
