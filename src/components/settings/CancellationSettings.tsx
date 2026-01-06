@@ -60,14 +60,32 @@ export const CancellationSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a managed subscription error from response body
+        const errorBody = typeof error === 'object' && 'context' in error ? (error as any).context : null;
+        if (errorBody?.body) {
+          try {
+            const parsed = JSON.parse(errorBody.body);
+            if (parsed.error === 'no_stripe_customer') {
+              toast.info(parsed.message || "Sua assinatura é gerenciada pelo administrador.");
+              return;
+            }
+          } catch {}
+        }
+        throw error;
+      }
+      
+      if (data?.error === 'no_stripe_customer') {
+        toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
+        return;
+      }
       
       if (data?.url) {
         window.open(data.url, '_blank');
       }
     } catch (error: any) {
       console.error("Error opening customer portal:", error);
-      toast.error(error.message || "Erro ao abrir portal do cliente.");
+      toast.error("Erro ao abrir portal do cliente.");
     } finally {
       setPortalLoading(false);
     }
@@ -80,16 +98,33 @@ export const CancellationSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a managed subscription error from response body
+        const errorBody = typeof error === 'object' && 'context' in error ? (error as any).context : null;
+        if (errorBody?.body) {
+          try {
+            const parsed = JSON.parse(errorBody.body);
+            if (parsed.error === 'no_stripe_customer') {
+              toast.info(parsed.message || "Sua assinatura é gerenciada pelo administrador.");
+              return;
+            }
+          } catch {}
+        }
+        throw error;
+      }
+      
+      if (data?.error === 'no_stripe_customer') {
+        toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
+        return;
+      }
       
       if (data?.url) {
-        // Open portal directly on cancellation section
         window.open(data.url, '_blank');
         toast.info("Você será redirecionado para o portal de gerenciamento. Selecione 'Cancelar plano' para prosseguir.");
       }
     } catch (error: any) {
       console.error("Error opening customer portal:", error);
-      toast.error(error.message || "Erro ao abrir portal do cliente.");
+      toast.error("Erro ao abrir portal do cliente.");
     } finally {
       setPortalLoading(false);
     }
