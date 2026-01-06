@@ -287,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
 
       setSession(newSession);
@@ -301,9 +301,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         setSubscriptionLoading(false);
       } else if (newSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        const userData = await fetchUserData(newSession.user);
-        setLoading(false);
-        await checkSubscription(userData);
+        // Use setTimeout to prevent deadlock - never await inside onAuthStateChange
+        setTimeout(async () => {
+          if (!mounted) return;
+          const userData = await fetchUserData(newSession.user);
+          if (mounted) {
+            setLoading(false);
+            await checkSubscription(userData);
+          }
+        }, 0);
       }
     });
 

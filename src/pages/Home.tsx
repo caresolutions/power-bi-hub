@@ -17,13 +17,15 @@ import {
   Building2,
   Users2,
   Activity,
-  UserPlus
+  UserPlus,
+  Loader2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
 type UserRole = 'admin' | 'user' | 'master_admin';
 
@@ -33,16 +35,18 @@ interface FavoriteDashboard {
 }
 
 const Home = () => {
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { role, loading: authLoading, user } = useAuth();
   const [favoriteDashboards, setFavoriteDashboards] = useState<FavoriteDashboard[]>([]);
   const navigate = useNavigate();
   const { customization } = useCompanyCustomization();
   const { favorites } = useDashboardFavorites();
 
+  // Redirect if not authenticated
   useEffect(() => {
-    checkAuthAndRole();
-  }, []);
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [authLoading, user, navigate]);
 
   useEffect(() => {
     if (favorites.length > 0) {
@@ -51,31 +55,6 @@ const Home = () => {
       setFavoriteDashboards([]);
     }
   }, [favorites]);
-
-  const checkAuthAndRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    if (rolesData && rolesData.length > 0) {
-      const roles = rolesData.map(r => r.role);
-      if (roles.includes('master_admin')) {
-        setUserRole('master_admin');
-      } else if (roles.includes('admin')) {
-        setUserRole('admin');
-      } else {
-        setUserRole('user');
-      }
-    }
-    setLoading(false);
-  };
 
   const fetchFavoriteDashboards = async () => {
     if (favorites.length === 0) return;
@@ -95,6 +74,9 @@ const Home = () => {
     await supabase.auth.signOut();
     window.location.href = "/auth";
   };
+
+  // Map context role to component role type
+  const userRole: UserRole | null = role as UserRole | null;
 
   const masterAdminMenuItems = [
     {
@@ -203,10 +185,10 @@ const Home = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
