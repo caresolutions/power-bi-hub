@@ -8,15 +8,16 @@ import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDial
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
 import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
+import { PageVisibilityManager } from "@/components/dashboards/PageVisibilityManager";
 import SliderViewer from "@/components/dashboards/SliderViewer";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { useAccessLog } from "@/hooks/useAccessLog";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 import { cn } from "@/lib/utils";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
-
 interface Dashboard {
   id: string;
   name: string;
@@ -61,6 +62,7 @@ const DashboardViewer = () => {
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
+  const [visiblePages, setVisiblePages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +71,52 @@ const DashboardViewer = () => {
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
+  const { role } = useAuth();
+  const isAdmin = role === 'admin' || role === 'master_admin';
+
+  // Load page visibility settings
+  const loadPageVisibility = useCallback(async (pages: ReportPage[]) => {
+    if (!id || pages.length === 0) {
+      setVisiblePages(pages);
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from("dashboard_page_visibility")
+        .select("page_name, is_visible, display_order")
+        .eq("dashboard_id", id);
+
+      if (!data || data.length === 0) {
+        // No visibility config, show all pages
+        setVisiblePages(pages);
+        return;
+      }
+
+      // Filter and sort visible pages
+      const visibilityMap = new Map(data.map(d => [d.page_name, d]));
+      const filtered = pages
+        .filter(page => {
+          const config = visibilityMap.get(page.name);
+          return config ? config.is_visible : true; // Default to visible
+        })
+        .sort((a, b) => {
+          const orderA = visibilityMap.get(a.name)?.display_order ?? 999;
+          const orderB = visibilityMap.get(b.name)?.display_order ?? 999;
+          return orderA - orderB;
+        });
+
+      setVisiblePages(filtered);
+    } catch (error) {
+      console.error("Error loading page visibility:", error);
+      setVisiblePages(pages);
+    }
+  }, [id]);
+
+  // Reload visibility when settings change
+  const handleVisibilityChange = useCallback(() => {
+    loadPageVisibility(reportPages);
+  }, [loadPageVisibility, reportPages]);
 
   useEffect(() => {
     powerbiRef.current = new pbi.service.Service(
@@ -323,6 +371,7 @@ const DashboardViewer = () => {
           isActive: page.isActive,
         }));
         setReportPages(pageList);
+        loadPageVisibility(pageList);
         
         const activePage = pageList.find(p => p.isActive);
         if (activePage) {
@@ -462,14 +511,23 @@ const DashboardViewer = () => {
           <span className="ml-2 text-sm font-medium text-foreground truncate">{dashboard.name}</span>
           
           {/* Report Pages Navigation */}
-          {reportPages.length > 1 && dashboard.embed_type === "workspace_id" && (
+          {visiblePages.length > 1 && dashboard.embed_type === "workspace_id" && (
             <div className="ml-4">
               <ReportPagesNav
-                pages={reportPages}
+                pages={visiblePages}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
               />
             </div>
+          )}
+          
+          {/* Page Visibility Manager - only for admins */}
+          {isAdmin && reportPages.length > 1 && dashboard.embed_type === "workspace_id" && (
+            <PageVisibilityManager
+              dashboardId={dashboard.id}
+              pages={reportPages}
+              onVisibilityChange={handleVisibilityChange}
+            />
           )}
           
           {lastRefresh && lastRefresh.completed_at && (

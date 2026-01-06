@@ -199,6 +199,47 @@ export type Database = {
           },
         ]
       }
+      dashboard_page_visibility: {
+        Row: {
+          created_at: string
+          dashboard_id: string
+          display_order: number
+          id: string
+          is_visible: boolean
+          page_display_name: string
+          page_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dashboard_id: string
+          display_order?: number
+          id?: string
+          is_visible?: boolean
+          page_display_name: string
+          page_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dashboard_id?: string
+          display_order?: number
+          id?: string
+          is_visible?: boolean
+          page_display_name?: string
+          page_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_page_visibility_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_refresh_history: {
         Row: {
           completed_at: string | null
