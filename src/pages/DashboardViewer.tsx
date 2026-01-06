@@ -521,8 +521,8 @@ const DashboardViewer = () => {
             </div>
           )}
           
-          {/* Page Visibility Manager - only for admins */}
-          {isAdmin && reportPages.length > 1 && dashboard.embed_type === "workspace_id" && (
+          {/* Page Visibility Manager - only for admins and master_admins */}
+          {(role === 'admin' || role === 'master_admin') && reportPages.length > 1 && dashboard.embed_type === "workspace_id" && (
             <PageVisibilityManager
               dashboardId={dashboard.id}
               pages={reportPages}
