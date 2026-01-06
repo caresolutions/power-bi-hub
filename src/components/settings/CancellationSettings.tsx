@@ -60,20 +60,7 @@ export const CancellationSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
-      if (error) {
-        // Check if it's a managed subscription error from response body
-        const errorBody = typeof error === 'object' && 'context' in error ? (error as any).context : null;
-        if (errorBody?.body) {
-          try {
-            const parsed = JSON.parse(errorBody.body);
-            if (parsed.error === 'no_stripe_customer') {
-              toast.info(parsed.message || "Sua assinatura é gerenciada pelo administrador.");
-              return;
-            }
-          } catch {}
-        }
-        throw error;
-      }
+      if (error) throw error;
       
       if (data?.error === 'no_stripe_customer') {
         toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
@@ -98,20 +85,7 @@ export const CancellationSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
-      if (error) {
-        // Check if it's a managed subscription error from response body
-        const errorBody = typeof error === 'object' && 'context' in error ? (error as any).context : null;
-        if (errorBody?.body) {
-          try {
-            const parsed = JSON.parse(errorBody.body);
-            if (parsed.error === 'no_stripe_customer') {
-              toast.info(parsed.message || "Sua assinatura é gerenciada pelo administrador.");
-              return;
-            }
-          } catch {}
-        }
-        throw error;
-      }
+      if (error) throw error;
       
       if (data?.error === 'no_stripe_customer') {
         toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
