@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CreditCard, Loader2 } from "lucide-react";
@@ -11,10 +11,10 @@ interface SubscriptionGuardProps {
 }
 
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
-  const { subscriptionStatus, loading, isAccessBlocked, blockReason } = useSubscriptionStatus();
+  const { subscriptionStatus, subscriptionLoading, isAccessBlocked, blockReason } = useAuth();
 
   // Show minimal loading without subscription message
-  if (loading) {
+  if (subscriptionLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

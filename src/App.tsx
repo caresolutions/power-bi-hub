@@ -22,8 +22,18 @@ import CancellationPolicy from "./pages/CancellationPolicy";
 import NotFound from "./pages/NotFound";
 import { SupportChat } from "./components/support/SupportChat";
 import { ConsentProvider } from "./components/consent/ConsentProvider";
+import { AuthProvider } from "./contexts/AuthContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 // Wrapper to conditionally show SupportChat based on route
 const ConditionalSupportChat = () => {
@@ -42,35 +52,37 @@ const ConditionalSupportChat = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ConsentProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/credentials" element={<Credentials />} />
-            <Route path="/dashboards" element={<Dashboards />} />
-            <Route path="/dashboard/:id" element={<DashboardViewer />} />
-            <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
-            <Route path="/users" element={<UsersManagement />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/add-users" element={<AddUsers />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/master-admin" element={<MasterAdmin />} />
-            <Route path="/groups" element={<UserGroups />} />
-            <Route path="/access-logs" element={<AccessLogs />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/cancellation-policy" element={<CancellationPolicy />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <ConditionalSupportChat />
-        </ConsentProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ConsentProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/credentials" element={<Credentials />} />
+              <Route path="/dashboards" element={<Dashboards />} />
+              <Route path="/dashboard/:id" element={<DashboardViewer />} />
+              <Route path="/dashboard/:dashboardId/subscriptions" element={<ReportSubscriptions />} />
+              <Route path="/users" element={<UsersManagement />} />
+              <Route path="/subscription" element={<Subscription />} />
+              <Route path="/add-users" element={<AddUsers />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/master-admin" element={<MasterAdmin />} />
+              <Route path="/groups" element={<UserGroups />} />
+              <Route path="/access-logs" element={<AccessLogs />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/cancellation-policy" element={<CancellationPolicy />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <ConditionalSupportChat />
+          </ConsentProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
