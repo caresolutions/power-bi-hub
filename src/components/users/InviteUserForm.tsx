@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, ArrowLeft, Send, Search, Shield, Eye } from "lucide-react";
+import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle } from "lucide-react";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
 interface Dashboard {
@@ -33,6 +35,11 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  
+  // Verificação de limite de usuários
+  const { checkLimit, loading: planLoading, refetch: refetchPlan } = useSubscriptionPlan();
+  const userLimitCheck = checkLimit("users");
+  const isAtUserLimit = !userLimitCheck.allowed && !userLimitCheck.isUnlimited;
 
   // Filter dashboards based on search query
   const filteredDashboards = useMemo(() => {
@@ -58,6 +65,16 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Verificar limite de usuários antes de prosseguir
+    if (isAtUserLimit) {
+      toast({
+        title: "Limite de usuários atingido",
+        description: `Seu plano permite até ${userLimitCheck.limit} usuários. Faça upgrade para adicionar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Only require dashboards for user role
     if (selectedRole === "user" && selectedDashboards.length === 0) {
@@ -441,6 +458,24 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           </div>
         </div>
 
+        {/* Alerta de limite de usuários */}
+        {isAtUserLimit && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Limite de usuários atingido ({userLimitCheck.current}/{userLimitCheck.limit}). 
+              Faça upgrade do seu plano para adicionar mais usuários.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Indicador de uso atual */}
+        {!userLimitCheck.isUnlimited && !isAtUserLimit && (
+          <div className="mb-6 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+            Usuários: {userLimitCheck.current}/{userLimitCheck.limit}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail do usuário</Label>
@@ -567,10 +602,10 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
             <Button
               type="submit"
               className="flex-1 bg-primary hover:bg-primary/90 shadow-glow"
-              disabled={loading || (selectedRole === "user" && dashboards.length === 0)}
+              disabled={loading || planLoading || isAtUserLimit || (selectedRole === "user" && dashboards.length === 0)}
             >
               <Send className="mr-2 h-4 w-4" />
-              {loading ? "Enviando..." : "Enviar Convite"}
+              {loading ? "Enviando..." : isAtUserLimit ? "Limite Atingido" : "Enviar Convite"}
             </Button>
           </div>
         </form>
