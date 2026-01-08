@@ -18,7 +18,9 @@ import {
   Users2,
   Activity,
   UserPlus,
-  Loader2
+  Loader2,
+  Rocket,
+  ArrowRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
@@ -37,6 +39,7 @@ interface FavoriteDashboard {
 const Home = () => {
   const { role, loading: authLoading, user } = useAuth();
   const [favoriteDashboards, setFavoriteDashboards] = useState<FavoriteDashboard[]>([]);
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
   const navigate = useNavigate();
   const { customization } = useCompanyCustomization();
   const { favorites } = useDashboardFavorites();
@@ -47,6 +50,42 @@ const Home = () => {
       navigate("/auth");
     }
   }, [authLoading, user, navigate]);
+
+  // Check if admin needs onboarding (no credentials or dashboards)
+  useEffect(() => {
+    const checkOnboardingNeeded = async () => {
+      if (!user || role !== 'admin') return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.company_id) return;
+
+      // Check if has credentials
+      const { data: credentials } = await supabase
+        .from("power_bi_configs")
+        .select("id")
+        .eq("company_id", profile.company_id)
+        .limit(1);
+
+      // Check if has dashboards
+      const { data: dashboards } = await supabase
+        .from("dashboards")
+        .select("id")
+        .eq("company_id", profile.company_id)
+        .limit(1);
+
+      // Show banner if no credentials OR no dashboards
+      if (!credentials?.length || !dashboards?.length) {
+        setShowOnboardingBanner(true);
+      }
+    };
+
+    checkOnboardingNeeded();
+  }, [user, role]);
 
   useEffect(() => {
     if (favorites.length > 0) {
@@ -253,6 +292,35 @@ const Home = () => {
       <main className="relative z-10 container mx-auto px-6 py-12">
         {/* Subscription Alert */}
         {userRole !== 'master_admin' && <SubscriptionAlert />}
+
+        {/* Onboarding Banner */}
+        {showOnboardingBanner && userRole === 'admin' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border-primary/30 p-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="bg-primary/20 p-3 rounded-xl">
+                    <Rocket className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Configure sua plataforma</h3>
+                    <p className="text-muted-foreground text-sm">
+                      Complete o onboarding guiado para configurar credenciais e dashboards
+                    </p>
+                  </div>
+                </div>
+                <Button onClick={() => navigate("/onboarding")} className="shadow-glow">
+                  Iniciar Configuração
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="mb-12 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
