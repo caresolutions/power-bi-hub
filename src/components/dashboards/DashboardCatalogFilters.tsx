@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, X, Star, Filter, Tag } from "lucide-react";
+import { Search, X, Star, Filter, Tag, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DashboardCatalogFiltersProps {
@@ -23,6 +23,8 @@ interface DashboardCatalogFiltersProps {
   tags: string[];
   showFavoritesOnly: boolean;
   onFavoritesToggle: () => void;
+  viewMode: "grid" | "list";
+  onViewModeChange: (mode: "grid" | "list") => void;
 }
 
 export const DashboardCatalogFilters = ({
@@ -36,6 +38,8 @@ export const DashboardCatalogFilters = ({
   tags,
   showFavoritesOnly,
   onFavoritesToggle,
+  viewMode,
+  onViewModeChange,
 }: DashboardCatalogFiltersProps) => {
   const [showAllTags, setShowAllTags] = useState(false);
   const visibleTags = showAllTags ? tags : tags.slice(0, 6);
@@ -90,6 +94,28 @@ export const DashboardCatalogFilters = ({
           >
             <Star className={cn("h-4 w-4", showFavoritesOnly && "fill-current")} />
           </Button>
+
+          {/* View Mode Toggle */}
+          <div className="flex border border-border rounded-md overflow-hidden">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => onViewModeChange("grid")}
+              className="rounded-none h-9 w-9"
+              title="Visualização em grade"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => onViewModeChange("list")}
+              className="rounded-none h-9 w-9"
+              title="Visualização em lista"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
