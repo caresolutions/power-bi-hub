@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2 } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2, LayoutGrid, List } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
 import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
@@ -67,6 +68,7 @@ const Dashboards = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -430,6 +432,8 @@ const Dashboards = () => {
                 tags={allTags}
                 showFavoritesOnly={showFavoritesOnly}
                 onFavoritesToggle={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
             )}
 
@@ -466,7 +470,7 @@ const Dashboards = () => {
                   Tente ajustar os filtros ou a busca
                 </p>
               </Card>
-            ) : (
+            ) : viewMode === "grid" ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDashboards.map((dashboard, index) => (
                   <motion.div
@@ -628,6 +632,136 @@ const Dashboards = () => {
                   </motion.div>
                 ))}
               </div>
+            ) : (
+              /* List View */
+              <Card className="glass border-border/50 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-border/50">
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Nome</TableHead>
+                      {isMasterAdmin && <TableHead>Empresa</TableHead>}
+                      <TableHead className="hidden md:table-cell">Categoria</TableHead>
+                      <TableHead className="hidden lg:table-cell">Tags</TableHead>
+                      <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                      {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDashboards.map((dashboard) => (
+                      <TableRow 
+                        key={dashboard.id}
+                        className="cursor-pointer hover:bg-muted/50 border-border/50"
+                        onClick={() => {
+                          logDashboardAccess(dashboard.id);
+                          navigate(`/dashboard/${dashboard.id}`);
+                        }}
+                      >
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                          <FavoriteButton
+                            isFavorite={isFavorite(dashboard.id)}
+                            onClick={() => toggleFavorite(dashboard.id)}
+                            size="sm"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/20">
+                              <BarChart3 className="h-5 w-5 text-primary/60" />
+                            </div>
+                            <div>
+                              <p className="font-medium line-clamp-1">{dashboard.name}</p>
+                              {dashboard.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">
+                                  {dashboard.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        {isMasterAdmin && (
+                          <TableCell>
+                            {dashboard.company ? (
+                              <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                                <Building2 className="h-3 w-3" />
+                                {dashboard.company.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell className="hidden md:table-cell">
+                          {dashboard.category ? (
+                            <Badge variant="secondary">{dashboard.category}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {dashboard.tags && dashboard.tags.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {dashboard.tags.slice(0, 2).map(tag => (
+                                <span 
+                                  key={tag} 
+                                  className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                              {dashboard.tags.length > 2 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{dashboard.tags.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant={dashboard.embed_type === "public_link" ? "default" : "outline"}>
+                            {dashboard.embed_type === "public_link" ? "Link Público" : "Workspace"}
+                          </Badge>
+                        </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => navigate(`/users?dashboard=${dashboard.id}`)}
+                                title="Gerenciar acesso"
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setEditingDashboard(dashboard)}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setDeletingId(dashboard.id)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
             )}
           </>
         )}
