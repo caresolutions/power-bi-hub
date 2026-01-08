@@ -10,7 +10,6 @@ import {
   LogOut,
   CreditCard,
   Shield,
-  ChevronRight,
   Cog,
   Star,
   BarChart3,
@@ -22,6 +21,7 @@ import {
   Rocket,
   ArrowRight
 } from "lucide-react";
+import careLogo from "@/assets/logo_care_azul.png";
 import { motion } from "framer-motion";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
@@ -248,12 +248,7 @@ const Home = () => {
                   className="h-10 w-auto max-w-[150px] object-contain"
                 />
               ) : (
-                <>
-                  <span className="text-2xl font-bold text-foreground">care</span>
-                  <ChevronRight className="h-5 w-5 text-primary" />
-                  <ChevronRight className="h-5 w-5 text-primary -ml-3" />
-                  <span className="text-lg font-medium text-muted-foreground ml-2">BI</span>
-                </>
+                <img src={careLogo} alt="Care" className="h-10 w-auto" />
               )}
             </div>
             

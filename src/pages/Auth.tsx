@@ -8,7 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, ChevronRight, Shield, Eye, UserPlus, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Shield, Eye, UserPlus, AlertCircle, Check, ChevronRight } from "lucide-react";
+import careLogo from "@/assets/logo_care_azul.png";
 import { z } from "zod";
 import CompanyRegistrationForm from "@/components/company/CompanyRegistrationForm";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
@@ -472,10 +473,8 @@ const Auth = () => {
         >
           <Card className="bg-card/80 backdrop-blur-md p-8 border-border/50">
             <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-1 mb-4">
-                <span className="text-2xl font-bold text-foreground">care</span>
-                <ChevronRight className="h-5 w-5 text-primary" />
-                <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+              <div className="flex items-center justify-center mb-4">
+                <img src={careLogo} alt="Care" className="h-10 w-auto" />
               </div>
               
               {passwordResetSuccess ? (
@@ -680,10 +679,8 @@ const Auth = () => {
 
         <Card className="bg-card/80 backdrop-blur-md p-8 border-border/50">
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-1 mb-4">
-              <span className="text-2xl font-bold text-foreground">care</span>
-              <ChevronRight className="h-5 w-5 text-primary" />
-              <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+            <div className="flex items-center justify-center mb-4">
+              <img src={careLogo} alt="Care" className="h-10 w-auto" />
             </div>
             <h1 className="text-2xl font-bold mb-2">
               {isForgotPassword 
