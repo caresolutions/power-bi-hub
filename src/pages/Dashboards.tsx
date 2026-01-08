@@ -740,6 +740,26 @@ const Dashboards = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                onClick={() => navigate(`/dashboard/${dashboard.id}/subscriptions`)}
+                                title="Assinaturas"
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                              {dashboard.embed_type === "workspace_id" && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setRefreshPermsDashboard(dashboard)}
+                                  title="Atualizar permissões"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
                                 onClick={() => setEditingDashboard(dashboard)}
                                 title="Editar"
                               >
