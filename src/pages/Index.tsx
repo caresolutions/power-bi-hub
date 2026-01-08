@@ -53,8 +53,8 @@ const Index = () => {
             <a href="#recursos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Recursos
             </a>
-            <a href="#sobre" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sobre
+            <a href="https://www.care-business.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Sobre Nós
             </a>
           </nav>
           
