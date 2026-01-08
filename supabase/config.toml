@@ -53,3 +53,15 @@ verify_jwt = true
 name = "sync-refresh-history"
 schedule = "*/15 * * * *"
 function = "sync-refresh-history"
+
+[functions.send-subscription-alerts]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Cron job to check for expiring trials daily at 9am
+[[cron]]
+name = "send-subscription-alerts"
+schedule = "0 9 * * *"
+function = "send-subscription-alerts"
