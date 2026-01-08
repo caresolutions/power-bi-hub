@@ -8,7 +8,8 @@ import WelcomeStep from "@/components/onboarding/WelcomeStep";
 import CredentialsStep from "@/components/onboarding/CredentialsStep";
 import AddDashboardStep from "@/components/onboarding/AddDashboardStep";
 import CompletionStep from "@/components/onboarding/CompletionStep";
-import { Check, ChevronRight } from "lucide-react";
+import { Check } from "lucide-react";
+import careLogo from "@/assets/logo_care_azul.png";
 
 type OnboardingStep = "welcome" | "credentials" | "dashboards" | "complete";
 
@@ -190,10 +191,8 @@ const Onboarding = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <div className="flex items-center justify-center gap-1 mb-4">
-            <span className="text-2xl font-bold text-foreground">care</span>
-            <ChevronRight className="h-5 w-5 text-primary" />
-            <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+          <div className="flex items-center justify-center mb-4">
+            <img src={careLogo} alt="Care" className="h-10 w-auto" />
           </div>
         </motion.div>
 

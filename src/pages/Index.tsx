@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BarChart3, Lock, Users, Zap, ChevronRight } from "lucide-react";
+import { ArrowRight, BarChart3, Lock, Users, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
+import careLogo from "@/assets/logo_care_azul.png";
 const Index = () => {
   const navigate = useNavigate();
 
@@ -46,9 +46,7 @@ const Index = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-foreground tracking-tight">care</span>
-            <ChevronRight className="h-5 w-5 text-primary" />
-            <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+            <img src={careLogo} alt="Care" className="h-8 w-auto" />
           </div>
           
           <nav className="hidden md:flex items-center gap-8">
@@ -200,9 +198,7 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-foreground">care</span>
-              <ChevronRight className="h-4 w-4 text-primary" />
-              <ChevronRight className="h-4 w-4 text-primary -ml-2" />
+              <img src={careLogo} alt="Care" className="h-6 w-auto" />
             </div>
             
             <p className="text-sm text-muted-foreground">
