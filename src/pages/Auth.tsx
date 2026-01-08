@@ -69,6 +69,28 @@ const Auth = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const type = hashParams.get('type');
       const accessToken = hashParams.get('access_token');
+      const error = hashParams.get('error');
+      const errorDescription = hashParams.get('error_description');
+      
+      // Handle error in URL (e.g., expired link)
+      if (error) {
+        console.error("Auth error from URL:", error, errorDescription);
+        const friendlyMessage = errorDescription?.includes('expired') 
+          ? "O link expirou. Por favor, solicite um novo link de recuperação."
+          : errorDescription?.replace(/\+/g, ' ') || "Erro na autenticação.";
+        
+        toast({
+          title: "Link inválido",
+          description: friendlyMessage,
+          variant: "destructive",
+        });
+        
+        // Clear hash from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsForgotPassword(true);
+        setCheckingAuth(false);
+        return;
+      }
       
       if (type === 'recovery' && accessToken) {
         console.log("Password recovery flow detected");
@@ -76,19 +98,22 @@ const Auth = () => {
         setCheckingAuth(false);
         
         // Set the session with the recovery token
-        const { error } = await supabase.auth.setSession({
+        const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: hashParams.get('refresh_token') || '',
         });
         
-        if (error) {
-          console.error("Error setting session:", error);
+        if (sessionError) {
+          console.error("Error setting session:", sessionError);
           toast({
             title: "Erro",
-            description: "Link de recuperação inválido ou expirado.",
+            description: "Link de recuperação inválido ou expirado. Solicite um novo link.",
             variant: "destructive",
           });
           setIsResettingPassword(false);
+          setIsForgotPassword(true);
+          // Clear hash from URL
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     };
