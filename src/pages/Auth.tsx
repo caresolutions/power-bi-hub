@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, ChevronRight, Shield, Eye, UserPlus, AlertCircle } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Mail, Lock, ChevronRight, Shield, Eye, UserPlus, AlertCircle, Check } from "lucide-react";
 import { z } from "zod";
 import CompanyRegistrationForm from "@/components/company/CompanyRegistrationForm";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
@@ -39,14 +39,17 @@ type SelectedRole = "admin" | "user" | null;
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [needsCompanyRegistration, setNeedsCompanyRegistration] = useState(false);
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
   
   // New signup flow states
   const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
@@ -55,13 +58,52 @@ const Auth = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     checkAuthAndCompany();
+    
+    // Handle password reset flow from URL
+    const handlePasswordReset = async () => {
+      // Check if this is a password recovery flow
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+      const accessToken = hashParams.get('access_token');
+      
+      if (type === 'recovery' && accessToken) {
+        console.log("Password recovery flow detected");
+        setIsResettingPassword(true);
+        setCheckingAuth(false);
+        
+        // Set the session with the recovery token
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: hashParams.get('refresh_token') || '',
+        });
+        
+        if (error) {
+          console.error("Error setting session:", error);
+          toast({
+            title: "Erro",
+            description: "Link de recuperação inválido ou expirado.",
+            variant: "destructive",
+          });
+          setIsResettingPassword(false);
+        }
+      }
+    };
+    
+    handlePasswordReset();
   }, []);
 
   const checkAuthAndCompany = async () => {
     try {
+      // Skip if in password reset flow
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (hashParams.get('type') === 'recovery') {
+        return;
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
@@ -167,6 +209,73 @@ const Auth = () => {
       toast({
         title: "Erro",
         description: error.message || "Erro ao enviar e-mail de recuperação",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    // Validate passwords
+    if (password.length < 8) {
+      setErrors({ password: "Senha deve ter no mínimo 8 caracteres" });
+      return;
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      setErrors({ password: "Senha deve conter pelo menos uma letra maiúscula" });
+      return;
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      setErrors({ password: "Senha deve conter pelo menos uma letra minúscula" });
+      return;
+    }
+    
+    if (!/[0-9]/.test(password)) {
+      setErrors({ password: "Senha deve conter pelo menos um número" });
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setErrors({ confirmPassword: "As senhas não coincidem" });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      
+      if (error) throw error;
+      
+      setPasswordResetSuccess(true);
+      
+      toast({
+        title: "Senha alterada!",
+        description: "Sua senha foi redefinida com sucesso.",
+      });
+      
+      // Clear hash from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // After a moment, redirect to login
+      setTimeout(() => {
+        setIsResettingPassword(false);
+        setPasswordResetSuccess(false);
+        setPassword("");
+        setConfirmPassword("");
+        setIsLogin(true);
+      }, 2000);
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao redefinir senha",
         variant: "destructive",
       });
     } finally {
@@ -320,6 +429,102 @@ const Auth = () => {
         <div className="relative z-10 w-full">
           <CompanyRegistrationForm onSuccess={handleCompanyRegistrationSuccess} />
         </div>
+      </div>
+    );
+  }
+
+  // Password reset form
+  if (isResettingPassword) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md relative z-10"
+        >
+          <Card className="bg-card/80 backdrop-blur-md p-8 border-border/50">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-1 mb-4">
+                <span className="text-2xl font-bold text-foreground">care</span>
+                <ChevronRight className="h-5 w-5 text-primary" />
+                <ChevronRight className="h-5 w-5 text-primary -ml-3" />
+              </div>
+              
+              {passwordResetSuccess ? (
+                <>
+                  <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                    <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h1 className="text-2xl font-bold mb-2">Senha redefinida!</h1>
+                  <p className="text-muted-foreground text-sm">
+                    Você será redirecionado para o login...
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold mb-2">Nova senha</h1>
+                  <p className="text-muted-foreground text-sm">
+                    Digite sua nova senha
+                  </p>
+                </>
+              )}
+            </div>
+
+            {!passwordResetSuccess && (
+              <form onSubmit={handlePasswordReset} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Nova senha
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`bg-background/50 ${errors.password ? 'border-destructive' : ''}`}
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo 8 caracteres, com maiúscula, minúscula e número
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Confirmar senha
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`bg-background/50 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 shadow-glow"
+                  disabled={loading}
+                >
+                  {loading ? "Salvando..." : "Redefinir senha"}
+                </Button>
+              </form>
+            )}
+          </Card>
+        </motion.div>
       </div>
     );
   }
