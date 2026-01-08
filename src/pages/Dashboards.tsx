@@ -68,7 +68,16 @@ const Dashboards = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    const saved = localStorage.getItem("dashboards-view-mode");
+    return saved === "list" ? "list" : "grid";
+  });
+
+  // Save view mode preference
+  const handleViewModeChange = (mode: "grid" | "list") => {
+    setViewMode(mode);
+    localStorage.setItem("dashboards-view-mode", mode);
+  };
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -433,7 +442,7 @@ const Dashboards = () => {
                 showFavoritesOnly={showFavoritesOnly}
                 onFavoritesToggle={() => setShowFavoritesOnly(!showFavoritesOnly)}
                 viewMode={viewMode}
-                onViewModeChange={setViewMode}
+                onViewModeChange={handleViewModeChange}
               />
             )}
 
