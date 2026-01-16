@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { ArrowLeft, Users as UsersIcon, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import InviteUserDialog from "@/components/users/InviteUserDialog";
 import UserAccessList from "@/components/users/UserAccessList";
+import LanguageSelector from "@/components/LanguageSelector";
 
 interface Dashboard {
   id: string;
@@ -15,6 +17,7 @@ interface Dashboard {
 }
 
 const Users = () => {
+  const { t } = useTranslation();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [selectedDashboard, setSelectedDashboard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +30,6 @@ const Users = () => {
     checkAuth();
     fetchDashboards();
     
-    // Check if there's a dashboard ID in the URL
     const dashboardId = searchParams.get("dashboard");
     if (dashboardId) {
       setSelectedDashboard(dashboardId);
@@ -52,7 +54,7 @@ const Users = () => {
       setDashboards(data || []);
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -74,11 +76,12 @@ const Users = () => {
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/home")}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao Dashboard
+              {t('common.back')}
             </Button>
+            <LanguageSelector />
           </div>
         </div>
       </header>
@@ -96,9 +99,9 @@ const Users = () => {
                 <UsersIcon className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
+                <h1 className="text-3xl font-bold">{t('users.management')}</h1>
                 <p className="text-muted-foreground">
-                  Convide usuários e gerencie permissões de acesso aos dashboards
+                  {t('users.managementDesc')}
                 </p>
               </div>
             </div>
@@ -106,20 +109,20 @@ const Users = () => {
 
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Carregando...</p>
+              <p className="text-muted-foreground">{t('common.loading')}</p>
             </div>
           ) : dashboards.length === 0 ? (
             <Card className="glass p-12 text-center border-border/50">
               <UsersIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-2xl font-bold mb-2">Nenhum dashboard</h3>
+              <h3 className="text-2xl font-bold mb-2">{t('users.noDashboards')}</h3>
               <p className="text-muted-foreground mb-6">
-                Você precisa criar um dashboard primeiro antes de gerenciar usuários
+                {t('users.createDashboardFirst')}
               </p>
               <Button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/dashboards")}
                 className="bg-primary hover:bg-primary/90"
               >
-                Ir para Dashboards
+                {t('users.goToDashboards')}
               </Button>
             </Card>
           ) : (
@@ -128,9 +131,9 @@ const Users = () => {
               <Card className="glass p-6 border-border/50">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-bold mb-2">Selecione um Dashboard</h2>
+                    <h2 className="text-xl font-bold mb-2">{t('users.selectDashboard')}</h2>
                     <p className="text-sm text-muted-foreground">
-                      Escolha qual dashboard deseja gerenciar os acessos
+                      {t('users.selectDashboardDesc')}
                     </p>
                   </div>
                   {selectedDashboard && (
@@ -139,7 +142,7 @@ const Users = () => {
                       className="bg-primary hover:bg-primary/90 shadow-glow"
                     >
                       <Plus className="mr-2 h-5 w-5" />
-                      Convidar Usuário
+                      {t('users.inviteUser')}
                     </Button>
                   )}
                 </div>

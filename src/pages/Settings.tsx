@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,8 +12,10 @@ import { CancellationSettings } from "@/components/settings/CancellationSettings
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
+import LanguageSelector from "@/components/LanguageSelector";
 
 const Settings = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
@@ -32,7 +35,6 @@ const Settings = () => {
       return;
     }
 
-    // Get user's company
     const { data: profile } = await supabase
       .from("profiles")
       .select("company_id")
@@ -44,10 +46,8 @@ const Settings = () => {
       setSelectedCompanyId(profile.company_id);
     }
 
-    // Check if user is master admin using RPC function
     const { data: isMaster } = await supabase.rpc('is_master_admin', { _user_id: user.id });
     
-    // Also fetch all roles for admin check
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
@@ -76,12 +76,11 @@ const Settings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
 
-  // Determine which company to show - for master admin use selected, for regular admin use their company
   const effectiveCompanyId = isMasterAdmin ? (selectedCompanyId || null) : userCompanyId;
 
   return (
@@ -96,18 +95,20 @@ const Settings = () => {
               <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <h1 className="text-2xl font-bold">Configurações</h1>
+              <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
             </div>
             
-            {/* Company selector for Master Admins */}
-            {isMasterAdmin && (
-              <CompanyFilter
-                value={selectedCompanyId}
-                onChange={handleCompanyChange}
-                showAll={false}
-                allLabel="Selecione uma empresa"
-              />
-            )}
+            <div className="flex items-center gap-4">
+              {isMasterAdmin && (
+                <CompanyFilter
+                  value={selectedCompanyId}
+                  onChange={handleCompanyChange}
+                  showAll={false}
+                  allLabel={t('settings.selectCompany')}
+                />
+              )}
+              <LanguageSelector />
+            </div>
           </div>
         </div>
       </header>
@@ -118,19 +119,19 @@ const Settings = () => {
           <TabsList className="grid w-full max-w-lg grid-cols-4">
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Empresa</span>
+              <span className="hidden sm:inline">{t('settings.company')}</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Usuários</span>
+              <span className="hidden sm:inline">{t('settings.users')}</span>
             </TabsTrigger>
             <TabsTrigger value="customization" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
-              <span className="hidden sm:inline">Personalização</span>
+              <span className="hidden sm:inline">{t('settings.customization')}</span>
             </TabsTrigger>
             <TabsTrigger value="subscription" className="flex items-center gap-2">
               <FileX className="h-4 w-4" />
-              <span className="hidden sm:inline">Assinatura</span>
+              <span className="hidden sm:inline">{t('settings.subscription')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -156,6 +157,7 @@ const Settings = () => {
 };
 
 const SettingsWithGuard = () => {
+  const { t } = useTranslation();
   const [checkingRole, setCheckingRole] = useState(true);
   const [isMaster, setIsMaster] = useState(false);
 
@@ -174,7 +176,7 @@ const SettingsWithGuard = () => {
   if (checkingRole) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
