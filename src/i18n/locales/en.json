@@ -495,7 +495,8 @@
     "termsUpdated": "Terms updated successfully",
     "termsSaveError": "Error saving terms",
     "termsLoadError": "Error loading legal terms",
-    "notFound": "not found in database."
+    "notFound": "not found in database.",
+    "back": "Back"
   },
   "companies": {
     "title": "Companies",
