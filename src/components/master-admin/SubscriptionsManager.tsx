@@ -144,7 +144,8 @@ export const SubscriptionsManager = () => {
 
       // Combine subscriptions with profiles
       const transformedData = (subsData || []).map((sub: any) => {
-        const profile = profilesMap.get(sub.user_id);
+        // Convert user_id to string for comparison since profiles.id is text
+        const profile = profilesMap.get(String(sub.user_id));
         return {
           ...sub,
           profile: profile ? {
