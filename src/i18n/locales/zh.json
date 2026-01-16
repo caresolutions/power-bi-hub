@@ -270,7 +270,17 @@
     "unknown": "未知",
     "refreshPerms": "刷新权限",
     "grantAccess": "授予访问权限",
-    "embedType": "嵌入类型"
+    "embedType": "嵌入类型",
+    "publicLink": "公开链接",
+    "workspace": "工作区",
+    "access": "访问",
+    "subscriptions": "订阅",
+    "refresh": "刷新",
+    "category": "类别",
+    "tags": "标签",
+    "type": "类型",
+    "manageAccess": "管理访问权限",
+    "currentPlan": "当前"
   },
   "credentials": {
     "title": "凭证",

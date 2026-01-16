@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -54,6 +55,7 @@ interface Credential {
 }
 
 const Dashboards = () => {
+  const { t } = useTranslation();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,7 +178,7 @@ const Dashboards = () => {
             
             const dashboardsWithCompany = data.map(dash => ({
               ...dash,
-              company: dash.company_id ? { name: companyMap.get(dash.company_id) || "Desconhecida" } : undefined
+              company: dash.company_id ? { name: companyMap.get(dash.company_id) || t('dashboards.unknown') } : undefined
             }));
             
             setDashboards(dashboardsWithCompany);
@@ -219,7 +221,7 @@ const Dashboards = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -297,14 +299,14 @@ const Dashboards = () => {
       if (error) throw error;
 
       toast({
-        title: "Sucesso",
-        description: "Dashboard removido com sucesso",
+        title: t('common.success'),
+        description: t('dashboards.removed'),
       });
       
       fetchDashboards();
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -323,8 +325,8 @@ const Dashboards = () => {
   const handleNewDashboard = () => {
     if (!dashboardLimit.allowed && !dashboardLimit.isUnlimited) {
       toast({
-        title: "Limite atingido",
-        description: `Você atingiu o limite de ${dashboardLimit.limit} dashboards do plano ${currentPlan?.name || "atual"}. Faça upgrade para criar mais.`,
+        title: t('dashboards.limitReached'),
+        description: t('dashboards.limitReachedDesc', { limit: dashboardLimit.limit, plan: currentPlan?.name || t('dashboards.currentPlan') }),
         variant: "destructive",
       });
       return;
@@ -333,15 +335,15 @@ const Dashboards = () => {
   };
 
   const getCredentialName = (credentialId: string | null) => {
-    if (!credentialId) return "Não vinculado";
+    if (!credentialId) return t('dashboards.notLinked');
     const credential = credentials.find(c => c.id === credentialId);
-    return credential?.name || "Não encontrado";
+    return credential?.name || t('dashboards.notFound');
   };
 
   if (roleLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -357,13 +359,13 @@ const Dashboards = () => {
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={() => navigate("/home")}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
+                {t('common.back')}
               </Button>
               <div className="flex items-center gap-3">
                 <div className="bg-accent/10 p-2 rounded-lg">
                   <BarChart3 className="h-6 w-6 text-accent" />
                 </div>
-                <h1 className="text-2xl font-bold">Catálogo de Dashboards</h1>
+                <h1 className="text-2xl font-bold">{t('dashboards.catalog')}</h1>
               </div>
             </div>
             
@@ -374,7 +376,7 @@ const Dashboards = () => {
                 disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
               >
                 <Plus className="mr-2 h-5 w-5" />
-                Novo Dashboard
+                {t('dashboards.newDashboard')}
                 {!dashboardLimit.isUnlimited && (
                   <Badge variant="secondary" className="ml-2">
                     {dashboardLimit.current}/{dashboardLimit.limit}
@@ -404,17 +406,17 @@ const Dashboards = () => {
           <>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div>
-                <h2 className="text-3xl font-bold mb-2">
-                  {isMasterAdmin ? "Todos os Dashboards" : isAdmin ? "Meus Dashboards" : "Dashboards Disponíveis"}
-                </h2>
-                <p className="text-muted-foreground">
-                  {isMasterAdmin 
-                    ? "Gerencie dashboards de todas as empresas"
-                    : isAdmin 
-                      ? "Gerencie e compartilhe seus dashboards Power BI"
-                      : "Visualize os dashboards que você tem acesso"}
-                </p>
-              </div>
+              <h2 className="text-3xl font-bold mb-2">
+                {isMasterAdmin ? t('dashboards.allDashboards') : isAdmin ? t('dashboards.myDashboards') : t('dashboards.availableDashboards')}
+              </h2>
+              <p className="text-muted-foreground">
+                {isMasterAdmin 
+                  ? t('dashboards.manageAllCompanies')
+                  : isAdmin 
+                    ? t('dashboards.manageAndShare')
+                    : t('dashboards.viewAccessible')}
+              </p>
+            </div>
 
               {/* Company Filter for Master Admin */}
               {isMasterAdmin && (
@@ -448,18 +450,18 @@ const Dashboards = () => {
 
             {loading ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Carregando...</p>
+                <p className="text-muted-foreground">{t('common.loading')}</p>
               </div>
             ) : dashboards.length === 0 ? (
               <Card className="glass p-12 text-center border-border/50">
                 <BarChart3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-bold mb-2">Nenhum dashboard encontrado</h3>
+                <h3 className="text-2xl font-bold mb-2">{t('dashboards.noDashboards')}</h3>
                 <p className="text-muted-foreground mb-6">
                   {isMasterAdmin && selectedCompanyId !== "all"
-                    ? "Esta empresa não possui dashboards cadastrados"
+                    ? t('dashboards.noCompanyDashboards')
                     : isAdmin 
-                      ? "Adicione seu primeiro dashboard Power BI"
-                      : "Você ainda não tem acesso a nenhum dashboard"}
+                      ? t('dashboards.addFirst')
+                      : t('dashboards.noAccess')}
                 </p>
                 {isAdmin && (
                   <Button
@@ -467,16 +469,16 @@ const Dashboards = () => {
                     className="bg-primary hover:bg-primary/90 shadow-glow"
                   >
                     <Plus className="mr-2 h-5 w-5" />
-                    Adicionar Dashboard
+                    {t('dashboards.addDashboard')}
                   </Button>
                 )}
               </Card>
             ) : filteredDashboards.length === 0 ? (
               <Card className="glass p-12 text-center border-border/50">
                 <BarChart3 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-bold mb-2">Nenhum resultado encontrado</h3>
+                <h3 className="text-2xl font-bold mb-2">{t('dashboards.noResults')}</h3>
                 <p className="text-muted-foreground">
-                  Tente ajustar os filtros ou a busca
+                  {t('dashboards.adjustFilters')}
                 </p>
               </Card>
             ) : viewMode === "grid" ? (
@@ -504,7 +506,7 @@ const Dashboards = () => {
                         <div className="absolute top-2 right-2 flex gap-2">
                           {dashboard.embed_type === "public_link" && (
                             <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
-                              Link Público
+                              {t('dashboards.publicLink')}
                             </span>
                           )}
                           {dashboard.category && (
@@ -589,7 +591,7 @@ const Dashboards = () => {
                           )}
                           {isAdmin && dashboard.embed_type !== "public_link" && (
                             <p>
-                              Credencial: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
+                              {t('dashboards.credential')}: <span className="text-primary">{getCredentialName(dashboard.credential_id)}</span>
                             </p>
                           )}
                         </div>
@@ -606,7 +608,7 @@ const Dashboards = () => {
                               }}
                             >
                               <Users className="mr-2 h-4 w-4" />
-                              Acesso
+                              {t('dashboards.access')}
                             </Button>
                             <Button
                               variant="outline"
@@ -618,7 +620,7 @@ const Dashboards = () => {
                               }}
                             >
                               <Mail className="mr-2 h-4 w-4" />
-                              Assinaturas
+                              {t('dashboards.subscriptions')}
                             </Button>
                             {dashboard.embed_type === "workspace_id" && (
                               <Button
@@ -631,7 +633,7 @@ const Dashboards = () => {
                                 }}
                               >
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Atualizar
+                                {t('dashboards.refresh')}
                               </Button>
                             )}
                           </div>
@@ -648,12 +650,12 @@ const Dashboards = () => {
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-border/50">
                       <TableHead className="w-10"></TableHead>
-                      <TableHead>Nome</TableHead>
-                      {isMasterAdmin && <TableHead>Empresa</TableHead>}
-                      <TableHead className="hidden md:table-cell">Categoria</TableHead>
-                      <TableHead className="hidden lg:table-cell">Tags</TableHead>
-                      <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                      {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+                      <TableHead>{t('common.name')}</TableHead>
+                      {isMasterAdmin && <TableHead>{t('dashboards.company')}</TableHead>}
+                      <TableHead className="hidden md:table-cell">{t('dashboards.category')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('dashboards.tags')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('dashboards.type')}</TableHead>
+                      {isAdmin && <TableHead className="text-right">{t('common.actions')}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -730,7 +732,7 @@ const Dashboards = () => {
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge variant={dashboard.embed_type === "public_link" ? "default" : "outline"}>
-                            {dashboard.embed_type === "public_link" ? "Link Público" : "Workspace"}
+                            {dashboard.embed_type === "public_link" ? t('dashboards.publicLink') : t('dashboards.workspace')}
                           </Badge>
                         </TableCell>
                         {isAdmin && (
@@ -741,7 +743,7 @@ const Dashboards = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => navigate(`/users?dashboard=${dashboard.id}`)}
-                                title="Gerenciar acesso"
+                                title={t('dashboards.manageAccess')}
                               >
                                 <Users className="h-4 w-4" />
                               </Button>
@@ -750,7 +752,7 @@ const Dashboards = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => navigate(`/dashboard/${dashboard.id}/subscriptions`)}
-                                title="Assinaturas"
+                                title={t('dashboards.subscriptions')}
                               >
                                 <Mail className="h-4 w-4" />
                               </Button>
@@ -760,7 +762,7 @@ const Dashboards = () => {
                                   size="icon"
                                   className="h-8 w-8"
                                   onClick={() => setRefreshPermsDashboard(dashboard)}
-                                  title="Atualizar permissões"
+                                  title={t('dashboards.refreshPerms')}
                                 >
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
@@ -770,7 +772,7 @@ const Dashboards = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => setEditingDashboard(dashboard)}
-                                title="Editar"
+                                title={t('common.edit')}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -779,7 +781,7 @@ const Dashboards = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => setDeletingId(dashboard.id)}
-                                title="Excluir"
+                                title={t('common.delete')}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -796,19 +798,18 @@ const Dashboards = () => {
         )}
       </main>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboards.deleteConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este dashboard? Esta ação não pode ser desfeita.
+              {t('dashboards.deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -828,12 +829,13 @@ const Dashboards = () => {
 };
 
 const DashboardsWithGuard = () => {
+  const { t } = useTranslation();
   const { isMasterAdmin, loading } = useUserRole();
   
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }

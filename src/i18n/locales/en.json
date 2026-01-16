@@ -270,7 +270,17 @@
     "unknown": "Unknown",
     "refreshPerms": "Refresh permissions",
     "grantAccess": "Grant access",
-    "embedType": "Embed type"
+    "embedType": "Embed type",
+    "publicLink": "Public Link",
+    "workspace": "Workspace",
+    "access": "Access",
+    "subscriptions": "Subscriptions",
+    "refresh": "Refresh",
+    "category": "Category",
+    "tags": "Tags",
+    "type": "Type",
+    "manageAccess": "Manage access",
+    "currentPlan": "current"
   },
   "credentials": {
     "title": "Credentials",
