@@ -238,26 +238,26 @@ const ProjectPresentation = () => {
             <PlanCard 
               name="Starter"
               price="R$ 99"
-              features={["1 dashboard", "2 usuários"]}
+              features={["1 dashboard", "2 usuários", "Embed e Link Público"]}
               color="hsl(195,80%,50%)"
             />
             <PlanCard 
               name="Growth"
               price="R$ 249"
-              features={["5 dashboards", "10 usuários"]}
+              features={["5 dashboards", "10 usuários", "Chat IA", "Slider TV"]}
               color="hsl(187,85%,43%)"
               highlighted
             />
             <PlanCard 
               name="Scale"
               price="R$ 499"
-              features={["15 dashboards", "25 usuários"]}
+              features={["15 dashboards", "25 usuários", "Chat IA", "Slider TV", "RLS por email"]}
               color="hsl(195,80%,35%)"
             />
             <PlanCard 
               name="Enterprise"
               price="Customizado"
-              features={["Ilimitado", "Personalizado"]}
+              features={["Ilimitado", "Chat IA", "Slider TV", "RLS por email", "SLA de suporte"]}
               color="hsl(200,90%,30%)"
             />
           </div>

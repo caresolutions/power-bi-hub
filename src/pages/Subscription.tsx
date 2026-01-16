@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, CreditCard, Check, Crown, Settings, Loader2, Infinity } from "lucide-react";
+import { ArrowLeft, CreditCard, Check, Crown, Settings, Loader2, Infinity, X, Bot, Tv, Shield, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface SubscriptionPlan {
@@ -25,6 +25,12 @@ interface PlanLimit {
   is_unlimited: boolean;
 }
 
+interface PlanFeature {
+  feature_key: string;
+  feature_description: string | null;
+  is_enabled: boolean;
+}
+
 interface SubscriptionStatus {
   subscribed: boolean;
   status: string;
@@ -39,6 +45,7 @@ interface SubscriptionStatus {
 const Subscription = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [planLimits, setPlanLimits] = useState<Record<string, PlanLimit[]>>({});
+  const [planFeatures, setPlanFeatures] = useState<Record<string, PlanFeature[]>>({});
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -101,8 +108,10 @@ const Subscription = () => {
 
       setPlans(plansData || []);
 
-      // Fetch limits for each plan
+      // Fetch limits and features for each plan
       const limitsMap: Record<string, PlanLimit[]> = {};
+      const featuresMap: Record<string, PlanFeature[]> = {};
+      
       for (const plan of plansData || []) {
         const { data: limits } = await supabase
           .from("plan_limits")
@@ -110,8 +119,16 @@ const Subscription = () => {
           .eq("plan_id", plan.id);
         
         limitsMap[plan.id] = limits || [];
+
+        const { data: features } = await supabase
+          .from("plan_features")
+          .select("feature_key, feature_description, is_enabled")
+          .eq("plan_id", plan.id);
+        
+        featuresMap[plan.id] = features || [];
       }
       setPlanLimits(limitsMap);
+      setPlanFeatures(featuresMap);
 
       // Check subscription status
       await checkSubscription();
@@ -228,6 +245,30 @@ const Subscription = () => {
     }).format(price);
   };
 
+  const getFeatureIcon = (featureKey: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      ai_chat: <Bot className="h-4 w-4" />,
+      slider_tv: <Tv className="h-4 w-4" />,
+      rls_email: <Shield className="h-4 w-4" />,
+      embed_publish: <Sparkles className="h-4 w-4" />,
+    };
+    return icons[featureKey] || <Check className="h-4 w-4" />;
+  };
+
+  const getFeatureLabel = (featureKey: string): string => {
+    const labels: Record<string, string> = {
+      ai_chat: "Chat com IA",
+      slider_tv: "Modo Slider/TV",
+      rls_email: "RLS por email",
+      embed_publish: "Embed e Link Público",
+      user_group_access: "Grupos de usuários",
+      advanced_integrations: "Integrações avançadas",
+      custom_development: "Desenvolvimento customizado",
+      sla_support: "SLA de suporte",
+    };
+    return labels[featureKey] || featureKey;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
@@ -309,7 +350,14 @@ const Subscription = () => {
             {plans.map((plan, index) => {
               const current = isCurrentPlan(plan);
               const limits = planLimits[plan.id] || [];
+              const features = planFeatures[plan.id] || [];
               const isHighlighted = plan.plan_key === 'growth';
+              
+              // Filter key features to display
+              const keyFeatures = ['ai_chat', 'slider_tv', 'rls_email'];
+              const displayFeatures = features.filter(f => 
+                keyFeatures.includes(f.feature_key)
+              );
               
               return (
                 <motion.div
@@ -366,7 +414,8 @@ const Subscription = () => {
                       <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
                     )}
                     
-                    <ul className="space-y-2 mb-6 flex-grow">
+                    <ul className="space-y-2 mb-4 flex-grow">
+                      {/* Limits */}
                       {limits.map((limit) => (
                         <li key={limit.limit_key} className="flex items-center gap-2">
                           {limit.is_unlimited ? (
@@ -379,6 +428,27 @@ const Subscription = () => {
                           </span>
                         </li>
                       ))}
+                      
+                      {/* Key Features */}
+                      {keyFeatures.map((featureKey) => {
+                        const feature = displayFeatures.find(f => f.feature_key === featureKey);
+                        const isEnabled = feature?.is_enabled || false;
+                        
+                        return (
+                          <li key={featureKey} className="flex items-center gap-2">
+                            {isEnabled ? (
+                              <span className="text-green-500 flex-shrink-0">
+                                {getFeatureIcon(featureKey)}
+                              </span>
+                            ) : (
+                              <X className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                            )}
+                            <span className={`text-sm ${!isEnabled ? 'text-muted-foreground/50 line-through' : ''}`}>
+                              {getFeatureLabel(featureKey)}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                     
                     <Button
