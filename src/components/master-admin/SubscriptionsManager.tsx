@@ -74,12 +74,6 @@ const PERIOD_LABELS: Record<PeriodFilter, string> = {
   annual: 'Anual',
 };
 
-const PLAN_LABELS: Record<string, string> = {
-  free: 'Free',
-  professional: 'Profissional',
-  enterprise: 'Enterprise',
-};
-
 const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   active: { label: 'Ativo', variant: 'default' },
   trial: { label: 'Trial', variant: 'secondary' },
@@ -90,17 +84,35 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 
 export const SubscriptionsManager = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [planLabels, setPlanLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodFilter>('monthly');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
-    fetchSubscriptions();
+    fetchData();
   }, []);
 
-  const fetchSubscriptions = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
+      // Fetch plans to get labels
+      const { data: plansData, error: plansError } = await supabase
+        .from('subscription_plans')
+        .select('plan_key, name');
+
+      if (plansError) throw plansError;
+
+      // Create plan labels map from database
+      const labels: Record<string, string> = {
+        master_managed: 'Master Managed',
+        free: 'Free',
+      };
+      (plansData || []).forEach((plan: any) => {
+        labels[plan.plan_key] = plan.name;
+      });
+      setPlanLabels(labels);
+
       // Fetch all subscriptions
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
@@ -244,7 +256,7 @@ export const SubscriptionsManager = () => {
               ))}
             </TabsList>
           </Tabs>
-          <Button variant="outline" size="icon" onClick={fetchSubscriptions}>
+          <Button variant="outline" size="icon" onClick={fetchData}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -377,7 +389,7 @@ export const SubscriptionsManager = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {PLAN_LABELS[sub.plan] || sub.plan}
+                        {planLabels[sub.plan] || sub.plan}
                       </Badge>
                     </TableCell>
                     <TableCell>
