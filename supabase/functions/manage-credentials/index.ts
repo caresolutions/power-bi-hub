@@ -107,18 +107,18 @@ serve(async (req) => {
       
       let targetCompanyId = data.company_id;
       
-      if (!isMasterAdmin) {
-        // Regular admin: use their company_id
-        const { data: profile, error: profileErr } = await supabase
+      if (!isMasterAdmin && !targetCompanyId) {
+        // Regular admin without company_id in request: try to get from profile
+        const { data: profile } = await supabase
           .from("profiles")
           .select("company_id")
           .eq("id", user.id)
           .single();
 
-        if (profileErr || !profile?.company_id) {
-          throw new Error("Company not configured for user");
+        if (profile?.company_id) {
+          targetCompanyId = profile.company_id;
         }
-        targetCompanyId = profile.company_id;
+        // If still no company_id, allow null (credential will be associated when company is created)
       }
       // For master admin: company_id can be null (global credential) or specific company
 

@@ -86,20 +86,22 @@ const Onboarding = () => {
       const { data: result, error } = await supabase.functions.invoke("manage-credentials", {
         body: {
           action: "create",
-          name: data.name,
-          clientId: data.clientId,
-          clientSecret: data.clientSecret,
-          tenantId: data.tenantId,
-          username: data.username,
-          password: data.password,
-          companyId: profile?.company_id,
+          data: {
+            name: data.name,
+            client_id: data.clientId,
+            client_secret: data.clientSecret,
+            tenant_id: data.tenantId,
+            username: data.username,
+            password: data.password,
+            company_id: profile?.company_id,
+          },
         },
       });
 
       if (error) throw error;
       if (result?.error) throw new Error(result.error);
 
-      setCredentialId(result.id);
+      setCredentialId(result.data?.id);
       setCurrentStep("dashboards");
       
       toast({
