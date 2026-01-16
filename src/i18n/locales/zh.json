@@ -495,7 +495,8 @@
     "termsUpdated": "条款更新成功",
     "termsSaveError": "保存条款时出错",
     "termsLoadError": "加载法律条款时出错",
-    "notFound": "在数据库中未找到。"
+    "notFound": "在数据库中未找到。",
+    "back": "返回"
   },
   "companies": {
     "title": "公司",

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +23,7 @@ interface LegalTerm {
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: term, isLoading } = useQuery({
     queryKey: ['legal-term', 'privacy_policy'],
@@ -59,14 +61,14 @@ const PrivacyPolicy = () => {
             </Button>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold">Política de Privacidade</h1>
+              <h1 className="text-xl font-semibold">{t('legalTerms.privacyPolicy')}</h1>
             </div>
           </div>
         </header>
         <main className="container mx-auto px-4 py-8 max-w-4xl">
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Política de privacidade não encontrada.</p>
+              <p className="text-muted-foreground">{t('legalTerms.notFound')}</p>
             </CardContent>
           </Card>
         </main>
@@ -93,7 +95,9 @@ const PrivacyPolicy = () => {
           <CardHeader>
             <div className="flex items-center gap-2 text-muted-foreground">
               <FileText className="h-4 w-4" />
-              <span className="text-sm">Última atualização: {term.last_update} | Versão: {term.version}</span>
+              <span className="text-sm">
+                {t('legalTerms.lastUpdate')}: {term.last_update} | {t('legalTerms.version')}: {term.version}
+              </span>
             </div>
             <CardTitle className="text-2xl">{term.title}</CardTitle>
           </CardHeader>

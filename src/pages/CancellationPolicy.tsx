@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +23,7 @@ interface LegalTerm {
 
 const CancellationPolicy = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [policy, setPolicy] = useState<LegalTerm | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,9 +69,9 @@ const CancellationPolicy = () => {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <FileX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Política de cancelamento não encontrada.</p>
+            <p className="text-muted-foreground">{t('legalTerms.notFound')}</p>
             <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
-              Voltar
+              {t('legalTerms.back')}
             </Button>
           </CardContent>
         </Card>
@@ -96,7 +98,9 @@ const CancellationPolicy = () => {
           <CardHeader>
             <div className="flex items-center gap-2 text-muted-foreground">
               <FileText className="h-4 w-4" />
-              <span className="text-sm">Última atualização: {policy.last_update} | Versão: {policy.version}</span>
+              <span className="text-sm">
+                {t('legalTerms.lastUpdate')}: {policy.last_update} | {t('legalTerms.version')}: {policy.version}
+              </span>
             </div>
             <CardTitle className="text-2xl">{policy.title}</CardTitle>
           </CardHeader>

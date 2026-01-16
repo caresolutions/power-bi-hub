@@ -506,7 +506,8 @@
     "termsUpdated": "Termos atualizados com sucesso",
     "termsSaveError": "Erro ao salvar termos",
     "termsLoadError": "Erro ao carregar termos legais",
-    "notFound": "não encontrada no banco de dados."
+    "notFound": "não encontrada no banco de dados.",
+    "back": "Voltar"
   },
   "companies": {
     "title": "Empresas",
