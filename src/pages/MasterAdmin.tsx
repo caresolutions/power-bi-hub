@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,6 +62,7 @@ import { CompanySubscriptionManager } from "@/components/master-admin/CompanySub
 import { SubscriptionsManager } from "@/components/master-admin/SubscriptionsManager";
 import { LegalTermsEditor } from "@/components/settings/LegalTermsEditor";
 import { PlansManager } from "@/components/master-admin/PlansManager";
+import LanguageSelector from "@/components/LanguageSelector";
 
 interface Company {
   id: string;
@@ -74,6 +76,7 @@ interface Company {
 }
 
 const MasterAdmin = () => {
+  const { t } = useTranslation();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,7 +97,6 @@ const MasterAdmin = () => {
       return;
     }
 
-    // Check if user has master_admin role (user may have multiple roles)
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("role")
@@ -103,7 +105,7 @@ const MasterAdmin = () => {
     const roles = rolesData?.map(r => r.role) || [];
     
     if (!roles.includes("master_admin")) {
-      toast.error("Acesso negado. Apenas Master Admin pode acessar esta página.");
+      toast.error(t('masterAdmin.accessDenied'));
       navigate("/home");
       return;
     }
@@ -114,19 +116,17 @@ const MasterAdmin = () => {
   const fetchCompanies = async () => {
     setLoading(true);
     
-    // Fetch companies
     const { data: companiesData, error } = await supabase
       .from("companies")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error("Erro ao carregar empresas");
+      toast.error(t('masterAdmin.loadError'));
       setLoading(false);
       return;
     }
 
-    // Fetch counts for each company
     const companiesWithCounts = await Promise.all(
       (companiesData || []).map(async (company) => {
         const { count: usersCount } = await supabase
@@ -168,21 +168,21 @@ const MasterAdmin = () => {
 
       if (error) {
         console.error("Error deleting company:", error);
-        toast.error("Erro ao excluir empresa: " + error.message);
+        toast.error(t('masterAdmin.deleteError') + ": " + error.message);
         return;
       }
 
       if (data?.error) {
-        toast.error("Erro ao excluir empresa: " + data.error);
+        toast.error(t('masterAdmin.deleteError') + ": " + data.error);
         return;
       }
 
-      toast.success(`Empresa excluída com sucesso. ${data?.deletedUsers || 0} usuários e ${data?.deletedDashboards || 0} dashboards removidos.`);
+      toast.success(`${t('masterAdmin.companyDeleted')} ${data?.deletedUsers || 0} ${t('masterAdmin.users').toLowerCase()} ${t('common.and') || 'e'} ${data?.deletedDashboards || 0} dashboards.`);
       setDeleteId(null);
       fetchCompanies();
     } catch (err: any) {
       console.error("Error:", err);
-      toast.error("Erro ao excluir empresa: " + err.message);
+      toast.error(t('masterAdmin.deleteError') + ": " + err.message);
     }
   };
 
@@ -210,13 +210,16 @@ const MasterAdmin = () => {
               </Button>
               <div className="flex items-center gap-2">
                 <Shield className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold">Master Admin</span>
+                <span className="text-xl font-bold">{t('masterAdmin.title')}</span>
               </div>
             </div>
 
-            <Button variant="ghost" onClick={handleLogout}>
-              Sair
-            </Button>
+            <div className="flex items-center gap-2">
+              <LanguageSelector />
+              <Button variant="ghost" onClick={handleLogout}>
+                {t('common.logout')}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -227,28 +230,28 @@ const MasterAdmin = () => {
           <TabsList className="flex-wrap">
             <TabsTrigger value="companies" className="gap-2">
               <Building2 className="h-4 w-4" />
-              Empresas
+              {t('masterAdmin.companies')}
             </TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2">
               <CreditCard className="h-4 w-4" />
-              Assinaturas
+              {t('masterAdmin.subscriptions')}
             </TabsTrigger>
             <TabsTrigger value="plans" className="gap-2">
               <Settings className="h-4 w-4" />
-              Planos
+              {t('masterAdmin.plans')}
             </TabsTrigger>
             <TabsTrigger value="legal-terms" className="gap-2">
               <FileText className="h-4 w-4" />
-              Termos Legais
+              {t('masterAdmin.legalTerms')}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="companies">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h1 className="text-3xl font-bold mb-2">Gestão de Empresas</h1>
+                <h1 className="text-3xl font-bold mb-2">{t('masterAdmin.companyManagement')}</h1>
                 <p className="text-muted-foreground">
-                  Crie e gerencie as empresas, usuários, grupos, dashboards e assinaturas
+                  {t('masterAdmin.companyManagementDesc')}
                 </p>
               </div>
 
@@ -261,18 +264,18 @@ const MasterAdmin = () => {
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    Nova Empresa
+                    {t('masterAdmin.newCompany')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>
-                      {editingCompany ? "Editar Empresa" : "Nova Empresa"}
+                      {editingCompany ? t('masterAdmin.editCompany') : t('masterAdmin.newCompany')}
                     </DialogTitle>
                     <DialogDescription>
                       {editingCompany 
-                        ? "Atualize os dados da empresa" 
-                        : "Preencha os dados para criar uma nova empresa"}
+                        ? t('masterAdmin.updateCompanyData')
+                        : t('masterAdmin.fillCompanyData')}
                     </DialogDescription>
                   </DialogHeader>
                   <CompanyForm 
@@ -293,14 +296,14 @@ const MasterAdmin = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Carregando...</p>
+            <p className="text-muted-foreground">{t('common.loading')}</p>
           </div>
         ) : companies.length === 0 ? (
           <Card className="bg-card/80 backdrop-blur-md p-12 border-border/50 text-center">
             <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Nenhuma empresa cadastrada</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('masterAdmin.noCompanies')}</h3>
             <p className="text-muted-foreground mb-4">
-              Clique em "Nova Empresa" para começar
+              {t('masterAdmin.clickNewCompany')}
             </p>
           </Card>
         ) : (
@@ -308,12 +311,12 @@ const MasterAdmin = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead className="text-center">Usuários</TableHead>
-                  <TableHead className="text-center">Dashboards</TableHead>
-                  <TableHead className="text-center">Criado em</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>{t('masterAdmin.company')}</TableHead>
+                  <TableHead>{t('masterAdmin.cnpj')}</TableHead>
+                  <TableHead className="text-center">{t('masterAdmin.users')}</TableHead>
+                  <TableHead className="text-center">{t('masterAdmin.dashboards')}</TableHead>
+                  <TableHead className="text-center">{t('common.createdAt')}</TableHead>
+                  <TableHead className="text-right">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -349,7 +352,7 @@ const MasterAdmin = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground">
-                      {new Date(company.created_at).toLocaleDateString("pt-BR")}
+                      {new Date(company.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -359,7 +362,7 @@ const MasterAdmin = () => {
                           onClick={() => handleManageCompany(company)}
                         >
                           <Settings className="mr-2 h-4 w-4" />
-                          Gerenciar
+                          {t('common.manage')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -388,9 +391,9 @@ const MasterAdmin = () => {
 
           <TabsContent value="legal-terms">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">Termos Legais</h1>
+              <h1 className="text-3xl font-bold mb-2">{t('masterAdmin.legalTermsTitle')}</h1>
               <p className="text-muted-foreground">
-                Gerencie as políticas e termos legais da plataforma
+                {t('masterAdmin.legalTermsDesc')}
               </p>
             </div>
             <LegalTermsEditor />
@@ -409,7 +412,6 @@ const MasterAdmin = () => {
       {/* Company Management Sheet */}
       <Sheet open={sheetOpen} onOpenChange={(open) => {
         setSheetOpen(open);
-        // Refresh companies list when closing the sheet to update counts
         if (!open) {
           fetchCompanies();
         }
@@ -427,19 +429,19 @@ const MasterAdmin = () => {
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="users" className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Usuários</span>
+                  <span className="hidden sm:inline">{t('masterAdmin.users')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="groups" className="flex items-center gap-1">
                   <FolderOpen className="h-4 w-4" />
-                  <span className="hidden sm:inline">Grupos</span>
+                  <span className="hidden sm:inline">{t('masterAdmin.groups')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="dashboards" className="flex items-center gap-1">
                   <LayoutDashboard className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dashboards</span>
+                  <span className="hidden sm:inline">{t('masterAdmin.dashboards')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="subscription" className="flex items-center gap-1">
                   <CreditCard className="h-4 w-4" />
-                  <span className="hidden sm:inline">Assinatura</span>
+                  <span className="hidden sm:inline">{t('masterAdmin.subscription')}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -479,15 +481,15 @@ const MasterAdmin = () => {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Empresa?</AlertDialogTitle>
+            <AlertDialogTitle>{t('masterAdmin.deleteCompany')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todos os dados relacionados à empresa serão excluídos permanentemente.
+              {t('masterAdmin.deleteCompanyWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

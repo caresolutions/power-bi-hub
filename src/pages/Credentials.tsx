@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { CompanyFilter } from "@/components/CompanyFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
+import LanguageSelector from "@/components/LanguageSelector";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,7 @@ interface Credential {
 }
 
 const Credentials = () => {
+  const { t } = useTranslation();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -67,7 +70,6 @@ const Credentials = () => {
   const { userId, isMasterAdmin, isAdmin, loading: roleLoading, companyId } = useUserRole();
   const { checkLimit, currentPlan, refetch: refetchPlan } = useSubscriptionPlan();
   
-  // Check credential limit
   const credentialLimit = checkLimit("credentials");
 
   useEffect(() => {
@@ -89,9 +91,7 @@ const Credentials = () => {
         .select("id, name, client_id, tenant_id, username, created_at, company_id")
         .order("created_at", { ascending: false });
 
-      // Filter by company for non-master admins
       if (!isMasterAdmin && companyId) {
-        // Get global credentials that are released to this company
         const { data: accessData } = await supabase
           .from("credential_company_access")
           .select("credential_id")
@@ -99,10 +99,8 @@ const Credentials = () => {
         
         const releasedCredentialIds = accessData?.map(a => a.credential_id) || [];
         
-        // Get company credentials + released global credentials
         query = query.or(`company_id.eq.${companyId}${releasedCredentialIds.length > 0 ? `,id.in.(${releasedCredentialIds.join(",")})` : ""}`);
       } else if (isMasterAdmin && selectedCompanyId !== "all") {
-        // For master admin with specific company filter: show global + company-specific
         query = query.or(`company_id.is.null,company_id.eq.${selectedCompanyId}`);
       }
 
@@ -110,12 +108,10 @@ const Credentials = () => {
 
       if (error) throw error;
 
-      // Fetch company names and access counts for master admin view
       if (isMasterAdmin && data) {
         const companyIds = [...new Set(data.map(c => c.company_id).filter(Boolean))];
         const globalCredentialIds = data.filter(c => !c.company_id).map(c => c.id);
         
-        // Fetch company names
         let companyMap = new Map<string, string>();
         if (companyIds.length > 0) {
           const { data: companies } = await supabase
@@ -125,7 +121,6 @@ const Credentials = () => {
           companyMap = new Map(companies?.map(c => [c.id, c.name]) || []);
         }
         
-        // Fetch access counts for global credentials
         let accessCountMap = new Map<string, number>();
         if (globalCredentialIds.length > 0) {
           const { data: accessCounts } = await supabase
@@ -140,7 +135,7 @@ const Credentials = () => {
         
         const credentialsWithData = data.map(cred => ({
           ...cred,
-          company: cred.company_id ? { name: companyMap.get(cred.company_id) || "Desconhecida" } : undefined,
+          company: cred.company_id ? { name: companyMap.get(cred.company_id) || t('dashboards.unknown') } : undefined,
           accessCount: accessCountMap.get(cred.id) || 0
         }));
         
@@ -150,7 +145,7 @@ const Credentials = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -171,14 +166,14 @@ const Credentials = () => {
       if (error) throw error;
 
       toast({
-        title: "Sucesso",
-        description: "Credencial removida com sucesso",
+        title: t('common.success'),
+        description: t('credentials.removed'),
       });
       
       fetchCredentials();
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive",
       });
@@ -191,14 +186,14 @@ const Credentials = () => {
     setShowForm(false);
     setEditingCredential(null);
     fetchCredentials();
-    refetchPlan(); // Refresh usage counts
+    refetchPlan();
   };
 
   const handleNewCredential = () => {
     if (!credentialLimit.allowed && !credentialLimit.isUnlimited) {
       toast({
-        title: "Limite atingido",
-        description: `Você atingiu o limite de ${credentialLimit.limit} credenciais do plano ${currentPlan?.name || "atual"}. Faça upgrade para criar mais.`,
+        title: t('credentials.limitReached'),
+        description: t('credentials.limitReachedDesc', { limit: credentialLimit.limit, plan: currentPlan?.name || "atual" }),
         variant: "destructive",
       });
       return;
@@ -209,7 +204,7 @@ const Credentials = () => {
   if (roleLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -225,31 +220,34 @@ const Credentials = () => {
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={() => navigate("/home")}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
+                {t('common.back')}
               </Button>
               <div className="flex items-center gap-3">
                 <div className="bg-primary/10 p-2 rounded-lg">
                   <Settings className="h-6 w-6 text-primary" />
                 </div>
-                <h1 className="text-2xl font-bold">Configuração de Ambiente</h1>
+                <h1 className="text-2xl font-bold">{t('credentials.environmentConfig')}</h1>
               </div>
             </div>
             
-            {!showForm && (
-              <Button
-                onClick={handleNewCredential}
-                className="bg-primary hover:bg-primary/90 shadow-glow"
-                disabled={!credentialLimit.allowed && !credentialLimit.isUnlimited}
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                Nova Credencial
-                {!credentialLimit.isUnlimited && (
-                  <Badge variant="secondary" className="ml-2">
-                    {credentialLimit.current}/{credentialLimit.limit}
-                  </Badge>
-                )}
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <LanguageSelector />
+              {!showForm && (
+                <Button
+                  onClick={handleNewCredential}
+                  className="bg-primary hover:bg-primary/90 shadow-glow"
+                  disabled={!credentialLimit.allowed && !credentialLimit.isUnlimited}
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  {t('credentials.newCredential')}
+                  {!credentialLimit.isUnlimited && (
+                    <Badge variant="secondary" className="ml-2">
+                      {credentialLimit.current}/{credentialLimit.limit}
+                    </Badge>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -271,15 +269,14 @@ const Credentials = () => {
           <>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div>
-                <h2 className="text-3xl font-bold mb-2">Credenciais do Power BI</h2>
+                <h2 className="text-3xl font-bold mb-2">{t('credentials.powerBiCredentials')}</h2>
                 <p className="text-muted-foreground">
                   {isMasterAdmin 
-                    ? "Gerencie credenciais de todas as empresas"
-                    : "Gerencie suas credenciais de acesso ao Microsoft Power BI"}
+                    ? t('credentials.manageAllCompanies')
+                    : t('credentials.manageYour')}
                 </p>
               </div>
               
-              {/* Company Filter for Master Admin */}
               {isMasterAdmin && (
                 <CompanyFilter
                   value={selectedCompanyId}
@@ -293,23 +290,23 @@ const Credentials = () => {
 
             {loading ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Carregando...</p>
+                <p className="text-muted-foreground">{t('common.loading')}</p>
               </div>
             ) : credentials.length === 0 ? (
               <Card className="glass p-12 text-center border-border/50">
                 <Key className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-bold mb-2">Nenhuma credencial cadastrada</h3>
+                <h3 className="text-2xl font-bold mb-2">{t('credentials.noCredentials')}</h3>
                 <p className="text-muted-foreground mb-6">
                   {isMasterAdmin && selectedCompanyId !== "all"
-                    ? "Esta empresa não possui credenciais cadastradas"
-                    : "Adicione suas credenciais do Power BI para começar"}
+                    ? t('credentials.noCompanyCredentials')
+                    : t('credentials.addYourCredentials')}
                 </p>
                 <Button
                   onClick={() => setShowForm(true)}
                   className="bg-primary hover:bg-primary/90 shadow-glow"
                 >
                   <Plus className="mr-2 h-5 w-5" />
-                  Adicionar Credencial
+                  {t('credentials.addCredential')}
                 </Button>
               </Card>
             ) : (
@@ -327,7 +324,6 @@ const Credentials = () => {
                           <Key className="h-6 w-6 text-primary" />
                         </div>
                         <div className="flex gap-1">
-                          {/* Share button only for global credentials (master admin only) */}
                           {isMasterAdmin && !credential.company_id && (
                             <TooltipProvider>
                               <Tooltip>
@@ -341,7 +337,7 @@ const Credentials = () => {
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Liberar para empresas ({credential.accessCount || 0})</p>
+                                  <p>{t('credentials.releaseToCompanies')} ({credential.accessCount || 0})</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -365,7 +361,6 @@ const Credentials = () => {
                       
                       <h3 className="text-xl font-bold mb-3">{credential.name}</h3>
                       
-                      {/* Company badge for Master Admin */}
                       {isMasterAdmin && (
                         <Badge 
                           variant={credential.company_id ? "outline" : "default"} 
@@ -374,19 +369,19 @@ const Credentials = () => {
                           {credential.company_id ? (
                             <>
                               <Building2 className="h-3 w-3" />
-                              {credential.company?.name || "Desconhecida"}
+                              {credential.company?.name || t('dashboards.unknown')}
                             </>
                           ) : (
-                            <>🌐 Global</>
+                            <>🌐 {t('credentials.global')}</>
                           )}
                         </Badge>
                       )}
                       
                       <div className="space-y-2 text-sm text-muted-foreground">
-                        <p className="truncate font-mono">Client ID: {credential.client_id.slice(0, 8)}...</p>
-                        <p className="truncate font-mono">Tenant ID: {credential.tenant_id.slice(0, 8)}...</p>
+                        <p className="truncate font-mono">{t('credentials.clientId')}: {credential.client_id.slice(0, 8)}...</p>
+                        <p className="truncate font-mono">{t('credentials.tenantId')}: {credential.tenant_id.slice(0, 8)}...</p>
                         {credential.username && (
-                          <p className="truncate">Login: {credential.username}</p>
+                          <p className="truncate">{t('credentials.login')}: {credential.username}</p>
                         )}
                       </div>
                     </Card>
@@ -402,21 +397,20 @@ const Credentials = () => {
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t('credentials.deleteConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta credencial? Esta ação não pode ser desfeita.
+              {t('credentials.deleteWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Credential Company Access Dialog */}
       {accessDialogCredential && (
         <CredentialCompanyAccessDialog
           open={!!accessDialogCredential}
@@ -435,12 +429,13 @@ const Credentials = () => {
 };
 
 const CredentialsWithGuard = () => {
+  const { t } = useTranslation();
   const { isMasterAdmin, loading } = useUserRole();
   
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
