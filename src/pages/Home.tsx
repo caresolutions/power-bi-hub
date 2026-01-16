@@ -299,21 +299,11 @@ const Home = () => {
                 <img src={careLogo} alt="Care" className="h-10 w-auto" />
               )}
               
-              {/* Company and User Info */}
-              {(companyName || userName) && (
+              {/* Company Info */}
+              {companyName && (
                 <div className="hidden md:flex items-center gap-2 pl-4 border-l border-border/50">
-                  {companyName && (
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-foreground">{companyName}</span>
-                    </div>
-                  )}
-                  {companyName && userName && (
-                    <span className="text-muted-foreground">•</span>
-                  )}
-                  {userName && (
-                    <span className="text-sm text-muted-foreground">{userName}</span>
-                  )}
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">{companyName}</span>
                 </div>
               )}
             </div>
@@ -322,7 +312,7 @@ const Home = () => {
               {userRole !== 'master_admin' && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Shield className="h-4 w-4" />
-                  <span>{getRoleLabel()}</span>
+                  <span>{userName || getRoleLabel()}</span>
                 </div>
               )}
               
