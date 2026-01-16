@@ -24,18 +24,65 @@ interface ParsedDashboard {
 }
 
 const Onboarding = () => {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
+  const [currentStep, setCurrentStep] = useState<OnboardingStep | null>(null);
   const [loading, setLoading] = useState(false);
   const [companyName, setCompanyName] = useState("Empresa");
   const [credentialId, setCredentialId] = useState<string | null>(null);
   const [dashboardsCount, setDashboardsCount] = useState(0);
+  const [hasExistingCredentials, setHasExistingCredentials] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { markCredentialsConfigured, markDashboardsCreated } = useOnboardingProgress();
+  const { progress, isLoading: progressLoading, markCredentialsConfigured, markDashboardsCreated } = useOnboardingProgress();
 
   useEffect(() => {
     checkAuthAndLoadData();
   }, []);
+
+  // Determine starting step based on progress
+  useEffect(() => {
+    if (progressLoading || currentStep !== null) return;
+    
+    // Determine the correct starting step based on saved progress
+    if (progress.credentialsConfigured && progress.dashboardsCreated) {
+      // Everything done, go to complete
+      setCurrentStep("complete");
+    } else if (progress.credentialsConfigured) {
+      // Credentials done, need dashboards
+      setCurrentStep("dashboards");
+      // Load existing credential for dashboard creation
+      loadExistingCredential();
+    } else {
+      // Start from beginning
+      setCurrentStep("welcome");
+    }
+  }, [progressLoading, progress, currentStep]);
+
+  const loadExistingCredential = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.company_id) {
+      // Get the most recent credential for this company
+      const { data: credential } = await supabase
+        .from("power_bi_configs")
+        .select("id")
+        .eq("company_id", profile.company_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (credential) {
+        setCredentialId(credential.id);
+        setHasExistingCredentials(true);
+      }
+    }
+  };
 
   const checkAuthAndLoadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -60,6 +107,18 @@ const Onboarding = () => {
 
       if (company) {
         setCompanyName(company.name);
+      }
+
+      // Check if credentials already exist
+      const { data: existingCredentials } = await supabase
+        .from("power_bi_configs")
+        .select("id")
+        .eq("company_id", profile.company_id)
+        .limit(1);
+
+      if (existingCredentials && existingCredentials.length > 0) {
+        setCredentialId(existingCredentials[0].id);
+        setHasExistingCredentials(true);
       }
     }
   };
@@ -185,6 +244,16 @@ const Onboarding = () => {
   ];
 
   const currentStepIndex = steps.findIndex(s => s.key === currentStep);
+
+  // Show loading while determining starting step
+  if (currentStep === null || progressLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
