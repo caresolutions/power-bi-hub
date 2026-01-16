@@ -74,36 +74,28 @@ const Home = () => {
     }
   }, [authLoading, role, user, navigate]);
 
-  // Check if admin needs onboarding (no credentials or dashboards)
+  // Check if admin needs onboarding based on onboarding_progress
   useEffect(() => {
     const checkOnboardingNeeded = async () => {
       if (!user || role !== 'admin') return;
       
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
+      // Check onboarding_progress table
+      const { data: progress } = await supabase
+        .from("onboarding_progress")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      if (!profile?.company_id) return;
-
-      // Check if has credentials
-      const { data: credentials } = await supabase
-        .from("power_bi_configs")
-        .select("id")
-        .eq("company_id", profile.company_id)
-        .limit(1);
-
-      // Check if has dashboards
-      const { data: dashboards } = await supabase
-        .from("dashboards")
-        .select("id")
-        .eq("company_id", profile.company_id)
-        .limit(1);
-
-      // Show banner if no credentials OR no dashboards
-      if (!credentials?.length || !dashboards?.length) {
+      // Show banner if:
+      // - No progress record exists, OR
+      // - Not dismissed AND not completed (credentials or dashboards not configured)
+      if (!progress) {
         setShowOnboardingBanner(true);
+      } else if (!progress.dismissed && !progress.completed_at) {
+        // Show if not dismissed and either credentials or dashboards not configured
+        if (!progress.credentials_configured || !progress.dashboards_created) {
+          setShowOnboardingBanner(true);
+        }
       }
     };
 
