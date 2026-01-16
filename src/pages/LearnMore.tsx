@@ -5,7 +5,9 @@ import { ArrowLeft, ArrowRight, Check, X, BarChart3, Shield, Users, Zap, Monitor
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 import careLogo from "@/assets/logo_care_azul.png";
+import LanguageSelector from "@/components/LanguageSelector";
 
 interface PlanFeature {
   feature_key: string;
@@ -32,6 +34,7 @@ interface Plan {
 
 const LearnMore = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   // Reset to default colors
   useEffect(() => {
@@ -92,7 +95,7 @@ const LearnMore = () => {
   const getLimit = (planId: string, key: string) => {
     const limit = getPlanLimits(planId).find(l => l.limit_key === key);
     if (!limit) return '-';
-    if (limit.is_unlimited) return 'Ilimitado';
+    if (limit.is_unlimited) return t('learnMore.unlimited');
     return limit.limit_value?.toString() || '-';
   };
 
@@ -102,9 +105,12 @@ const LearnMore = () => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
+    const locale = i18n.language === 'pt-BR' ? 'pt-BR' : i18n.language === 'es' ? 'es-ES' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+    const currency = i18n.language === 'pt-BR' ? 'BRL' : i18n.language === 'es' ? 'EUR' : i18n.language === 'zh' ? 'CNY' : 'USD';
+    
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'BRL',
+      currency: currency,
       minimumFractionDigits: 2
     }).format(price);
   };
@@ -112,33 +118,33 @@ const LearnMore = () => {
   const systemFeatures = [
     {
       icon: BarChart3,
-      title: "Power BI Embedded",
-      description: "Incorpore seus dashboards Power BI diretamente em sua plataforma, oferecendo uma experiência profissional e integrada para seus usuários."
+      title: t('learnMore.powerBiEmbedded'),
+      description: t('learnMore.powerBiEmbeddedDesc')
     },
     {
       icon: Shield,
-      title: "Segurança Avançada",
-      description: "Controle total sobre quem acessa cada dashboard. Configure permissões por usuário ou grupo, com suporte a Row Level Security (RLS)."
+      title: t('learnMore.advancedSecurity'),
+      description: t('learnMore.advancedSecurityDesc')
     },
     {
       icon: Users,
-      title: "Gestão de Usuários",
-      description: "Sistema completo de gestão de usuários com convites por email, grupos de acesso e controle de permissões granular."
+      title: t('learnMore.userManagement'),
+      description: t('learnMore.userManagementDesc')
     },
     {
       icon: Monitor,
-      title: "Slider para TVs",
-      description: "Exiba seus dashboards em televisores com rotação automática, perfeito para painéis de monitoramento em tempo real."
+      title: t('learnMore.sliderTv'),
+      description: t('learnMore.sliderTvDesc')
     },
     {
       icon: Database,
-      title: "Múltiplas Credenciais",
-      description: "Configure várias credenciais do Azure AD para diferentes workspaces e clientes, tudo em uma única plataforma."
+      title: t('learnMore.multipleCredentials'),
+      description: t('learnMore.multipleCredentialsDesc')
     },
     {
       icon: Zap,
-      title: "Atualização de Dados",
-      description: "Force a atualização dos datasets diretamente pela plataforma, garantindo que seus dados estejam sempre atualizados."
+      title: t('learnMore.dataRefresh'),
+      description: t('learnMore.dataRefreshDesc')
     }
   ];
 
@@ -175,9 +181,9 @@ const LearnMore = () => {
   });
 
   const limitRows = [
-    { key: 'dashboards', label: 'Dashboards' },
-    { key: 'users', label: 'Usuários Inclusos' },
-    { key: 'credentials', label: 'Credenciais Azure AD' },
+    { key: 'dashboards', label: t('learnMore.dashboards') },
+    { key: 'users', label: t('learnMore.includedUsers') },
+    { key: 'credentials', label: t('learnMore.azureCredentials') },
   ];
 
   return (
@@ -197,13 +203,16 @@ const LearnMore = () => {
             <img src={careLogo} alt="Care" className="h-8 w-auto" />
           </div>
           
-          <Button 
-            variant="default"
-            onClick={() => navigate("/auth")}
-            className="bg-primary hover:bg-primary/90"
-          >
-            Começar Agora
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+            <Button 
+              variant="default"
+              onClick={() => navigate("/auth")}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {t('learnMore.startNow')}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -219,18 +228,16 @@ const LearnMore = () => {
             className="max-w-4xl mx-auto text-center"
           >
             <p className="text-primary font-medium mb-4 uppercase tracking-wider text-sm">
-              Conheça o Care BI
+              {t('learnMore.discoverCareBi')}
             </p>
             
             <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight text-foreground">
-              A plataforma completa para{" "}
-              <span className="text-primary">compartilhar dashboards</span>
+              {t('learnMore.heroTitle')}{" "}
+              <span className="text-primary">{t('learnMore.heroTitleHighlight')}</span>
             </h1>
             
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              O Care BI é a solução ideal para empresas que precisam compartilhar dashboards Power BI 
-              de forma segura, profissional e escalável. Com recursos avançados de controle de acesso 
-              e uma interface intuitiva.
+              {t('learnMore.heroDescription')}
             </p>
           </motion.div>
         </div>
@@ -247,10 +254,10 @@ const LearnMore = () => {
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold mb-4 text-foreground">
-              Recursos do Sistema
+              {t('learnMore.systemFeatures')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Tudo que você precisa para gerenciar e compartilhar seus dashboards Power BI
+              {t('learnMore.systemFeaturesDesc')}
             </p>
           </motion.div>
 
@@ -292,16 +299,16 @@ const LearnMore = () => {
             className="text-center mb-12"
           >
             <h2 className="text-3xl font-bold mb-4 text-foreground">
-              Planos e Preços
+              {t('learnMore.plansAndPricing')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Escolha o plano ideal para sua empresa
+              {t('learnMore.choosePlanDesc')}
             </p>
           </motion.div>
 
           {plansLoading ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Carregando planos...</p>
+              <p className="text-muted-foreground">{t('learnMore.loadingPlans')}</p>
             </div>
           ) : (
             <motion.div
@@ -321,20 +328,20 @@ const LearnMore = () => {
                         <div className="space-y-3">
                           <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
                           {plan.is_custom ? (
-                            <p className="text-lg text-muted-foreground">Personalizado</p>
+                            <p className="text-lg text-muted-foreground">{t('learnMore.custom')}</p>
                           ) : (
                             <>
                               <p className="text-2xl font-bold text-primary">
                                 {formatPrice(plan.price_monthly)}
                               </p>
-                              <p className="text-sm text-muted-foreground">por mês</p>
+                              <p className="text-sm text-muted-foreground">{t('learnMore.perMonth')}</p>
                             </>
                           )}
                           <Button 
                             onClick={() => navigate("/auth")}
                             className="w-full max-w-[180px] bg-primary hover:bg-primary/90"
                           >
-                            {plan.is_custom ? 'Contate-nos' : 'Começar Agora'}
+                            {plan.is_custom ? t('learnMore.contactUs') : t('learnMore.startNow')}
                           </Button>
                         </div>
                       </th>
@@ -346,7 +353,7 @@ const LearnMore = () => {
                   {/* Limits Section */}
                   <tr>
                     <td colSpan={(plans?.length || 0) + 1} className="pt-8 pb-4 px-4">
-                      <h4 className="text-lg font-semibold text-foreground">Limites</h4>
+                      <h4 className="text-lg font-semibold text-foreground">{t('learnMore.limits')}</h4>
                     </td>
                   </tr>
                   
@@ -363,10 +370,10 @@ const LearnMore = () => {
 
                   {/* Additional User Price */}
                   <tr className="border-b border-border/50">
-                    <td className="py-4 px-4 text-muted-foreground">Usuário Adicional</td>
+                    <td className="py-4 px-4 text-muted-foreground">{t('learnMore.additionalUser')}</td>
                     {plans?.map((plan) => (
                       <td key={plan.id} className="py-4 px-4 text-center font-medium text-foreground">
-                        {plan.price_additional_user ? formatPrice(plan.price_additional_user) + '/mês' : '-'}
+                        {plan.price_additional_user ? formatPrice(plan.price_additional_user) + '/' + t('learnMore.perMonth').split(' ')[0] : '-'}
                       </td>
                     ))}
                   </tr>
@@ -374,7 +381,7 @@ const LearnMore = () => {
                   {/* Features Section */}
                   <tr>
                     <td colSpan={(plans?.length || 0) + 1} className="pt-8 pb-4 px-4">
-                      <h4 className="text-lg font-semibold text-foreground">Recursos</h4>
+                      <h4 className="text-lg font-semibold text-foreground">{t('learnMore.features')}</h4>
                     </td>
                   </tr>
                   
@@ -396,7 +403,7 @@ const LearnMore = () => {
               </table>
 
               <p className="text-sm text-muted-foreground text-center mt-6">
-                * Todos os planos incluem 7 dias de teste grátis. Preços não incluem impostos.
+                {t('learnMore.trialNote')}
               </p>
             </motion.div>
           )}
@@ -414,11 +421,11 @@ const LearnMore = () => {
             className="bg-gradient-to-r from-primary/20 to-primary/5 max-w-4xl mx-auto p-12 rounded-2xl border border-primary/20 text-center"
           >
             <h2 className="text-3xl font-bold mb-4 text-foreground">
-              Pronto para transformar seus dados?
+              {t('learnMore.readyToTransform')}
             </h2>
             
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Comece agora com 7 dias de teste grátis. Sem compromisso, cancele a qualquer momento.
+              {t('learnMore.ctaDescription')}
             </p>
             
             <Button 
@@ -426,7 +433,7 @@ const LearnMore = () => {
               className="text-base h-12 px-8 bg-primary hover:bg-primary/90"
               onClick={() => navigate("/auth")}
             >
-              Criar Conta Grátis
+              {t('learnMore.createFreeAccount')}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
@@ -442,7 +449,7 @@ const LearnMore = () => {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Care Business. Todos os direitos reservados.
+              © {new Date().getFullYear()} Care Business. {t('learnMore.allRightsReserved')}
             </p>
           </div>
         </div>
