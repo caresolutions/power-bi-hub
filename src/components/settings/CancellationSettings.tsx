@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const STRIPE_PLANS: Record<string, { name: string }> = {
 };
 
 export const CancellationSettings = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -63,7 +65,7 @@ export const CancellationSettings = () => {
       if (error) throw error;
       
       if (data?.error === 'no_stripe_customer') {
-        toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
+        toast.info(data.message || t('cancellation.managedByAdmin'));
         return;
       }
       
@@ -72,7 +74,7 @@ export const CancellationSettings = () => {
       }
     } catch (error: any) {
       console.error("Error opening customer portal:", error);
-      toast.error("Erro ao abrir portal do cliente.");
+      toast.error(t('cancellation.portalError'));
     } finally {
       setPortalLoading(false);
     }
@@ -88,30 +90,31 @@ export const CancellationSettings = () => {
       if (error) throw error;
       
       if (data?.error === 'no_stripe_customer') {
-        toast.info(data.message || "Sua assinatura é gerenciada pelo administrador.");
+        toast.info(data.message || t('cancellation.managedByAdmin'));
         return;
       }
       
       if (data?.url) {
         window.open(data.url, '_blank');
-        toast.info("Você será redirecionado para o portal de gerenciamento. Selecione 'Cancelar plano' para prosseguir.");
+        toast.info(t('cancellation.portalRedirect'));
       }
     } catch (error: any) {
       console.error("Error opening customer portal:", error);
-      toast.error("Erro ao abrir portal do cliente.");
+      toast.error(t('cancellation.portalError'));
     } finally {
       setPortalLoading(false);
     }
   };
 
   const getPlanName = () => {
-    if (!subscriptionStatus?.productId) return "Sem plano";
-    return STRIPE_PLANS[subscriptionStatus.productId]?.name || "Plano desconhecido";
+    if (!subscriptionStatus?.productId) return t('cancellation.noPlan');
+    return STRIPE_PLANS[subscriptionStatus.productId]?.name || t('cancellation.unknownPlan');
   };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("pt-BR", {
+    const locale = i18n.language === 'pt-BR' ? 'pt-BR' : i18n.language === 'es' ? 'es-ES' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+    return new Date(dateString).toLocaleDateString(locale, {
       day: "2-digit",
       month: "long",
       year: "numeric"
@@ -135,10 +138,10 @@ export const CancellationSettings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Status da Assinatura
+            {t('cancellation.subscriptionStatus')}
           </CardTitle>
           <CardDescription>
-            Informações sobre sua assinatura atual
+            {t('cancellation.subscriptionInfo')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -148,12 +151,12 @@ export const CancellationSettings = () => {
               <div>
                 <p className="font-semibold">{getPlanName()}</p>
                 <p className="text-sm text-muted-foreground">
-                  {subscriptionStatus?.subscribed ? "Assinatura ativa" : "Sem assinatura ativa"}
+                  {subscriptionStatus?.subscribed ? t('cancellation.activeSubscription') : t('cancellation.noActiveSubscription')}
                 </p>
               </div>
             </div>
             <Badge variant={subscriptionStatus?.subscribed ? "default" : "secondary"}>
-              {subscriptionStatus?.isTrialing ? "Trial" : subscriptionStatus?.subscribed ? "Ativo" : "Inativo"}
+              {subscriptionStatus?.isTrialing ? t('cancellation.trial') : subscriptionStatus?.subscribed ? t('cancellation.active') : t('cancellation.inactive')}
             </Badge>
           </div>
 
@@ -161,7 +164,7 @@ export const CancellationSettings = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>
-                {subscriptionStatus?.isTrialing ? "Trial expira em: " : "Próxima cobrança: "}
+                {subscriptionStatus?.isTrialing ? t('cancellation.trialExpires') : t('cancellation.nextBilling')}
                 {formatDate(subscriptionStatus.subscriptionEnd)}
               </span>
             </div>
@@ -170,7 +173,7 @@ export const CancellationSettings = () => {
           <div className="flex flex-wrap gap-3">
             <Button onClick={() => navigate('/subscription')} variant="outline">
               <CreditCard className="mr-2 h-4 w-4" />
-              Ver Planos
+              {t('cancellation.viewPlans')}
             </Button>
             {subscriptionStatus?.subscribed && (
               <Button onClick={handleManageSubscription} variant="outline" disabled={portalLoading}>
@@ -179,7 +182,7 @@ export const CancellationSettings = () => {
                 ) : (
                   <ExternalLink className="mr-2 h-4 w-4" />
                 )}
-                Gerenciar Assinatura
+                {t('cancellation.manageSubscription')}
               </Button>
             )}
           </div>
@@ -191,10 +194,10 @@ export const CancellationSettings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <FileX className="h-5 w-5" />
-            Cancelamento de Assinatura
+            {t('cancellation.subscriptionCancellation')}
           </CardTitle>
           <CardDescription>
-            Opções para cancelar sua assinatura
+            {t('cancellation.cancellationOptions')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -202,11 +205,11 @@ export const CancellationSettings = () => {
             <div className="flex gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-500 mb-1">Antes de cancelar</p>
+                <p className="font-medium text-amber-500 mb-1">{t('cancellation.beforeCanceling')}</p>
                 <ul className="text-muted-foreground space-y-1">
-                  <li>• Você manterá acesso até o final do período pago</li>
-                  <li>• Dentro de 7 dias da contratação, você tem direito a reembolso integral (Art. 49 CDC)</li>
-                  <li>• Seus dados serão mantidos por 30 dias após o cancelamento</li>
+                  <li>• {t('cancellation.keepAccessUntilEnd')}</li>
+                  <li>• {t('cancellation.refundPolicy')}</li>
+                  <li>• {t('cancellation.dataRetention')}</li>
                 </ul>
               </div>
             </div>
@@ -218,7 +221,7 @@ export const CancellationSettings = () => {
               onClick={() => navigate('/cancellation-policy')}
             >
               <FileX className="mr-2 h-4 w-4" />
-              Ver Política de Cancelamento
+              {t('cancellation.viewCancellationPolicy')}
             </Button>
 
             {subscriptionStatus?.subscribed && (
@@ -232,7 +235,7 @@ export const CancellationSettings = () => {
                 ) : (
                   <FileX className="mr-2 h-4 w-4" />
                 )}
-                Cancelar Assinatura
+                {t('cancellation.cancelSubscription')}
               </Button>
             )}
           </div>
@@ -245,30 +248,30 @@ export const CancellationSettings = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Confirmar Cancelamento
+              {t('cancellation.confirmCancellation')}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>Tem certeza que deseja cancelar sua assinatura?</p>
+              <p>{t('cancellation.cancelConfirmQuestion')}</p>
               <div className="bg-muted p-3 rounded-lg text-sm">
-                <p className="font-medium mb-2">O que acontece após o cancelamento:</p>
+                <p className="font-medium mb-2">{t('cancellation.afterCancellation')}</p>
                 <ul className="space-y-1 text-muted-foreground">
-                  <li>• Acesso mantido até {formatDate(subscriptionStatus?.subscriptionEnd || null)}</li>
-                  <li>• Sem cobranças futuras</li>
-                  <li>• Dados mantidos por 30 dias</li>
+                  <li>• {t('cancellation.accessMaintained', { date: formatDate(subscriptionStatus?.subscriptionEnd || null) })}</li>
+                  <li>• {t('cancellation.noFutureCharges')}</li>
+                  <li>• {t('cancellation.dataKept30Days')}</li>
                 </ul>
               </div>
               <p className="text-sm">
-                Você será redirecionado para o portal de gerenciamento para confirmar o cancelamento.
+                {t('cancellation.redirectToPortal')}
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancellation.back')}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleCancelSubscription}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Continuar com Cancelamento
+              {t('cancellation.continueCancellation')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

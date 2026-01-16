@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,17 +26,18 @@ interface LegalTerm {
   version: string;
 }
 
-const TERM_TYPES = [
-  { key: 'cancellation_policy', label: 'Política de Cancelamento', icon: FileX, route: '/cancellation-policy' },
-  { key: 'privacy_policy', label: 'Política de Privacidade', icon: Shield, route: '/privacy-policy' },
-];
-
 export const LegalTermsEditor = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [terms, setTerms] = useState<LegalTerm[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('cancellation_policy');
+
+  const TERM_TYPES = [
+    { key: 'cancellation_policy', label: t('legalTerms.cancellationPolicy'), icon: FileX, route: '/cancellation-policy' },
+    { key: 'privacy_policy', label: t('legalTerms.privacyPolicy'), icon: Shield, route: '/privacy-policy' },
+  ];
 
   useEffect(() => {
     fetchTerms();
@@ -57,7 +59,7 @@ export const LegalTermsEditor = () => {
       setTerms(parsedTerms as LegalTerm[]);
     } catch (error) {
       console.error('Error fetching terms:', error);
-      toast.error('Erro ao carregar termos legais');
+      toast.error(t('legalTerms.termsLoadError'));
     } finally {
       setLoading(false);
     }
@@ -87,8 +89,8 @@ export const LegalTermsEditor = () => {
     if (!term) return;
 
     const newSection: PolicySection = {
-      title: `${term.content.length + 1}. Nova Seção`,
-      content: 'Conteúdo da nova seção...'
+      title: `${term.content.length + 1}. ${t('common.new')}`,
+      content: '...'
     };
     updateTerm(termType, { content: [...term.content, newSection] });
   };
@@ -96,7 +98,7 @@ export const LegalTermsEditor = () => {
   const removeSection = (termType: string, sectionIndex: number) => {
     const term = getTerm(termType);
     if (!term || term.content.length <= 1) {
-      toast.error('É necessário manter pelo menos uma seção');
+      toast.error(t('legalTerms.minOneSection'));
       return;
     }
 
@@ -111,7 +113,8 @@ export const LegalTermsEditor = () => {
     setSaving(true);
     try {
       const today = new Date();
-      const formattedDate = today.toLocaleDateString('pt-BR', {
+      const locale = i18n.language === 'pt-BR' ? 'pt-BR' : i18n.language === 'es' ? 'es-ES' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+      const formattedDate = today.toLocaleDateString(locale, {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
@@ -133,10 +136,10 @@ export const LegalTermsEditor = () => {
       if (error) throw error;
 
       updateTerm(termType, { last_update: formattedDate, version: newVersion });
-      toast.success('Termos atualizados com sucesso');
+      toast.success(t('legalTerms.termsUpdated'));
     } catch (error) {
       console.error('Error saving term:', error);
-      toast.error('Erro ao salvar termos');
+      toast.error(t('legalTerms.termsSaveError'));
     } finally {
       setSaving(false);
     }
@@ -161,10 +164,10 @@ export const LegalTermsEditor = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Editor de Termos Legais
+          {t('legalTerms.editor')}
         </CardTitle>
         <CardDescription>
-          Gerencie as políticas e termos legais da plataforma seguindo a legislação brasileira (CDC e LGPD)
+          {t('legalTerms.editorDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -191,13 +194,13 @@ export const LegalTermsEditor = () => {
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <p className="text-sm text-muted-foreground">
-                          Última atualização: {term.last_update} | Versão: {term.version}
+                          {t('legalTerms.lastUpdate')}: {term.last_update} | {t('legalTerms.version')}: {term.version}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" onClick={() => viewTerm(type.route)}>
                           <Eye className="h-4 w-4 mr-2" />
-                          Visualizar
+                          {t('legalTerms.view')}
                         </Button>
                         <Button onClick={() => saveTerm(type.key)} disabled={saving}>
                           {saving ? (
@@ -205,14 +208,14 @@ export const LegalTermsEditor = () => {
                           ) : (
                             <Save className="h-4 w-4 mr-2" />
                           )}
-                          Salvar Alterações
+                          {t('legalTerms.saveChanges')}
                         </Button>
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor={`title-${type.key}`}>Título do Documento</Label>
+                        <Label htmlFor={`title-${type.key}`}>{t('legalTerms.documentTitle')}</Label>
                         <Input
                           id={`title-${type.key}`}
                           value={term.title}
@@ -223,10 +226,10 @@ export const LegalTermsEditor = () => {
 
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <Label>Seções do Documento</Label>
+                          <Label>{t('legalTerms.documentSections')}</Label>
                           <Button variant="outline" size="sm" onClick={() => addSection(type.key)}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Adicionar Seção
+                            {t('legalTerms.addSection')}
                           </Button>
                         </div>
 
@@ -241,7 +244,7 @@ export const LegalTermsEditor = () => {
                               <AccordionContent>
                                 <div className="space-y-4 pt-4">
                                   <div>
-                                    <Label>Título da Seção</Label>
+                                    <Label>{t('legalTerms.sectionTitle')}</Label>
                                     <Input
                                       value={section.title}
                                       onChange={(e) => updateSection(type.key, index, 'title', e.target.value)}
@@ -249,9 +252,9 @@ export const LegalTermsEditor = () => {
                                     />
                                   </div>
                                   <div>
-                                    <Label>Conteúdo</Label>
+                                    <Label>{t('legalTerms.content')}</Label>
                                     <p className="text-xs text-muted-foreground mb-1">
-                                      Use **texto** para negrito
+                                      {t('legalTerms.boldHelp')}
                                     </p>
                                     <Textarea
                                       value={section.content}
@@ -266,7 +269,7 @@ export const LegalTermsEditor = () => {
                                       onClick={() => removeSection(type.key, index)}
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
-                                      Remover Seção
+                                      {t('legalTerms.removeSection')}
                                     </Button>
                                   </div>
                                 </div>
@@ -281,7 +284,7 @@ export const LegalTermsEditor = () => {
                   <div className="text-center py-12">
                     <type.icon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <p className="text-muted-foreground">
-                      {type.label} não encontrada no banco de dados.
+                      {type.label} {t('legalTerms.notFound')}
                     </p>
                   </div>
                 )}
