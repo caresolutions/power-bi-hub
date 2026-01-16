@@ -274,7 +274,6 @@ const SelectPlan = () => {
                     <div className="pt-2 border-t border-border/50 space-y-2">
                       {planFeatures[plan.id]
                         ?.filter((f) => f.is_enabled)
-                        .slice(0, 6)
                         .map((feature) => (
                           <div
                             key={feature.feature_key}
@@ -286,11 +285,6 @@ const SelectPlan = () => {
                             </span>
                           </div>
                         ))}
-                      {planFeatures[plan.id]?.filter((f) => f.is_enabled).length > 6 && (
-                        <p className="text-xs text-muted-foreground">
-                          +{planFeatures[plan.id]?.filter((f) => f.is_enabled).length - 6} recursos
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
