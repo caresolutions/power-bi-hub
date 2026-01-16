@@ -496,7 +496,12 @@
     "termsSaveError": "保存条款时出错",
     "termsLoadError": "加载法律条款时出错",
     "notFound": "在数据库中未找到。",
-    "back": "返回"
+    "back": "返回",
+    "translateContent": "翻译内容",
+    "translating": "翻译中...",
+    "translatedDisclaimer": "这是自动翻译。法律有效文件为葡萄牙语版本。",
+    "showOriginal": "查看原文",
+    "translationError": "翻译内容时出错"
   },
   "companies": {
     "title": "公司",
