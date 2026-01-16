@@ -407,7 +407,13 @@ const MasterAdmin = () => {
       </main>
 
       {/* Company Management Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(open) => {
+        setSheetOpen(open);
+        // Refresh companies list when closing the sheet to update counts
+        if (!open) {
+          fetchCompanies();
+        }
+      }}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
