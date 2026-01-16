@@ -40,9 +40,42 @@ const Home = () => {
   const { role, loading: authLoading, user } = useAuth();
   const [favoriteDashboards, setFavoriteDashboards] = useState<FavoriteDashboard[]>([]);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const navigate = useNavigate();
   const { customization } = useCompanyCustomization();
   const { favorites } = useDashboardFavorites();
+
+  // Fetch user profile and company name
+  useEffect(() => {
+    const fetchUserAndCompany = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      if (profile) {
+        setUserName(profile.full_name || user.email?.split('@')[0] || null);
+        
+        if (profile.company_id) {
+          const { data: company } = await supabase
+            .from("companies")
+            .select("name")
+            .eq("id", profile.company_id)
+            .maybeSingle();
+          
+          if (company) {
+            setCompanyName(company.name);
+          }
+        }
+      }
+    };
+    
+    fetchUserAndCompany();
+  }, [user]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -255,7 +288,7 @@ const Home = () => {
       <header className="relative z-10 border-b border-border/50 bg-card/80 backdrop-blur-md">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               {customization?.logo_url ? (
                 <img 
                   src={customization.logo_url} 
@@ -264,6 +297,24 @@ const Home = () => {
                 />
               ) : (
                 <img src={careLogo} alt="Care" className="h-10 w-auto" />
+              )}
+              
+              {/* Company and User Info */}
+              {(companyName || userName) && (
+                <div className="hidden md:flex items-center gap-2 pl-4 border-l border-border/50">
+                  {companyName && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">{companyName}</span>
+                    </div>
+                  )}
+                  {companyName && userName && (
+                    <span className="text-muted-foreground">•</span>
+                  )}
+                  {userName && (
+                    <span className="text-sm text-muted-foreground">{userName}</span>
+                  )}
+                </div>
               )}
             </div>
             
