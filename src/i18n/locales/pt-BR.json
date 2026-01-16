@@ -1,0 +1,137 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "add": "Adicionar",
+    "close": "Fechar",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "actions": "Ações",
+    "yes": "Sim",
+    "no": "Não",
+    "logout": "Sair",
+    "settings": "Configurações"
+  },
+  "auth": {
+    "login": "Entrar",
+    "signup": "Cadastrar",
+    "email": "E-mail",
+    "password": "Senha",
+    "forgotPassword": "Esqueceu a senha?",
+    "resetPassword": "Redefinir Senha",
+    "confirmPassword": "Confirmar Senha"
+  },
+  "home": {
+    "welcome": "Bem-vindo ao",
+    "masterAdminDesc": "Gerencie empresas e tenha acesso completo ao sistema",
+    "adminDesc": "Gerencie suas credenciais, dashboards e usuários em um só lugar",
+    "userDesc": "Acesse os dashboards disponíveis para você",
+    "quickAccess": "Acesso Rápido",
+    "setupPlatform": "Configure sua plataforma",
+    "setupPlatformDesc": "Complete o onboarding guiado para configurar credenciais e dashboards",
+    "startSetup": "Iniciar Configuração"
+  },
+  "menu": {
+    "companyManagement": "Gestão de Empresas",
+    "companyManagementDesc": "Crie e gerencie empresas do sistema",
+    "environmentConfig": "Configuração de Ambiente",
+    "environmentConfigDesc": "Gerencie credenciais do Power BI",
+    "environmentConfigAdminDesc": "Gerencie suas credenciais do Power BI",
+    "viewDashboards": "Visualizar Dashboards",
+    "viewDashboardsDesc": "Acesse todos os dashboards",
+    "accessControl": "Controle de Acessos",
+    "accessControlDesc": "Monitore acessos aos dashboards",
+    "dashboardManagement": "Gestão de Dashboards",
+    "dashboardManagementDesc": "Adicione e gerencie seus dashboards",
+    "userManagement": "Gestão de Usuários",
+    "userManagementDesc": "Convide e gerencie usuários",
+    "groupManagement": "Gestão de Grupos",
+    "groupManagementDesc": "Crie grupos e libere dashboards em massa",
+    "subscription": "Assinatura",
+    "subscriptionDesc": "Gerencie seu plano e pagamentos",
+    "addUsers": "Contratar Usuários",
+    "addUsersDesc": "Adicione mais usuários à sua conta",
+    "myDashboards": "Meus Dashboards",
+    "myDashboardsDesc": "Visualize os dashboards disponíveis"
+  },
+  "roles": {
+    "masterAdmin": "Master Admin",
+    "admin": "Admin",
+    "user": "Usuário"
+  },
+  "profile": {
+    "editName": "Editar Nome",
+    "editNameDesc": "Atualize seu nome de exibição",
+    "fullName": "Nome Completo",
+    "nameUpdated": "Nome atualizado!",
+    "nameUpdateSuccess": "Seu nome foi salvo com sucesso.",
+    "nameUpdateError": "Erro ao salvar nome"
+  },
+  "dashboards": {
+    "title": "Dashboards",
+    "noDashboards": "Nenhum dashboard encontrado",
+    "favorite": "Favoritar",
+    "unfavorite": "Remover favorito"
+  },
+  "companies": {
+    "title": "Empresas",
+    "createCompany": "Criar Empresa",
+    "companyName": "Nome da Empresa",
+    "cnpj": "CNPJ"
+  },
+  "users": {
+    "title": "Usuários",
+    "inviteUser": "Convidar Usuário",
+    "email": "E-mail",
+    "role": "Função",
+    "status": "Status",
+    "active": "Ativo",
+    "inactive": "Inativo"
+  },
+  "credentials": {
+    "title": "Credenciais",
+    "addCredential": "Adicionar Credencial",
+    "tenantId": "Tenant ID",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret"
+  },
+  "subscription": {
+    "title": "Assinatura",
+    "currentPlan": "Plano Atual",
+    "upgrade": "Fazer Upgrade",
+    "manage": "Gerenciar Assinatura"
+  },
+  "accessLogs": {
+    "title": "Logs de Acesso",
+    "user": "Usuário",
+    "dashboard": "Dashboard",
+    "accessedAt": "Data de Acesso",
+    "ipAddress": "Endereço IP"
+  },
+  "groups": {
+    "title": "Grupos",
+    "createGroup": "Criar Grupo",
+    "groupName": "Nome do Grupo",
+    "members": "Membros",
+    "dashboardAccess": "Acesso aos Dashboards"
+  },
+  "onboarding": {
+    "welcome": "Bem-vindo!",
+    "step1": "Credenciais",
+    "step2": "Dashboards",
+    "step3": "Usuários",
+    "complete": "Concluído"
+  },
+  "errors": {
+    "generic": "Ocorreu um erro",
+    "notFound": "Não encontrado",
+    "unauthorized": "Não autorizado",
+    "forbidden": "Acesso negado"
+  }
+}

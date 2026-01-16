@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,6 +41,7 @@ import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import LanguageSelector from "@/components/LanguageSelector";
 
 type UserRole = 'admin' | 'user' | 'master_admin';
 
@@ -49,6 +51,7 @@ interface FavoriteDashboard {
 }
 
 const Home = () => {
+  const { t } = useTranslation();
   const { role, loading: authLoading, user } = useAuth();
   const [favoriteDashboards, setFavoriteDashboards] = useState<FavoriteDashboard[]>([]);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
@@ -198,13 +201,13 @@ const Home = () => {
       setUserName(editingName.trim());
       setIsEditNameOpen(false);
       toast({
-        title: "Nome atualizado!",
-        description: "Seu nome foi salvo com sucesso.",
+        title: t('profile.nameUpdated'),
+        description: t('profile.nameUpdateSuccess'),
       });
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao salvar nome",
+        title: t('errors.generic'),
+        description: error.message || t('profile.nameUpdateError'),
         variant: "destructive",
       });
     } finally {
@@ -217,29 +220,29 @@ const Home = () => {
 
   const masterAdminMenuItems = [
     {
-      title: "Gestão de Empresas",
-      description: "Crie e gerencie empresas do sistema",
+      title: t('menu.companyManagement'),
+      description: t('menu.companyManagementDesc'),
       icon: Building2,
       path: "/master-admin",
       color: "bg-purple-500/10 text-purple-500"
     },
     {
-      title: "Configuração de Ambiente",
-      description: "Gerencie credenciais do Power BI",
+      title: t('menu.environmentConfig'),
+      description: t('menu.environmentConfigDesc'),
       icon: Settings,
       path: "/credentials",
       color: "bg-primary/10 text-primary"
     },
     {
-      title: "Visualizar Dashboards",
-      description: "Acesse todos os dashboards",
+      title: t('menu.viewDashboards'),
+      description: t('menu.viewDashboardsDesc'),
       icon: LayoutDashboard,
       path: "/dashboards",
       color: "bg-accent/10 text-accent"
     },
     {
-      title: "Controle de Acessos",
-      description: "Monitore acessos aos dashboards",
+      title: t('menu.accessControl'),
+      description: t('menu.accessControlDesc'),
       icon: Activity,
       path: "/access-logs",
       color: "bg-rose-500/10 text-rose-500"
@@ -248,50 +251,50 @@ const Home = () => {
 
   const adminMenuItems = [
     {
-      title: "Configuração de Ambiente",
-      description: "Gerencie suas credenciais do Power BI",
+      title: t('menu.environmentConfig'),
+      description: t('menu.environmentConfigAdminDesc'),
       icon: Settings,
       path: "/credentials",
       color: "bg-primary/10 text-primary"
     },
     {
-      title: "Gestão de Dashboards",
-      description: "Adicione e gerencie seus dashboards",
+      title: t('menu.dashboardManagement'),
+      description: t('menu.dashboardManagementDesc'),
       icon: LayoutDashboard,
       path: "/dashboards",
       color: "bg-accent/10 text-accent"
     },
     {
-      title: "Gestão de Usuários",
-      description: "Convide e gerencie usuários",
+      title: t('menu.userManagement'),
+      description: t('menu.userManagementDesc'),
       icon: Users,
       path: "/users",
       color: "bg-green-500/10 text-green-500"
     },
     {
-      title: "Gestão de Grupos",
-      description: "Crie grupos e libere dashboards em massa",
+      title: t('menu.groupManagement'),
+      description: t('menu.groupManagementDesc'),
       icon: Users2,
       path: "/groups",
       color: "bg-indigo-500/10 text-indigo-500"
     },
     {
-      title: "Controle de Acessos",
-      description: "Monitore acessos aos dashboards",
+      title: t('menu.accessControl'),
+      description: t('menu.accessControlDesc'),
       icon: Activity,
       path: "/access-logs",
       color: "bg-rose-500/10 text-rose-500"
     },
     {
-      title: "Assinatura",
-      description: "Gerencie seu plano e pagamentos",
+      title: t('menu.subscription'),
+      description: t('menu.subscriptionDesc'),
       icon: CreditCard,
       path: "/subscription",
       color: "bg-amber-500/10 text-amber-500"
     },
     {
-      title: "Contratar Usuários",
-      description: "Adicione mais usuários à sua conta",
+      title: t('menu.addUsers'),
+      description: t('menu.addUsersDesc'),
       icon: UserPlus,
       path: "/add-users",
       color: "bg-teal-500/10 text-teal-500"
@@ -300,8 +303,8 @@ const Home = () => {
 
   const userMenuItems = [
     {
-      title: "Meus Dashboards",
-      description: "Visualize os dashboards disponíveis",
+      title: t('menu.myDashboards'),
+      description: t('menu.myDashboardsDesc'),
       icon: LayoutDashboard,
       path: "/dashboards",
       color: "bg-primary/10 text-primary"
@@ -316,9 +319,9 @@ const Home = () => {
 
   const getRoleLabel = () => {
     switch (userRole) {
-      case 'master_admin': return 'Master Admin';
-      case 'admin': return 'Admin';
-      default: return 'Usuário';
+      case 'master_admin': return t('roles.masterAdmin');
+      case 'admin': return t('roles.admin');
+      default: return t('roles.user');
     }
   };
 
@@ -358,7 +361,7 @@ const Home = () => {
               )}
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {userRole !== 'master_admin' && (
                 <button 
                   onClick={handleOpenEditName}
@@ -373,20 +376,22 @@ const Home = () => {
               {userRole === 'master_admin' && (
                 <Button variant="ghost" onClick={() => navigate("/master-admin")}>
                   <Shield className="mr-2 h-4 w-4" />
-                  Master Admin
+                  {t('roles.masterAdmin')}
                 </Button>
               )}
+              
+              <LanguageSelector />
               
               {(userRole === 'admin' || userRole === 'master_admin') && (
                 <Button variant="ghost" onClick={() => navigate("/settings")}>
                   <Cog className="mr-2 h-4 w-4" />
-                  Configurações
+                  {t('common.settings')}
                 </Button>
               )}
               
               <Button variant="ghost" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                Sair
+                {t('common.logout')}
               </Button>
             </div>
           </div>
@@ -412,14 +417,14 @@ const Home = () => {
                     <Rocket className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">Configure sua plataforma</h3>
+                    <h3 className="text-lg font-semibold">{t('home.setupPlatform')}</h3>
                     <p className="text-muted-foreground text-sm">
-                      Complete o onboarding guiado para configurar credenciais e dashboards
+                      {t('home.setupPlatformDesc')}
                     </p>
                   </div>
                 </div>
                 <Button onClick={() => navigate("/onboarding")} className="shadow-glow">
-                  Iniciar Configuração
+                  {t('home.startSetup')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -429,14 +434,14 @@ const Home = () => {
 
         <div className="mb-12 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-            Bem-vindo ao <span className="text-primary">Care BI</span>
+            {t('home.welcome')} <span className="text-primary">Care BI</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             {userRole === 'master_admin' 
-              ? "Gerencie empresas e tenha acesso completo ao sistema"
+              ? t('home.masterAdminDesc')
               : userRole === 'admin' 
-                ? "Gerencie suas credenciais, dashboards e usuários em um só lugar"
-                : "Acesse os dashboards disponíveis para você"}
+                ? t('home.adminDesc')
+                : t('home.userDesc')}
           </p>
         </div>
 
@@ -449,7 +454,7 @@ const Home = () => {
           >
             <div className="flex items-center gap-2 mb-4">
               <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-              <h3 className="text-xl font-bold">Acesso Rápido</h3>
+              <h3 className="text-xl font-bold">{t('home.quickAccess')}</h3>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {favoriteDashboards.map((dashboard, index) => (
@@ -510,29 +515,29 @@ const Home = () => {
         <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Editar Nome</DialogTitle>
+              <DialogTitle>{t('profile.editName')}</DialogTitle>
               <DialogDescription>
-                Atualize seu nome de exibição
+                {t('profile.editNameDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="name">{t('profile.fullName')}</Label>
                 <Input
                   id="name"
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
-                  placeholder="Seu nome completo"
+                  placeholder={t('profile.fullName')}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleSaveName} disabled={savingName || !editingName.trim()}>
                 {savingName ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Salvar
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -547,29 +552,29 @@ const Home = () => {
       <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Nome</DialogTitle>
+            <DialogTitle>{t('profile.editName')}</DialogTitle>
             <DialogDescription>
-              Atualize seu nome de exibição
+              {t('profile.editNameDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">{t('profile.fullName')}</Label>
               <Input
                 id="name"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                placeholder="Seu nome completo"
+                placeholder={t('profile.fullName')}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSaveName} disabled={savingName || !editingName.trim()}>
               {savingName ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Salvar
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
