@@ -13,8 +13,10 @@ serve(async (req) => {
 
   try {
     const { content, targetLanguage } = await req.json();
+    console.log('Received request for translation to:', targetLanguage);
 
     if (!content || !targetLanguage) {
+      console.error('Missing content or targetLanguage');
       return new Response(
         JSON.stringify({ error: 'Content and target language are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -30,12 +32,22 @@ serve(async (req) => {
 
     const targetLangName = languageNames[targetLanguage] || targetLanguage;
 
-    // Use Lovable AI for translation
-    const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Calling Lovable AI Gateway...');
+    
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
@@ -55,16 +67,36 @@ serve(async (req) => {
       }),
     });
 
+    console.log('AI Gateway response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', errorText);
-      throw new Error('Translation service error');
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`Translation service error: ${response.status}`);
     }
 
     const data = await response.json();
-    const translatedText = data.choices[0]?.message?.content;
+    console.log('AI response received');
+    
+    const translatedText = data.choices?.[0]?.message?.content;
 
     if (!translatedText) {
+      console.error('No translation in response:', JSON.stringify(data));
       throw new Error('No translation received');
     }
 
@@ -77,6 +109,7 @@ serve(async (req) => {
         .replace(/```\n?/g, '')
         .trim();
       translatedContent = JSON.parse(cleanedText);
+      console.log('Translation parsed successfully');
     } catch (parseError) {
       console.error('Parse error:', parseError, 'Raw text:', translatedText);
       throw new Error('Failed to parse translation');
