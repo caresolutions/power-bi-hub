@@ -146,7 +146,7 @@ const Auth = () => {
           return;
         }
 
-        // Check if user is admin and needs company registration
+        // Check if user is admin and needs company registration or plan selection
         const { data: role } = await supabase
           .from("user_roles")
           .select("role")
@@ -157,6 +157,19 @@ const Auth = () => {
           if (!profile?.company_id) {
             setNeedsCompanyRegistration(true);
             setCheckingAuth(false);
+            return;
+          }
+          
+          // Check if admin needs to select a plan
+          const { data: subscription } = await supabase
+            .from("subscriptions")
+            .select("plan, status")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          // If no subscription or plan is "free" without trial, redirect to plan selection
+          if (!subscription || (subscription.plan === "free" && subscription.status !== "trial")) {
+            navigate("/select-plan");
             return;
           }
         }
