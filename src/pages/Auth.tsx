@@ -299,11 +299,32 @@ const Auth = () => {
       }, 2000);
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao redefinir senha",
-        variant: "destructive",
-      });
+      
+      // Check for HIBP compromised password error
+      const errorMessage = error.message?.toLowerCase() || '';
+      const isCompromisedPassword = 
+        errorMessage.includes('compromised') || 
+        errorMessage.includes('pwned') ||
+        errorMessage.includes('weak_password') ||
+        errorMessage.includes('data breach') ||
+        error.code === 'weak_password';
+      
+      if (isCompromisedPassword) {
+        setErrors({
+          password: "Esta senha foi encontrada em vazamentos de dados. Por segurança, escolha outra senha.",
+        });
+        toast({
+          title: "Senha comprometida detectada",
+          description: "Sua senha aparece em bancos de dados de vazamentos conhecidos. Por favor, escolha uma senha mais segura.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao redefinir senha",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -398,11 +419,31 @@ const Auth = () => {
         setNeedsCompanyRegistration(true);
       }
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Check for HIBP compromised password error
+      const errorMessage = error.message?.toLowerCase() || '';
+      const isCompromisedPassword = 
+        errorMessage.includes('compromised') || 
+        errorMessage.includes('pwned') ||
+        errorMessage.includes('weak_password') ||
+        errorMessage.includes('data breach') ||
+        error.code === 'weak_password';
+      
+      if (isCompromisedPassword) {
+        setErrors({
+          password: "Esta senha foi encontrada em vazamentos de dados. Por segurança, escolha outra senha.",
+        });
+        toast({
+          title: "Senha comprometida detectada",
+          description: "Sua senha aparece em bancos de dados de vazamentos conhecidos. Por favor, escolha uma senha mais segura que não tenha sido exposta anteriormente.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
