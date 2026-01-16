@@ -38,23 +38,72 @@ const Onboarding = () => {
     checkAuthAndLoadData();
   }, []);
 
-  // Determine starting step based on progress
+  // Determine starting step based on progress and actual data
   useEffect(() => {
-    if (progressLoading || currentStep !== null) return;
-    
-    // Determine the correct starting step based on saved progress
-    if (progress.credentialsConfigured && progress.dashboardsCreated) {
-      // Everything done, go to complete
-      setCurrentStep("complete");
-    } else if (progress.credentialsConfigured) {
-      // Credentials done, need dashboards
-      setCurrentStep("dashboards");
-      // Load existing credential for dashboard creation
-      loadExistingCredential();
-    } else {
-      // Start from beginning
-      setCurrentStep("welcome");
-    }
+    const determineStartingStep = async () => {
+      if (progressLoading || currentStep !== null) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get user's company_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+
+      // Check if dashboards already exist (even if not marked in progress)
+      let hasDashboards = progress.dashboardsCreated;
+      let hasCredentials = progress.credentialsConfigured;
+
+      if (profile?.company_id) {
+        // Check for existing dashboards
+        const { data: existingDashboards } = await supabase
+          .from("dashboards")
+          .select("id")
+          .eq("company_id", profile.company_id)
+          .limit(1);
+
+        if (existingDashboards && existingDashboards.length > 0) {
+          hasDashboards = true;
+          // Mark as created if not already
+          if (!progress.dashboardsCreated) {
+            markDashboardsCreated();
+          }
+        }
+
+        // Check for existing credentials
+        const { data: existingCredentials } = await supabase
+          .from("power_bi_configs")
+          .select("id")
+          .eq("company_id", profile.company_id)
+          .limit(1);
+
+        if (existingCredentials && existingCredentials.length > 0) {
+          hasCredentials = true;
+          // Mark as configured if not already
+          if (!progress.credentialsConfigured) {
+            markCredentialsConfigured();
+          }
+        }
+      }
+
+      // Determine the correct starting step based on actual data
+      if (hasCredentials && hasDashboards) {
+        // Everything done - redirect to home (show banner there)
+        navigate("/home");
+      } else if (hasCredentials) {
+        // Credentials done, need dashboards
+        setCurrentStep("dashboards");
+        loadExistingCredential();
+      } else {
+        // Start from beginning
+        setCurrentStep("welcome");
+      }
+    };
+
+    determineStartingStep();
   }, [progressLoading, progress, currentStep]);
 
   const loadExistingCredential = async () => {
