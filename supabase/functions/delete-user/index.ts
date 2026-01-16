@@ -49,6 +49,18 @@ serve(async (req) => {
       .delete()
       .eq("user_id", userId);
 
+    // Remove onboarding progress
+    await supabaseAdmin
+      .from("onboarding_progress")
+      .delete()
+      .eq("user_id", userId);
+
+    // Remove subscriptions
+    await supabaseAdmin
+      .from("subscriptions")
+      .delete()
+      .eq("user_id", viserId);
+
     // Remove user roles
     await supabaseAdmin
       .from("user_roles")
