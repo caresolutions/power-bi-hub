@@ -121,6 +121,23 @@
     "new": "New",
     "all": "All"
   },
+  "filters": {
+    "allCompanies": "All Companies",
+    "selectCompany": "Select a company",
+    "loadingCompanies": "Loading companies...",
+    "searchByNameOrDescription": "Search by name or description...",
+    "category": "Category",
+    "allCategories": "All",
+    "showAll": "Show all",
+    "showFavorites": "Show favorites",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "showLess": "Show less",
+    "showMore": "+{{count}} more",
+    "activeFilters": "Active filters:",
+    "favorites": "Favorites",
+    "clearFilters": "Clear filters"
+  },
   "home": {
     "welcome": "Welcome to",
     "masterAdminDesc": "Manage companies and have full system access",
