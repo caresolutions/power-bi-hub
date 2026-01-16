@@ -261,7 +261,7 @@ serve(async (req) => {
     // Sync with local subscription table
     const subscriptionData = {
       status: isTrialing ? "trial" : "active",
-      plan: planKey || "free",
+      plan: planKey || "starter",
       stripe_customer_id: customerId,
       stripe_subscription_id: activeSubscription.id,
       current_period_start: new Date(activeSubscription.current_period_start * 1000).toISOString(),
