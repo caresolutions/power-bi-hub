@@ -57,12 +57,13 @@ const Home = () => {
       const checkPlanSelection = async () => {
         const { data: subscription } = await supabase
           .from("subscriptions")
-          .select("plan")
+          .select("plan, status")
           .eq("user_id", user?.id)
           .maybeSingle();
 
-        // If plan is still "free" (default from trigger), redirect to plan selection
-        if (subscription?.plan === "free") {
+        // If plan is "free" AND status is NOT "trial", redirect to plan selection
+        // (status=trial means user already selected a plan and started trial)
+        if (subscription?.plan === "free" && subscription?.status !== "trial") {
           navigate("/select-plan");
         }
       };
