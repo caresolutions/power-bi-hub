@@ -116,7 +116,7 @@ const CancellationPolicy = () => {
           <CardContent className="pt-6 text-center">
             <FileX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">{t('legalTerms.notFound')}</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+            <Button variant="outline" className="mt-4" onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}>
               {t('legalTerms.back')}
             </Button>
           </CardContent>
@@ -130,7 +130,7 @@ const CancellationPolicy = () => {
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
