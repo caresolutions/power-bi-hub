@@ -316,6 +316,19 @@
     "unauthorized": "未授权",
     "forbidden": "访问被拒绝"
   },
+  "planFeatures": {
+    "embed_publish": "嵌入发布和公共链接",
+    "user_group_access": "按用户和组访问仪表板",
+    "ai_chat": "AI数据聊天",
+    "hide_pages": "隐藏报告页面",
+    "custom_views": "创建自定义视图",
+    "user_refresh": "用户刷新仪表板",
+    "slider_tv": "电视显示幻灯片",
+    "rls_email": "邮件级RLS应用",
+    "advanced_integrations": "专属集成",
+    "custom_development": "仪表板开发",
+    "sla_support": "支持SLA"
+  },
   "learnMore": {
     "startNow": "立即开始",
     "discoverCareBi": "了解 Care BI",

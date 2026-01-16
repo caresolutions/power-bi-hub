@@ -439,6 +439,19 @@
     "saveError": "Erro ao salvar",
     "deleteError": "Erro ao excluir"
   },
+  "planFeatures": {
+    "embed_publish": "Publicação Embed e Link Público",
+    "user_group_access": "Liberação de dashboards por usuário e grupo",
+    "ai_chat": "Chat com dados usando IA",
+    "hide_pages": "Ocultar páginas do relatório",
+    "custom_views": "Criar visualizações personalizadas",
+    "user_refresh": "Atualização de dashboard por usuário",
+    "slider_tv": "Slider para exibição em Televisores",
+    "rls_email": "Aplicação de RLS a nível de e-mail",
+    "advanced_integrations": "Integrações exclusivas",
+    "custom_development": "Desenvolvimento de dashboards",
+    "sla_support": "SLA de suporte"
+  },
   "learnMore": {
     "startNow": "Começar Agora",
     "discoverCareBi": "Conheça o Care BI",

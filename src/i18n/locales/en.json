@@ -316,6 +316,19 @@
     "unauthorized": "Unauthorized",
     "forbidden": "Access denied"
   },
+  "planFeatures": {
+    "embed_publish": "Embed Publish and Public Link",
+    "user_group_access": "Dashboard access by user and group",
+    "ai_chat": "AI-powered data chat",
+    "hide_pages": "Hide report pages",
+    "custom_views": "Create custom views",
+    "user_refresh": "Dashboard refresh by user",
+    "slider_tv": "TV display slider",
+    "rls_email": "Email-level RLS application",
+    "advanced_integrations": "Exclusive integrations",
+    "custom_development": "Dashboard development",
+    "sla_support": "Support SLA"
+  },
   "learnMore": {
     "startNow": "Start Now",
     "discoverCareBi": "Discover Care BI",

@@ -148,10 +148,21 @@ const LearnMore = () => {
     }
   ];
 
+  // Get translated label for feature key
+  const getFeatureLabel = (key: string, fallbackLabel: string) => {
+    const translationKey = `planFeatures.${key}`;
+    const translated = t(translationKey);
+    // If translation exists and is not the key itself, use it
+    if (translated && translated !== translationKey) {
+      return translated;
+    }
+    return fallbackLabel;
+  };
+
   // Get all unique feature keys from database with descriptions
   const allFeatureKeys = features?.reduce((acc, f) => {
     if (!acc.find(item => item.key === f.feature_key)) {
-      acc.push({ key: f.feature_key, label: f.feature_description || f.feature_key });
+      acc.push({ key: f.feature_key, label: getFeatureLabel(f.feature_key, f.feature_description || f.feature_key) });
     }
     return acc;
   }, [] as { key: string; label: string }[]) || [];
