@@ -146,8 +146,8 @@ const LearnMore = () => {
     { key: 'embed_publish', label: 'Publicação Embed e Link Público' },
     { key: 'user_group_access', label: 'Liberação por Usuário e Grupo' },
     { key: 'slider_tv', label: 'Slider para TVs' },
-    { key: 'rls_email', label: 'RLS a Nível de E-mail' },
     { key: 'ai_chat', label: 'Chat IA' },
+    { key: 'rls_email', label: 'RLS a Nível de E-mail' },
   ];
 
   const limitRows = [
