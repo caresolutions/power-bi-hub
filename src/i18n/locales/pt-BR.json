@@ -507,7 +507,12 @@
     "termsSaveError": "Erro ao salvar termos",
     "termsLoadError": "Erro ao carregar termos legais",
     "notFound": "não encontrada no banco de dados.",
-    "back": "Voltar"
+    "back": "Voltar",
+    "translateContent": "Traduzir conteúdo",
+    "translating": "Traduzindo...",
+    "translatedDisclaimer": "Esta é uma tradução automática. O documento legalmente válido está em português.",
+    "showOriginal": "Ver original",
+    "translationError": "Erro ao traduzir o conteúdo"
   },
   "companies": {
     "title": "Empresas",

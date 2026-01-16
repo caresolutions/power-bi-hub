@@ -496,7 +496,12 @@
     "termsSaveError": "Error saving terms",
     "termsLoadError": "Error loading legal terms",
     "notFound": "not found in database.",
-    "back": "Back"
+    "back": "Back",
+    "translateContent": "Translate content",
+    "translating": "Translating...",
+    "translatedDisclaimer": "This is an automatic translation. The legally valid document is in Portuguese.",
+    "showOriginal": "View original",
+    "translationError": "Error translating content"
   },
   "companies": {
     "title": "Companies",
