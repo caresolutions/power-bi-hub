@@ -51,6 +51,28 @@ const Home = () => {
     }
   }, [authLoading, user, navigate]);
 
+  // Redirect admins to select plan if they haven't chosen one yet
+  useEffect(() => {
+    if (!authLoading && role === 'admin') {
+      const checkPlanSelection = async () => {
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("plan")
+          .eq("user_id", user?.id)
+          .maybeSingle();
+
+        // If plan is still "free" (default from trigger), redirect to plan selection
+        if (subscription?.plan === "free") {
+          navigate("/select-plan");
+        }
+      };
+      
+      if (user) {
+        checkPlanSelection();
+      }
+    }
+  }, [authLoading, role, user, navigate]);
+
   // Check if admin needs onboarding (no credentials or dashboards)
   useEffect(() => {
     const checkOnboardingNeeded = async () => {

@@ -21,6 +21,7 @@ import AccessLogs from "./pages/AccessLogs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CancellationPolicy from "./pages/CancellationPolicy";
 import Onboarding from "./pages/Onboarding";
+import SelectPlan from "./pages/SelectPlan";
 import NotFound from "./pages/NotFound";
 import ProjectPresentation from "./pages/ProjectPresentation";
 import { SupportChat } from "./components/support/SupportChat";
@@ -81,6 +82,7 @@ const App = () => (
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/cancellation-policy" element={<CancellationPolicy />} />
               <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/select-plan" element={<SelectPlan />} />
               <Route path="/apresentacao" element={<ProjectPresentation />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

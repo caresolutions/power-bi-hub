@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,27 @@ interface SubscriptionGuardProps {
 }
 
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
-  const { subscriptionStatus, subscriptionLoading, isAccessBlocked, blockReason } = useAuth();
+  const navigate = useNavigate();
+  const { subscriptionStatus, subscriptionLoading, isAccessBlocked, blockReason, role, user } = useAuth();
+
+  // Redirect to plan selection if plan is "free" (not selected yet)
+  useEffect(() => {
+    if (!subscriptionLoading && role === "admin" && subscriptionStatus?.planKey === "free") {
+      navigate("/select-plan");
+    }
+  }, [subscriptionLoading, subscriptionStatus, role, navigate]);
 
   // Show minimal loading without subscription message
   if (subscriptionLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Don't render children if redirecting to plan selection
+  if (role === "admin" && subscriptionStatus?.planKey === "free") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
