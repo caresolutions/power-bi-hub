@@ -149,23 +149,25 @@ const LearnMore = () => {
   ];
 
   // Get translated label for feature key
-  const getFeatureLabel = (key: string, fallbackLabel: string) => {
+  const getFeatureLabel = (key: string) => {
     const translationKey = `planFeatures.${key}`;
     const translated = t(translationKey);
     // If translation exists and is not the key itself, use it
     if (translated && translated !== translationKey) {
       return translated;
     }
-    return fallbackLabel;
+    // Fallback to feature description from database
+    const feature = features?.find(f => f.feature_key === key);
+    return feature?.feature_description || key;
   };
 
-  // Get all unique feature keys from database with descriptions
+  // Get all unique feature keys from database
   const allFeatureKeys = features?.reduce((acc, f) => {
     if (!acc.find(item => item.key === f.feature_key)) {
-      acc.push({ key: f.feature_key, label: getFeatureLabel(f.feature_key, f.feature_description || f.feature_key) });
+      acc.push({ key: f.feature_key });
     }
     return acc;
-  }, [] as { key: string; label: string }[]) || [];
+  }, [] as { key: string }[]) || [];
 
   // Sort features by a predefined order for consistency
   const featureOrder = [
@@ -398,7 +400,7 @@ const LearnMore = () => {
                   
                   {sortedFeatureRows.map((row) => (
                     <tr key={row.key} className="border-b border-border/50">
-                      <td className="py-4 px-4 text-muted-foreground">{row.label}</td>
+                      <td className="py-4 px-4 text-muted-foreground">{getFeatureLabel(row.key)}</td>
                       {plans?.map((plan) => (
                         <td key={plan.id} className="py-4 px-4 text-center">
                           {hasFeature(plan.id, row.key) ? (
