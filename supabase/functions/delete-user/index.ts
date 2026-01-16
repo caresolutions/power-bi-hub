@@ -59,7 +59,7 @@ serve(async (req) => {
     await supabaseAdmin
       .from("subscriptions")
       .delete()
-      .eq("user_id", viserId);
+      .eq("user_id", userId);
 
     // Remove user roles
     await supabaseAdmin
