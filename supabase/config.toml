@@ -68,3 +68,18 @@ function = "send-subscription-alerts"
 
 [functions.translate-content]
 verify_jwt = false
+
+[functions.delete-company]
+verify_jwt = true
+
+[functions.create-invited-user]
+verify_jwt = true
+
+[functions.create-additional-user-checkout]
+verify_jwt = true
+
+[functions.cleanup-access-logs]
+verify_jwt = false
+
+[functions.cleanup-orphan-users]
+verify_jwt = false
