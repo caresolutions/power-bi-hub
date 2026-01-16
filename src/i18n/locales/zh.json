@@ -1,0 +1,137 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "close": "关闭",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "search": "搜索",
+    "filter": "筛选",
+    "actions": "操作",
+    "yes": "是",
+    "no": "否",
+    "logout": "退出",
+    "settings": "设置"
+  },
+  "auth": {
+    "login": "登录",
+    "signup": "注册",
+    "email": "电子邮件",
+    "password": "密码",
+    "forgotPassword": "忘记密码？",
+    "resetPassword": "重置密码",
+    "confirmPassword": "确认密码"
+  },
+  "home": {
+    "welcome": "欢迎使用",
+    "masterAdminDesc": "管理公司并获得完整的系统访问权限",
+    "adminDesc": "在一个地方管理您的凭证、仪表板和用户",
+    "userDesc": "访问您可用的仪表板",
+    "quickAccess": "快速访问",
+    "setupPlatform": "配置您的平台",
+    "setupPlatformDesc": "完成引导式设置以配置凭证和仪表板",
+    "startSetup": "开始配置"
+  },
+  "menu": {
+    "companyManagement": "公司管理",
+    "companyManagementDesc": "创建和管理系统公司",
+    "environmentConfig": "环境配置",
+    "environmentConfigDesc": "管理 Power BI 凭证",
+    "environmentConfigAdminDesc": "管理您的 Power BI 凭证",
+    "viewDashboards": "查看仪表板",
+    "viewDashboardsDesc": "访问所有仪表板",
+    "accessControl": "访问控制",
+    "accessControlDesc": "监控仪表板访问",
+    "dashboardManagement": "仪表板管理",
+    "dashboardManagementDesc": "添加和管理您的仪表板",
+    "userManagement": "用户管理",
+    "userManagementDesc": "邀请和管理用户",
+    "groupManagement": "群组管理",
+    "groupManagementDesc": "创建群组并批量授予仪表板访问权限",
+    "subscription": "订阅",
+    "subscriptionDesc": "管理您的计划和付款",
+    "addUsers": "添加用户",
+    "addUsersDesc": "为您的账户添加更多用户",
+    "myDashboards": "我的仪表板",
+    "myDashboardsDesc": "查看可用的仪表板"
+  },
+  "roles": {
+    "masterAdmin": "超级管理员",
+    "admin": "管理员",
+    "user": "用户"
+  },
+  "profile": {
+    "editName": "编辑姓名",
+    "editNameDesc": "更新您的显示名称",
+    "fullName": "全名",
+    "nameUpdated": "姓名已更新！",
+    "nameUpdateSuccess": "您的姓名已成功保存。",
+    "nameUpdateError": "保存姓名时出错"
+  },
+  "dashboards": {
+    "title": "仪表板",
+    "noDashboards": "未找到仪表板",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏"
+  },
+  "companies": {
+    "title": "公司",
+    "createCompany": "创建公司",
+    "companyName": "公司名称",
+    "cnpj": "税务识别号"
+  },
+  "users": {
+    "title": "用户",
+    "inviteUser": "邀请用户",
+    "email": "电子邮件",
+    "role": "角色",
+    "status": "状态",
+    "active": "活跃",
+    "inactive": "非活跃"
+  },
+  "credentials": {
+    "title": "凭证",
+    "addCredential": "添加凭证",
+    "tenantId": "租户 ID",
+    "clientId": "客户端 ID",
+    "clientSecret": "客户端密钥"
+  },
+  "subscription": {
+    "title": "订阅",
+    "currentPlan": "当前计划",
+    "upgrade": "升级",
+    "manage": "管理订阅"
+  },
+  "accessLogs": {
+    "title": "访问日志",
+    "user": "用户",
+    "dashboard": "仪表板",
+    "accessedAt": "访问时间",
+    "ipAddress": "IP 地址"
+  },
+  "groups": {
+    "title": "群组",
+    "createGroup": "创建群组",
+    "groupName": "群组名称",
+    "members": "成员",
+    "dashboardAccess": "仪表板访问"
+  },
+  "onboarding": {
+    "welcome": "欢迎！",
+    "step1": "凭证",
+    "step2": "仪表板",
+    "step3": "用户",
+    "complete": "完成"
+  },
+  "errors": {
+    "generic": "发生错误",
+    "notFound": "未找到",
+    "unauthorized": "未授权",
+    "forbidden": "访问被拒绝"
+  }
+}

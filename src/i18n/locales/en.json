@@ -1,0 +1,137 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions",
+    "yes": "Yes",
+    "no": "No",
+    "logout": "Logout",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset Password",
+    "confirmPassword": "Confirm Password"
+  },
+  "home": {
+    "welcome": "Welcome to",
+    "masterAdminDesc": "Manage companies and have full system access",
+    "adminDesc": "Manage your credentials, dashboards and users in one place",
+    "userDesc": "Access the dashboards available to you",
+    "quickAccess": "Quick Access",
+    "setupPlatform": "Set up your platform",
+    "setupPlatformDesc": "Complete the guided onboarding to configure credentials and dashboards",
+    "startSetup": "Start Setup"
+  },
+  "menu": {
+    "companyManagement": "Company Management",
+    "companyManagementDesc": "Create and manage system companies",
+    "environmentConfig": "Environment Configuration",
+    "environmentConfigDesc": "Manage Power BI credentials",
+    "environmentConfigAdminDesc": "Manage your Power BI credentials",
+    "viewDashboards": "View Dashboards",
+    "viewDashboardsDesc": "Access all dashboards",
+    "accessControl": "Access Control",
+    "accessControlDesc": "Monitor dashboard access",
+    "dashboardManagement": "Dashboard Management",
+    "dashboardManagementDesc": "Add and manage your dashboards",
+    "userManagement": "User Management",
+    "userManagementDesc": "Invite and manage users",
+    "groupManagement": "Group Management",
+    "groupManagementDesc": "Create groups and grant dashboard access in bulk",
+    "subscription": "Subscription",
+    "subscriptionDesc": "Manage your plan and payments",
+    "addUsers": "Add Users",
+    "addUsersDesc": "Add more users to your account",
+    "myDashboards": "My Dashboards",
+    "myDashboardsDesc": "View available dashboards"
+  },
+  "roles": {
+    "masterAdmin": "Master Admin",
+    "admin": "Admin",
+    "user": "User"
+  },
+  "profile": {
+    "editName": "Edit Name",
+    "editNameDesc": "Update your display name",
+    "fullName": "Full Name",
+    "nameUpdated": "Name updated!",
+    "nameUpdateSuccess": "Your name has been saved successfully.",
+    "nameUpdateError": "Error saving name"
+  },
+  "dashboards": {
+    "title": "Dashboards",
+    "noDashboards": "No dashboards found",
+    "favorite": "Favorite",
+    "unfavorite": "Remove favorite"
+  },
+  "companies": {
+    "title": "Companies",
+    "createCompany": "Create Company",
+    "companyName": "Company Name",
+    "cnpj": "Tax ID"
+  },
+  "users": {
+    "title": "Users",
+    "inviteUser": "Invite User",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "credentials": {
+    "title": "Credentials",
+    "addCredential": "Add Credential",
+    "tenantId": "Tenant ID",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade",
+    "manage": "Manage Subscription"
+  },
+  "accessLogs": {
+    "title": "Access Logs",
+    "user": "User",
+    "dashboard": "Dashboard",
+    "accessedAt": "Accessed At",
+    "ipAddress": "IP Address"
+  },
+  "groups": {
+    "title": "Groups",
+    "createGroup": "Create Group",
+    "groupName": "Group Name",
+    "members": "Members",
+    "dashboardAccess": "Dashboard Access"
+  },
+  "onboarding": {
+    "welcome": "Welcome!",
+    "step1": "Credentials",
+    "step2": "Dashboards",
+    "step3": "Users",
+    "complete": "Complete"
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Access denied"
+  }
+}
