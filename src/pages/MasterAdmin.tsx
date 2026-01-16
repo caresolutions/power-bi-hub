@@ -161,19 +161,29 @@ const MasterAdmin = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
 
-    const { error } = await supabase
-      .from("companies")
-      .delete()
-      .eq("id", deleteId);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-company", {
+        body: { companyId: deleteId, deleteUsers: true }
+      });
 
-    if (error) {
-      toast.error("Erro ao excluir empresa. Verifique se não há usuários ou dashboards vinculados.");
-      return;
+      if (error) {
+        console.error("Error deleting company:", error);
+        toast.error("Erro ao excluir empresa: " + error.message);
+        return;
+      }
+
+      if (data?.error) {
+        toast.error("Erro ao excluir empresa: " + data.error);
+        return;
+      }
+
+      toast.success(`Empresa excluída com sucesso. ${data?.deletedUsers || 0} usuários e ${data?.deletedDashboards || 0} dashboards removidos.`);
+      setDeleteId(null);
+      fetchCompanies();
+    } catch (err: any) {
+      console.error("Error:", err);
+      toast.error("Erro ao excluir empresa: " + err.message);
     }
-
-    toast.success("Empresa excluída com sucesso");
-    setDeleteId(null);
-    fetchCompanies();
   };
 
   const handleManageCompany = (company: Company) => {
