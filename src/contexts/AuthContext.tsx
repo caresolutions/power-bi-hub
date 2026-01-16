@@ -146,36 +146,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           companyId: userData.companyId 
         });
         
-        // Find admin of the company - get all admins first, then find one in this company
-        const { data: adminRoles, error: adminRolesError } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin");
+        // Use database function with SECURITY DEFINER to bypass RLS
+        const { data: adminId, error: adminError } = await supabase
+          .rpc('get_company_admin_id', { _company_id: userData.companyId });
 
-        console.log("Admin roles found:", adminRoles, "Error:", adminRolesError);
+        console.log("Company admin ID result:", adminId, "Error:", adminError);
 
-        if (adminRoles && adminRoles.length > 0) {
-          // Convert UUID user_ids to strings for comparison with profiles.id (which is text)
-          const adminUserIds = adminRoles.map(r => String(r.user_id));
-          console.log("Admin user IDs (as strings):", adminUserIds);
-          
-          // Find which admin belongs to the same company
-          const { data: adminProfile, error: adminProfileError } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("company_id", userData.companyId)
-            .in("id", adminUserIds)
-            .limit(1)
-            .maybeSingle();
-
-          console.log("Admin profile search result:", adminProfile, "Error:", adminProfileError);
-
-          if (adminProfile) {
-            targetUserId = adminProfile.id;
-            console.log("Found company admin for subscription check:", targetUserId);
-          } else {
-            console.log("No admin found for company, will use user's own subscription");
-          }
+        if (adminId) {
+          targetUserId = adminId;
+          console.log("Found company admin for subscription check:", targetUserId);
+        } else {
+          console.log("No admin found for company, will use user's own subscription");
         }
       }
 
