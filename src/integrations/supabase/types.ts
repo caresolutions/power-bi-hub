@@ -1350,6 +1350,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_company_admin_id: { Args: { _company_id: string }; Returns: string }
       has_group_dashboard_access: {
         Args: { _dashboard_id: string; _user_id: string }
         Returns: boolean
