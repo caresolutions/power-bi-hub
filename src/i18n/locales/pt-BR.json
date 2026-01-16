@@ -281,7 +281,17 @@
     "unknown": "Desconhecida",
     "refreshPerms": "Permissões de atualização",
     "grantAccess": "Conceder acesso",
-    "embedType": "Tipo de incorporação"
+    "embedType": "Tipo de incorporação",
+    "publicLink": "Link Público",
+    "workspace": "Workspace",
+    "access": "Acesso",
+    "subscriptions": "Assinaturas",
+    "refresh": "Atualizar",
+    "category": "Categoria",
+    "tags": "Tags",
+    "type": "Tipo",
+    "manageAccess": "Gerenciar acesso",
+    "currentPlan": "atual"
   },
   "credentials": {
     "title": "Credenciais",
