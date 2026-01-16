@@ -137,24 +137,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // For non-admin users, find the admin's subscription
+      // For non-admin users, find the admin's subscription via the company
       let targetUserId = userData.userId;
       
       if (userData.role === "user" && userData.companyId) {
-        // Find admin of the company - single optimized query
-        const { data: adminData } = await supabase
+        // Find admin of the company - query profiles first, then check roles
+        const { data: companyProfiles } = await supabase
           .from("profiles")
-          .select(`
-            id,
-            user_roles!inner(role)
-          `)
-          .eq("company_id", userData.companyId)
-          .eq("user_roles.role", "admin")
-          .limit(1)
-          .maybeSingle();
+          .select("id")
+          .eq("company_id", userData.companyId);
 
-        if (adminData) {
-          targetUserId = adminData.id;
+        if (companyProfiles && companyProfiles.length > 0) {
+          // Check which profile has admin role
+          const profileIds = companyProfiles.map(p => p.id);
+          const { data: adminRoles } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .in("user_id", profileIds)
+            .eq("role", "admin")
+            .limit(1)
+            .maybeSingle();
+
+          if (adminRoles) {
+            targetUserId = adminRoles.user_id;
+          }
         }
       }
 
