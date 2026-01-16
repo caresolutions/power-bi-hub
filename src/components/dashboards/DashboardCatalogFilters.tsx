@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Search, X, Star, Filter, Tag, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface DashboardCatalogFiltersProps {
   searchQuery: string;
@@ -41,6 +42,7 @@ export const DashboardCatalogFilters = ({
   viewMode,
   onViewModeChange,
 }: DashboardCatalogFiltersProps) => {
+  const { t } = useTranslation();
   const [showAllTags, setShowAllTags] = useState(false);
   const visibleTags = showAllTags ? tags : tags.slice(0, 6);
 
@@ -52,7 +54,7 @@ export const DashboardCatalogFilters = ({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Buscar por nome ou descrição..."
+            placeholder={t('filters.searchByNameOrDescription')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10 bg-background/50"
@@ -73,10 +75,10 @@ export const DashboardCatalogFilters = ({
           <Select value={selectedCategory} onValueChange={onCategoryChange}>
             <SelectTrigger className="w-[160px] bg-background/50">
               <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Categoria" />
+              <SelectValue placeholder={t('filters.category')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="all">{t('filters.allCategories')}</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
@@ -90,7 +92,7 @@ export const DashboardCatalogFilters = ({
             size="icon"
             onClick={onFavoritesToggle}
             className="shrink-0"
-            title={showFavoritesOnly ? "Mostrar todos" : "Mostrar favoritos"}
+            title={showFavoritesOnly ? t('filters.showAll') : t('filters.showFavorites')}
           >
             <Star className={cn("h-4 w-4", showFavoritesOnly && "fill-current")} />
           </Button>
@@ -102,7 +104,7 @@ export const DashboardCatalogFilters = ({
               size="icon"
               onClick={() => onViewModeChange("grid")}
               className="rounded-none h-9 w-9"
-              title="Visualização em grade"
+              title={t('filters.gridView')}
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -111,7 +113,7 @@ export const DashboardCatalogFilters = ({
               size="icon"
               onClick={() => onViewModeChange("list")}
               className="rounded-none h-9 w-9"
-              title="Visualização em lista"
+              title={t('filters.listView')}
             >
               <List className="h-4 w-4" />
             </Button>
@@ -141,7 +143,7 @@ export const DashboardCatalogFilters = ({
               className="h-6 text-xs"
               onClick={() => setShowAllTags(!showAllTags)}
             >
-              {showAllTags ? "Mostrar menos" : `+${tags.length - 6} mais`}
+              {showAllTags ? t('filters.showLess') : t('filters.showMore', { count: tags.length - 6 })}
             </Button>
           )}
         </div>
@@ -150,11 +152,11 @@ export const DashboardCatalogFilters = ({
       {/* Active Filters Summary */}
       {(selectedCategory !== "all" || selectedTags.length > 0 || showFavoritesOnly) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Filtros ativos:</span>
+          <span>{t('filters.activeFilters')}</span>
           {showFavoritesOnly && (
             <Badge variant="secondary" className="gap-1">
               <Star className="h-3 w-3 fill-current" />
-              Favoritos
+              {t('filters.favorites')}
             </Badge>
           )}
           {selectedCategory !== "all" && (
@@ -175,7 +177,7 @@ export const DashboardCatalogFilters = ({
               if (showFavoritesOnly) onFavoritesToggle();
             }}
           >
-            Limpar filtros
+            {t('filters.clearFilters')}
           </Button>
         </div>
       )}

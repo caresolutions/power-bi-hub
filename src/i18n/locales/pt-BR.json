@@ -132,6 +132,23 @@
     "processing": "Processando...",
     "selecting": "Selecionando..."
   },
+  "filters": {
+    "allCompanies": "Todas as Empresas",
+    "selectCompany": "Selecione uma empresa",
+    "loadingCompanies": "Carregando empresas...",
+    "searchByNameOrDescription": "Buscar por nome ou descrição...",
+    "category": "Categoria",
+    "allCategories": "Todas",
+    "showAll": "Mostrar todos",
+    "showFavorites": "Mostrar favoritos",
+    "gridView": "Visualização em grade",
+    "listView": "Visualização em lista",
+    "showLess": "Mostrar menos",
+    "showMore": "+{{count}} mais",
+    "activeFilters": "Filtros ativos:",
+    "favorites": "Favoritos",
+    "clearFilters": "Limpar filtros"
+  },
   "home": {
     "welcome": "Bem-vindo ao",
     "masterAdminDesc": "Gerencie empresas e tenha acesso completo ao sistema",

@@ -121,6 +121,23 @@
     "new": "新建",
     "all": "全部"
   },
+  "filters": {
+    "allCompanies": "所有公司",
+    "selectCompany": "选择一个公司",
+    "loadingCompanies": "加载公司中...",
+    "searchByNameOrDescription": "按名称或描述搜索...",
+    "category": "类别",
+    "allCategories": "全部",
+    "showAll": "显示全部",
+    "showFavorites": "显示收藏",
+    "gridView": "网格视图",
+    "listView": "列表视图",
+    "showLess": "收起",
+    "showMore": "+{{count}} 更多",
+    "activeFilters": "活动筛选：",
+    "favorites": "收藏",
+    "clearFilters": "清除筛选"
+  },
   "home": {
     "welcome": "欢迎使用",
     "masterAdminDesc": "管理公司并获得完整的系统访问权限",
