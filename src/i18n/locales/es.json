@@ -316,6 +316,19 @@
     "unauthorized": "No autorizado",
     "forbidden": "Acceso denegado"
   },
+  "planFeatures": {
+    "embed_publish": "Publicación Embed y Enlace Público",
+    "user_group_access": "Acceso a dashboards por usuario y grupo",
+    "ai_chat": "Chat con datos usando IA",
+    "hide_pages": "Ocultar páginas del informe",
+    "custom_views": "Crear vistas personalizadas",
+    "user_refresh": "Actualización de dashboard por usuario",
+    "slider_tv": "Slider para visualización en TV",
+    "rls_email": "Aplicación de RLS a nivel de correo",
+    "advanced_integrations": "Integraciones exclusivas",
+    "custom_development": "Desarrollo de dashboards",
+    "sla_support": "SLA de soporte"
+  },
   "learnMore": {
     "startNow": "Comenzar Ahora",
     "discoverCareBi": "Descubre Care BI",
