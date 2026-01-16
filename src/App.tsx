@@ -26,6 +26,7 @@ import ProjectPresentation from "./pages/ProjectPresentation";
 import { SupportChat } from "./components/support/SupportChat";
 import { ConsentProvider } from "./components/consent/ConsentProvider";
 import { AuthProvider } from "./contexts/AuthContext";
+import OnboardingBanner from "./components/onboarding/OnboardingBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,6 +86,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <ConditionalSupportChat />
+            <OnboardingBanner />
           </ConsentProvider>
         </BrowserRouter>
       </TooltipProvider>

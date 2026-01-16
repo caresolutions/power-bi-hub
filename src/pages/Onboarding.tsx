@@ -10,6 +10,7 @@ import AddDashboardStep from "@/components/onboarding/AddDashboardStep";
 import CompletionStep from "@/components/onboarding/CompletionStep";
 import { Check } from "lucide-react";
 import careLogo from "@/assets/logo_care_azul.png";
+import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 
 type OnboardingStep = "welcome" | "credentials" | "dashboards" | "complete";
 
@@ -30,6 +31,7 @@ const Onboarding = () => {
   const [dashboardsCount, setDashboardsCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { markCredentialsConfigured, markDashboardsCreated } = useOnboardingProgress();
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -103,6 +105,7 @@ const Onboarding = () => {
 
       setCredentialId(result.data?.id);
       setCurrentStep("dashboards");
+      markCredentialsConfigured();
       
       toast({
         title: "Credenciais salvas!",
@@ -152,6 +155,7 @@ const Onboarding = () => {
 
       setDashboardsCount(dashboards.length);
       setCurrentStep("complete");
+      markDashboardsCreated();
       
       toast({
         title: "Dashboards salvos!",
