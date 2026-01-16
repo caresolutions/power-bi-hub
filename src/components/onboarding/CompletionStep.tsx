@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Sparkles
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CompletionStepProps {
   stats: {
@@ -24,25 +25,27 @@ const CompletionStep = ({
   onInviteUsers,
   onGoToSettings 
 }: CompletionStepProps) => {
+  const { t } = useTranslation();
+  
   const nextSteps = [
     {
       icon: BarChart3,
-      title: "Ver Dashboards",
-      description: `${stats.dashboardsCount} dashboard${stats.dashboardsCount > 1 ? 's' : ''} configurado${stats.dashboardsCount > 1 ? 's' : ''}`,
+      titleKey: "viewDashboards",
+      descriptionKey: "dashboardsConfigured",
       action: onGoToDashboards,
       primary: true,
     },
     {
       icon: Users,
-      title: "Convidar Usuários",
-      description: "Adicione sua equipe à plataforma",
+      titleKey: "inviteUsers",
+      descriptionKey: "addTeam",
       action: onInviteUsers,
       primary: false,
     },
     {
       icon: Settings,
-      title: "Personalizar",
-      description: "Ajuste cores e configurações",
+      titleKey: "customize",
+      descriptionKey: "adjustSettings",
       action: onGoToSettings,
       primary: false,
     },
@@ -65,11 +68,11 @@ const CompletionStep = ({
         transition={{ delay: 0.3 }}
       >
         <h2 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-          Configuração Concluída!
+          {t("onboarding.configComplete")}
           <Sparkles className="h-6 w-6 text-yellow-500" />
         </h2>
         <p className="text-muted-foreground text-lg mb-8">
-          Sua plataforma está pronta para uso
+          {t("onboarding.platformReady")}
         </p>
       </motion.div>
 
@@ -81,7 +84,7 @@ const CompletionStep = ({
       >
         {nextSteps.map((step, index) => (
           <motion.button
-            key={step.title}
+            key={step.titleKey}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 + index * 0.1 }}
@@ -100,8 +103,12 @@ const CompletionStep = ({
               }`} />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium">{step.title}</h3>
-              <p className="text-sm text-muted-foreground">{step.description}</p>
+              <h3 className="font-medium">{t(`onboarding.${step.titleKey}`)}</h3>
+              <p className="text-sm text-muted-foreground">
+                {step.titleKey === "viewDashboards" 
+                  ? t(`onboarding.${step.descriptionKey}`, { count: stats.dashboardsCount })
+                  : t(`onboarding.${step.descriptionKey}`)}
+              </p>
             </div>
             <ArrowRight className={`h-5 w-5 ${
               step.primary ? 'text-primary' : 'text-muted-foreground'
@@ -117,8 +124,7 @@ const CompletionStep = ({
         className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20"
       >
         <p className="text-sm text-muted-foreground">
-          💡 <strong>Dica:</strong> Você pode acessar todas essas opções a qualquer momento 
-          pelo menu lateral ou nas Configurações.
+          💡 <strong>{t("onboarding.tip")}</strong> {t("onboarding.tipAccessAnytime")}
         </p>
       </motion.div>
     </div>

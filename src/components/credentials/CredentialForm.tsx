@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Key, ArrowLeft, User, Lock, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Credential {
   id: string;
@@ -38,6 +39,7 @@ interface CredentialFormProps {
 }
 
 const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false, defaultCompanyId }: CredentialFormProps) => {
+  const { t } = useTranslation();
   const [name, setName] = useState(credential?.name || "");
   const [clientId, setClientId] = useState(credential?.client_id || "");
   const [clientSecret, setClientSecret] = useState("");
@@ -83,7 +85,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Usuário não autenticado");
+      if (!session) throw new Error(t("credentialForm.userNotAuth"));
 
       if (isEditing) {
         // Update existing credential via edge function (with encryption)
@@ -104,11 +106,11 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
         });
 
         if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || "Erro ao atualizar credencial");
+        if (!data?.success) throw new Error(data?.error || t("credentialForm.updateError"));
 
         toast({
-          title: "Sucesso",
-          description: "Credencial atualizada com sucesso",
+          title: t("credentialForm.success"),
+          description: t("credentialForm.credentialUpdated"),
         });
       } else {
         // Create new credential via edge function (with encryption)
@@ -128,18 +130,18 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
         });
 
         if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || "Erro ao criar credencial");
+        if (!data?.success) throw new Error(data?.error || t("credentialForm.createError"));
 
         toast({
-          title: "Sucesso",
-          description: "Credencial criada com sucesso",
+          title: t("credentialForm.success"),
+          description: t("credentialForm.credentialCreated"),
         });
       }
 
       onSuccess();
     } catch (error: any) {
       toast({
-        title: "Erro",
+        title: t("credentialForm.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -156,7 +158,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
     >
       <Button variant="ghost" className="mb-6" onClick={onCancel}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Voltar
+        {t("credentialForm.back")}
       </Button>
 
       <Card className="glass p-8 border-border/50">
@@ -166,12 +168,12 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
           </div>
           <div>
             <h2 className="text-2xl font-bold">
-              {isEditing ? "Editar Credencial" : "Nova Credencial"}
+              {isEditing ? t("credentialForm.editCredential") : t("credentialForm.newCredential")}
             </h2>
             <p className="text-muted-foreground">
               {isEditing 
-                ? "Atualize as informações da credencial" 
-                : "Adicione suas credenciais do Microsoft Power BI"}
+                ? t("credentialForm.editCredentialDesc")
+                : t("credentialForm.newCredentialDesc")}
             </p>
           </div>
         </div>
@@ -182,14 +184,14 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
             <div className="space-y-2">
               <Label htmlFor="company" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Empresa (opcional - deixe vazio para credencial global)
+                {t("credentialForm.company")}
               </Label>
               <Select value={companyId} onValueChange={setCompanyId}>
                 <SelectTrigger className="bg-background/50">
-                  <SelectValue placeholder="Global (todas as empresas)" />
+                  <SelectValue placeholder={t("credentialForm.globalAllCompanies")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="global">🌐 Global (todas as empresas)</SelectItem>
+                  <SelectItem value="global">🌐 {t("credentialForm.globalAllCompanies")}</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
@@ -198,20 +200,20 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Credenciais globais podem ser usadas em dashboards de qualquer empresa
+                {t("credentialForm.globalCredentialsHelp")}
               </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Nome da Credencial</Label>
+            <Label htmlFor="name">{t("credentialForm.credentialName")}</Label>
             <Input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Ex: Produção, Desenvolvimento"
+              placeholder={t("credentialForm.credentialNamePlaceholder")}
               className="bg-background/50"
             />
           </div>
@@ -219,11 +221,11 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
           {/* Azure AD App Section */}
           <div className="border border-border/50 rounded-lg p-4 space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
-              Configuração Azure AD
+              {t("credentialForm.azureAdConfig")}
             </h3>
 
             <div className="space-y-2">
-              <Label htmlFor="tenantId">Tenant ID</Label>
+              <Label htmlFor="tenantId">{t("credentialForm.tenantId")}</Label>
               <Input
                 id="tenantId"
                 type="text"
@@ -236,7 +238,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="clientId">Client ID (Application ID)</Label>
+              <Label htmlFor="clientId">{t("credentialForm.clientId")}</Label>
               <Input
                 id="clientId"
                 type="text"
@@ -250,7 +252,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
 
             <div className="space-y-2">
               <Label htmlFor="clientSecret">
-                Client Secret {isEditing && "(deixe em branco para manter)"}
+                {isEditing ? t("credentialForm.clientSecretKeep") : t("credentialForm.clientSecret")}
               </Label>
               <Input
                 id="clientSecret"
@@ -268,14 +270,14 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
           <div className="border border-border/50 rounded-lg p-4 space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <User className="h-4 w-4" />
-              Conta Power BI (Master User)
+              {t("credentialForm.powerBiAccount")}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Informe as credenciais da conta Microsoft com licença Power BI Pro/Premium que tem acesso aos workspaces.
+              {t("credentialForm.powerBiAccountHelp")}
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="username">Email / Login</Label>
+              <Label htmlFor="username">{t("credentialForm.emailLogin")}</Label>
               <Input
                 id="username"
                 type="email"
@@ -290,7 +292,7 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
             <div className="space-y-2">
               <Label htmlFor="password" className="flex items-center gap-2">
                 <Lock className="h-3 w-3" />
-                Senha {isEditing && "(deixe em branco para manter)"}
+                {isEditing ? t("credentialForm.passwordKeep") : t("credentialForm.password")}
               </Label>
               <Input
                 id="password"
@@ -311,14 +313,14 @@ const CredentialForm = ({ credential, onSuccess, onCancel, isMasterAdmin = false
               onClick={onCancel}
               className="flex-1"
             >
-              Cancelar
+              {t("credentialForm.cancel")}
             </Button>
             <Button
               type="submit"
               className="flex-1 bg-primary hover:bg-primary/90 shadow-glow"
               disabled={loading}
             >
-              {loading ? "Salvando..." : isEditing ? "Salvar Alterações" : "Criar Credencial"}
+              {loading ? t("credentialForm.saving") : isEditing ? t("credentialForm.saveChanges") : t("credentialForm.createCredential")}
             </Button>
           </div>
         </form>

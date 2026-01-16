@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 // Mapeamento dos planos com produtos Stripe (deve corresponder aos plan_key da tabela subscription_plans)
 export const SUBSCRIPTION_PLANS = {
@@ -62,6 +63,7 @@ interface CompanyFormProps {
 }
 
 export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: editingCompany?.name || "",
     cnpj: editingCompany?.cnpj || "",
@@ -73,7 +75,7 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
     e.preventDefault();
     
     if (!formData.name || !formData.cnpj) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error(t("companyForm.fillAllFields"));
       return;
     }
 
@@ -88,7 +90,7 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
           .eq("id", editingCompany.id);
 
         if (error) throw error;
-        toast.success("Empresa atualizada com sucesso");
+        toast.success(t("companyForm.companyUpdated"));
       } else {
         // Create company
         const { data: companyData, error: companyError } = await supabase
@@ -99,7 +101,7 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
 
         if (companyError) {
           if (companyError.code === "23505") {
-            toast.error("CNPJ já cadastrado");
+            toast.error(t("companyForm.cnpjExists"));
           } else {
             throw companyError;
           }
@@ -109,12 +111,12 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
         // Create subscription for the company admin (will be assigned later)
         // The subscription is created when the first admin user is added to the company
         
-        toast.success("Empresa criada com sucesso");
+        toast.success(t("companyForm.companyCreated"));
       }
 
       onSuccess();
     } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar empresa");
+      toast.error(error.message || t("companyForm.saveError"));
     } finally {
       setLoading(false);
     }
@@ -123,28 +125,28 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Nome da Empresa *</Label>
+        <Label htmlFor="name">{t("companyForm.companyName")}</Label>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Nome da empresa"
+          placeholder={t("companyForm.companyNamePlaceholder")}
         />
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="cnpj">CNPJ *</Label>
+        <Label htmlFor="cnpj">{t("companyForm.cnpj")}</Label>
         <Input
           id="cnpj"
           value={formData.cnpj}
           onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-          placeholder="00.000.000/0000-00"
+          placeholder={t("companyForm.cnpjPlaceholder")}
         />
       </div>
 
       {!editingCompany && (
         <div className="space-y-2">
-          <Label htmlFor="plan">Tipo de Assinatura</Label>
+          <Label htmlFor="plan">{t("companyForm.subscriptionType")}</Label>
           <Select
             value={formData.plan}
             onValueChange={(value: keyof typeof SUBSCRIPTION_PLANS) =>
@@ -152,7 +154,7 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um plano" />
+              <SelectValue placeholder={t("companyForm.selectPlan")} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(SUBSCRIPTION_PLANS).map(([key, plan]) => (
@@ -168,17 +170,17 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            A assinatura será atribuída quando um administrador for vinculado à empresa
+            {t("companyForm.subscriptionNote")}
           </p>
         </div>
       )}
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-          Cancelar
+          {t("companyForm.cancel")}
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Salvando..." : editingCompany ? "Salvar" : "Criar Empresa"}
+          {loading ? t("companyForm.saving") : editingCompany ? t("companyForm.save") : t("companyForm.createCompany")}
         </Button>
       </div>
     </form>
