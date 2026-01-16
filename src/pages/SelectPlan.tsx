@@ -6,9 +6,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, Zap, Building2, Crown } from "lucide-react";
+import { Check, Sparkles, Zap, Building2, Crown, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 import careLogo from "@/assets/logo_care_azul.png";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Plan {
   id: string;
@@ -54,6 +61,7 @@ const SelectPlan = () => {
   const [planFeatures, setPlanFeatures] = useState<Record<string, PlanFeature[]>>({});
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
+  const [showContactDialog, setShowContactDialog] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -284,23 +292,31 @@ const SelectPlan = () => {
 
                 {/* Action */}
                 <div className="p-4 pt-0">
-                  <Button
-                    className="w-full"
-                    variant={plan.plan_key === "growth" ? "default" : "outline"}
-                    onClick={() => handleSelectPlan(plan)}
-                    disabled={selecting !== null}
-                  >
-                    {selecting === plan.id ? (
-                      <span className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-                        Selecionando...
-                      </span>
-                    ) : plan.plan_key === "enterprise" ? (
-                      "Falar com vendas"
-                    ) : (
-                      "Começar trial"
-                    )}
-                  </Button>
+                  {plan.plan_key === "enterprise" ? (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => setShowContactDialog(true)}
+                    >
+                      Falar com vendas
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      variant={plan.plan_key === "growth" ? "default" : "outline"}
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={selecting !== null}
+                    >
+                      {selecting === plan.id ? (
+                        <span className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                          Selecionando...
+                        </span>
+                      ) : (
+                        "Começar trial"
+                      )}
+                    </Button>
+                  )}
                 </div>
               </Card>
             </motion.div>
@@ -317,6 +333,44 @@ const SelectPlan = () => {
           Você pode alterar ou cancelar seu plano a qualquer momento.
         </motion.p>
       </div>
+
+      {/* Contact Sales Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fale com nossa equipe comercial</DialogTitle>
+            <DialogDescription>
+              Entre em contato para conhecer o plano Enterprise e suas vantagens exclusivas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <a
+              href="mailto:comercial@care-business.com?subject=Interesse no Plano Enterprise"
+              className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors group"
+            >
+              <div className="bg-primary/10 p-3 rounded-full group-hover:bg-primary/20 transition-colors">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Enviar e-mail</p>
+                <p className="text-sm text-muted-foreground">comercial@care-business.com</p>
+              </div>
+            </a>
+            <a
+              href="tel:+5511997361696"
+              className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors group"
+            >
+              <div className="bg-green-500/10 p-3 rounded-full group-hover:bg-green-500/20 transition-colors">
+                <Phone className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="font-medium">Ligar agora</p>
+                <p className="text-sm text-muted-foreground">(11) 99736-1696</p>
+              </div>
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
