@@ -151,6 +151,45 @@ export type Database = {
           },
         ]
       }
+      currency_rates: {
+        Row: {
+          created_at: string
+          currency_code: string
+          currency_name: string
+          currency_symbol: string
+          id: string
+          is_active: boolean
+          is_base_currency: boolean
+          rate_to_brl: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency_code: string
+          currency_name: string
+          currency_symbol: string
+          id?: string
+          is_active?: boolean
+          is_base_currency?: boolean
+          rate_to_brl?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          currency_name?: string
+          currency_symbol?: string
+          id?: string
+          is_active?: boolean
+          is_base_currency?: boolean
+          rate_to_brl?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       dashboard_access_logs: {
         Row: {
           accessed_at: string

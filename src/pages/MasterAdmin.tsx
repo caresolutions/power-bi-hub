@@ -50,7 +50,8 @@ import {
   Settings,
   CreditCard,
   FolderOpen,
-  FileText
+  FileText,
+  DollarSign
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -62,6 +63,7 @@ import { CompanySubscriptionManager } from "@/components/master-admin/CompanySub
 import { SubscriptionsManager } from "@/components/master-admin/SubscriptionsManager";
 import { LegalTermsEditor } from "@/components/settings/LegalTermsEditor";
 import { PlansManager } from "@/components/master-admin/PlansManager";
+import CurrencyRatesManager from "@/components/master-admin/CurrencyRatesManager";
 import LanguageSelector from "@/components/LanguageSelector";
 
 interface Company {
@@ -244,6 +246,10 @@ const MasterAdmin = () => {
               <FileText className="h-4 w-4" />
               {t('masterAdmin.legalTerms')}
             </TabsTrigger>
+            <TabsTrigger value="currencies" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              {t('masterAdmin.currencies')}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="companies">
@@ -405,6 +411,16 @@ const MasterAdmin = () => {
 
           <TabsContent value="plans">
             <PlansManager />
+          </TabsContent>
+
+          <TabsContent value="currencies">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold mb-2">{t('masterAdmin.currencyRatesTitle')}</h1>
+              <p className="text-muted-foreground">
+                {t('masterAdmin.currencyRatesDesc')}
+              </p>
+            </div>
+            <CurrencyRatesManager />
           </TabsContent>
         </Tabs>
       </main>
