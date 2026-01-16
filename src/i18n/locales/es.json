@@ -121,15 +121,6 @@
     "new": "Nuevo",
     "all": "Todos"
   },
-  "auth": {
-    "login": "Iniciar Sesión",
-    "signup": "Registrarse",
-    "email": "Correo Electrónico",
-    "password": "Contraseña",
-    "forgotPassword": "¿Olvidaste tu contraseña?",
-    "resetPassword": "Restablecer Contraseña",
-    "confirmPassword": "Confirmar Contraseña"
-  },
   "home": {
     "welcome": "Bienvenido a",
     "masterAdminDesc": "Gestiona empresas y ten acceso completo al sistema",

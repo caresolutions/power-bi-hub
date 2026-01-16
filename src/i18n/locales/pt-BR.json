@@ -132,15 +132,6 @@
     "processing": "Processando...",
     "selecting": "Selecionando..."
   },
-  "auth": {
-    "login": "Entrar",
-    "signup": "Cadastrar",
-    "email": "E-mail",
-    "password": "Senha",
-    "forgotPassword": "Esqueceu a senha?",
-    "resetPassword": "Redefinir Senha",
-    "confirmPassword": "Confirmar Senha"
-  },
   "home": {
     "welcome": "Bem-vindo ao",
     "masterAdminDesc": "Gerencie empresas e tenha acesso completo ao sistema",
