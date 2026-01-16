@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Sparkles 
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface WelcomeStepProps {
   companyName: string;
@@ -16,21 +17,23 @@ interface WelcomeStepProps {
 }
 
 const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
+  const { t } = useTranslation();
+  
   const features = [
     {
       icon: BarChart3,
-      title: "Dashboards Power BI",
-      description: "Conecte e visualize seus relatórios de forma segura",
+      titleKey: "featurePowerBi",
+      descKey: "featurePowerBiDesc",
     },
     {
       icon: Users,
-      title: "Gestão de Usuários",
-      description: "Convide sua equipe e controle permissões",
+      titleKey: "featureUsers",
+      descKey: "featureUsersDesc",
     },
     {
       icon: Shield,
-      title: "Segurança Avançada",
-      description: "Criptografia e controle de acesso por RLS",
+      titleKey: "featureSecurity",
+      descKey: "featureSecurityDesc",
     },
   ];
 
@@ -51,11 +54,11 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
         transition={{ delay: 0.2 }}
       >
         <h2 className="text-3xl font-bold mb-2">
-          Bem-vindo, {companyName}! 
+          {t("onboarding.welcomeTitle", { name: companyName })}
           <Sparkles className="inline-block ml-2 h-6 w-6 text-yellow-500" />
         </h2>
         <p className="text-muted-foreground text-lg mb-8">
-          Vamos configurar sua plataforma em poucos minutos
+          {t("onboarding.welcomeSubtitle")}
         </p>
       </motion.div>
 
@@ -67,7 +70,7 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
       >
         {features.map((feature, index) => (
           <motion.div
-            key={feature.title}
+            key={feature.titleKey}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 + index * 0.1 }}
@@ -77,8 +80,8 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
               <feature.icon className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-medium">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground">{feature.description}</p>
+              <h3 className="font-medium">{t(`onboarding.${feature.titleKey}`)}</h3>
+              <p className="text-sm text-muted-foreground">{t(`onboarding.${feature.descKey}`)}</p>
             </div>
           </motion.div>
         ))}
@@ -95,7 +98,7 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
           size="lg"
           className="w-full bg-primary hover:bg-primary/90 shadow-glow"
         >
-          Começar Configuração
+          {t("onboarding.startConfig")}
           <ChevronRight className="ml-2 h-5 w-5" />
         </Button>
         
@@ -104,7 +107,7 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
           onClick={onSkip}
           className="w-full text-muted-foreground"
         >
-          Configurar depois
+          {t("onboarding.configLater")}
         </Button>
       </motion.div>
 
@@ -114,7 +117,7 @@ const WelcomeStep = ({ companyName, onStart, onSkip }: WelcomeStepProps) => {
         transition={{ delay: 1 }}
         className="mt-6 text-xs text-muted-foreground"
       >
-        ⏱️ Tempo estimado: 3-5 minutos
+        ⏱️ {t("onboarding.estimatedTime")}
       </motion.p>
     </div>
   );

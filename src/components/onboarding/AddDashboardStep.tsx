@@ -18,6 +18,7 @@ import {
   Lightbulb,
   Sparkles
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AddDashboardStepProps {
   onComplete: (dashboards: ParsedDashboard[]) => Promise<void>;
@@ -34,6 +35,7 @@ interface ParsedDashboard {
 }
 
 const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
+  const { t } = useTranslation();
   const [url, setUrl] = useState("");
   const [dashboardName, setDashboardName] = useState("");
   const [description, setDescription] = useState("");
@@ -63,8 +65,8 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
   const handleAddDashboard = () => {
     if (!url || !dashboardName) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o nome e a URL do dashboard",
+        title: t("onboarding.requiredFields"),
+        description: t("onboarding.fillNameAndUrl"),
         variant: "destructive",
       });
       return;
@@ -78,8 +80,8 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
       
       if (!parsed) {
         toast({
-          title: "URL inválida",
-          description: "Não foi possível extrair as informações. Verifique se é uma URL válida do Power BI.",
+          title: t("onboarding.invalidUrl"),
+          description: t("onboarding.invalidUrlDesc"),
           variant: "destructive",
         });
         setParsing(false);
@@ -98,8 +100,8 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
       setParsing(false);
       
       toast({
-        title: "Dashboard adicionado!",
-        description: "Informações extraídas automaticamente.",
+        title: t("onboarding.dashboardAdded"),
+        description: t("onboarding.infoExtracted"),
       });
     }, 500);
   };
@@ -111,8 +113,8 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
   const handleComplete = async () => {
     if (dashboards.length === 0) {
       toast({
-        title: "Adicione um dashboard",
-        description: "Você precisa adicionar pelo menos um dashboard para continuar.",
+        title: t("onboarding.addAtLeastOne"),
+        description: t("onboarding.addAtLeastOneDesc"),
         variant: "destructive",
       });
       return;
@@ -132,17 +134,17 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
           <div className="p-2 rounded-lg bg-primary/10">
             <BarChart3 className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold">Adicionar Dashboards</h2>
+          <h2 className="text-2xl font-bold">{t("onboarding.addDashboardsTitle")}</h2>
         </div>
         <p className="text-muted-foreground">
-          Cole a URL do Power BI e as informações serão extraídas automaticamente
+          {t("onboarding.addDashboardsSubtitle")}
         </p>
       </motion.div>
 
       <Alert className="mb-6 border-yellow-500/30 bg-yellow-500/5">
         <Lightbulb className="h-4 w-4 text-yellow-500" />
         <AlertDescription>
-          <strong>Dica:</strong> Abra o relatório no Power BI e copie a URL da barra de endereço do navegador.
+          <strong>{t("onboarding.tip")}</strong> {t("onboarding.tipCopyUrl")}
         </AlertDescription>
       </Alert>
 
@@ -154,23 +156,23 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label htmlFor="dashboardName">Nome do Dashboard *</Label>
+            <Label htmlFor="dashboardName">{t("onboarding.dashboardNameLabel")}</Label>
             <Input
               id="dashboardName"
               value={dashboardName}
               onChange={(e) => setDashboardName(e.target.value)}
-              placeholder="Ex: Vendas Q1 2024"
+              placeholder={t("onboarding.dashboardNamePlaceholder")}
               className="bg-background/50"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Label htmlFor="description">{t("onboarding.descriptionLabel")}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Uma breve descrição do dashboard..."
+              placeholder={t("onboarding.descriptionPlaceholder")}
               className="bg-background/50 resize-none"
               rows={2}
             />
@@ -179,14 +181,14 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="url" className="flex items-center gap-2">
               <Link2 className="h-4 w-4" />
-              URL do Dashboard *
+              {t("onboarding.dashboardUrlLabel")}
             </Label>
             <Input
               id="url"
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://app.powerbi.com/groups/..."
+              placeholder={t("onboarding.dashboardUrlPlaceholder")}
               className="bg-background/50 font-mono text-sm"
             />
           </div>
@@ -201,12 +203,12 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
             {parsing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Extraindo informações...
+                {t("onboarding.extractingInfo")}
               </>
             ) : (
               <>
                 <Plus className="mr-2 h-4 w-4" />
-                Adicionar Dashboard
+                {t("onboarding.addDashboard")}
               </>
             )}
           </Button>
@@ -223,7 +225,7 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  Dashboards Adicionados
+                  {t("onboarding.dashboardsAdded")}
                 </h3>
                 <Badge variant="secondary">{dashboards.length}</Badge>
               </div>
@@ -285,11 +287,11 @@ const AddDashboardStep = ({ onComplete, loading }: AddDashboardStepProps) => {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
+                {t("onboarding.saving")}
               </>
             ) : (
               <>
-                Concluir Configuração
+                {t("onboarding.completeConfig")}
                 <Check className="ml-2 h-5 w-5" />
               </>
             )}

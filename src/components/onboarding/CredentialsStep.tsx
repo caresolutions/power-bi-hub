@@ -20,6 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useTranslation } from "react-i18next";
 
 interface CredentialsStepProps {
   onSubmit: (data: {
@@ -34,6 +35,7 @@ interface CredentialsStepProps {
 }
 
 const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -81,17 +83,17 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           <div className="p-2 rounded-lg bg-primary/10">
             <Key className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold">Credenciais Power BI</h2>
+          <h2 className="text-2xl font-bold">{t("onboarding.credentialsTitle")}</h2>
         </div>
         <p className="text-muted-foreground">
-          Configure suas credenciais do Azure AD para conectar ao Power BI
+          {t("onboarding.credentialsSubtitle")}
         </p>
       </motion.div>
 
       <Alert className="mb-6 border-primary/30 bg-primary/5">
         <ShieldCheck className="h-4 w-4 text-primary" />
         <AlertDescription>
-          Suas credenciais são criptografadas com AES-256 e nunca são expostas no frontend.
+          {t("onboarding.credentialsEncrypted")}
         </AlertDescription>
       </Alert>
 
@@ -103,14 +105,14 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="name" className="flex items-center justify-between">
-            <span>Nome da Credencial</span>
+            <span>{t("onboarding.credentialName")}</span>
             <ValidationIcon valid={validations.name} />
           </Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Produção, Homologação..."
+            placeholder={t("onboarding.credentialNamePlaceholder")}
             className="bg-background/50"
           />
         </motion.div>
@@ -122,7 +124,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="clientId" className="flex items-center justify-between">
-            <span>Client ID (Application ID)</span>
+            <span>{t("onboarding.clientId")}</span>
             <ValidationIcon valid={validations.clientId} />
           </Label>
           <Input
@@ -136,7 +138,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           />
           {clientId && !validations.clientId && (
             <p className="text-xs text-destructive flex items-center gap-1">
-              <XCircle className="h-3 w-3" /> Formato inválido (deve ser um GUID)
+              <XCircle className="h-3 w-3" /> {t("onboarding.invalidGuid")}
             </p>
           )}
         </motion.div>
@@ -148,7 +150,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="clientSecret" className="flex items-center justify-between">
-            <span>Client Secret</span>
+            <span>{t("onboarding.clientSecret")}</span>
             <ValidationIcon valid={validations.clientSecret} />
           </Label>
           <Input
@@ -168,7 +170,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="tenantId" className="flex items-center justify-between">
-            <span>Tenant ID (Directory ID)</span>
+            <span>{t("onboarding.tenantId")}</span>
             <ValidationIcon valid={validations.tenantId} />
           </Label>
           <Input
@@ -189,7 +191,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="username" className="flex items-center justify-between">
-            <span>Usuário Power BI (e-mail)</span>
+            <span>{t("onboarding.powerBiUser")}</span>
             <ValidationIcon valid={validations.username} />
           </Label>
           <Input
@@ -211,7 +213,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
           className="space-y-2"
         >
           <Label htmlFor="password" className="flex items-center justify-between">
-            <span>Senha Power BI</span>
+            <span>{t("onboarding.powerBiPassword")}</span>
             <ValidationIcon valid={validations.password} />
           </Label>
           <Input
@@ -229,34 +231,34 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
             <AccordionTrigger className="text-sm text-muted-foreground hover:text-foreground py-2">
               <span className="flex items-center gap-2">
                 <Info className="h-4 w-4" />
-                Como obter essas credenciais?
+                {t("onboarding.howToGetCredentials")}
               </span>
             </AccordionTrigger>
             <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2">
               <div className="space-y-2">
-                <p><strong>1. Acesse o Portal Azure:</strong></p>
+                <p><strong>{t("onboarding.accessAzurePortal")}</strong></p>
                 <a 
                   href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-primary hover:underline"
                 >
-                  Abrir Portal Azure <ExternalLink className="h-3 w-3" />
+                  {t("onboarding.openAzurePortal")} <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
               <div>
-                <p><strong>2. Registre um novo aplicativo</strong> ou use um existente</p>
+                <p><strong>{t("onboarding.registerApp")}</strong></p>
               </div>
               <div>
-                <p><strong>3. Copie:</strong></p>
+                <p><strong>{t("onboarding.copyInfo")}</strong></p>
                 <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li>Application (client) ID</li>
-                  <li>Directory (tenant) ID</li>
-                  <li>Crie um Client Secret em "Certificates & secrets"</li>
+                  <li>{t("onboarding.appClientId")}</li>
+                  <li>{t("onboarding.directoryTenantId")}</li>
+                  <li>{t("onboarding.createClientSecret")}</li>
                 </ul>
               </div>
               <div>
-                <p><strong>4. Configure as permissões</strong> da API do Power BI</p>
+                <p><strong>{t("onboarding.configurePermissions")}</strong></p>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -275,11 +277,11 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
+                {t("onboarding.saving")}
               </>
             ) : (
               <>
-                Continuar
+                {t("onboarding.continue")}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </>
             )}
