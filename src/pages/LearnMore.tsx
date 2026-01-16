@@ -142,13 +142,37 @@ const LearnMore = () => {
     }
   ];
 
-  const featureRows = [
-    { key: 'embed_publish', label: 'Publicação Embed e Link Público' },
-    { key: 'user_group_access', label: 'Liberação por Usuário e Grupo' },
-    { key: 'slider_tv', label: 'Slider para TVs' },
-    { key: 'ai_chat', label: 'Chat IA' },
-    { key: 'rls_email', label: 'RLS a Nível de E-mail' },
+  // Get all unique feature keys from database with descriptions
+  const allFeatureKeys = features?.reduce((acc, f) => {
+    if (!acc.find(item => item.key === f.feature_key)) {
+      acc.push({ key: f.feature_key, label: f.feature_description || f.feature_key });
+    }
+    return acc;
+  }, [] as { key: string; label: string }[]) || [];
+
+  // Sort features by a predefined order for consistency
+  const featureOrder = [
+    'embed_publish',
+    'user_group_access', 
+    'ai_chat',
+    'hide_pages',
+    'custom_views',
+    'user_refresh',
+    'slider_tv',
+    'rls_email',
+    'advanced_integrations',
+    'custom_development',
+    'sla_support'
   ];
+  
+  const sortedFeatureRows = allFeatureKeys.sort((a, b) => {
+    const indexA = featureOrder.indexOf(a.key);
+    const indexB = featureOrder.indexOf(b.key);
+    if (indexA === -1 && indexB === -1) return 0;
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
 
   const limitRows = [
     { key: 'dashboards', label: 'Dashboards' },
@@ -354,7 +378,7 @@ const LearnMore = () => {
                     </td>
                   </tr>
                   
-                  {featureRows.map((row) => (
+                  {sortedFeatureRows.map((row) => (
                     <tr key={row.key} className="border-b border-border/50">
                       <td className="py-4 px-4 text-muted-foreground">{row.label}</td>
                       {plans?.map((plan) => (
