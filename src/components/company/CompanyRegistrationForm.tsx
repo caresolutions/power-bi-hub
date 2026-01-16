@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Building2, FileText } from "lucide-react";
 import { motion } from "framer-motion";
@@ -29,7 +29,7 @@ const CompanyRegistrationForm = ({ onSuccess }: CompanyRegistrationFormProps) =>
   const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  
 
   const formatCNPJ = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -103,18 +103,13 @@ const CompanyRegistrationForm = ({ onSuccess }: CompanyRegistrationFormProps) =>
 
       if (profileError) throw profileError;
 
-      toast({
-        title: "Empresa cadastrada!",
-        description: "Sua empresa foi registrada com sucesso.",
+      toast.success("Empresa cadastrada com sucesso!", {
+        duration: 3000,
       });
 
       onSuccess();
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
