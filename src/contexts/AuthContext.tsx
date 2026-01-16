@@ -141,18 +141,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let targetUserId = userData.userId;
       
       if (userData.role === "user" && userData.companyId) {
+        console.log("User is not admin, looking for company admin subscription", { 
+          userId: userData.userId, 
+          companyId: userData.companyId 
+        });
+        
         // Find admin of the company - get all admins first, then find one in this company
-        const { data: adminRoles } = await supabase
+        const { data: adminRoles, error: adminRolesError } = await supabase
           .from("user_roles")
           .select("user_id")
           .eq("role", "admin");
 
+        console.log("Admin roles found:", adminRoles, "Error:", adminRolesError);
+
         if (adminRoles && adminRoles.length > 0) {
-          // Convert UUID user_ids to check against profiles
-          const adminUserIds = adminRoles.map(r => r.user_id);
+          // Convert UUID user_ids to strings for comparison with profiles.id (which is text)
+          const adminUserIds = adminRoles.map(r => String(r.user_id));
+          console.log("Admin user IDs (as strings):", adminUserIds);
           
           // Find which admin belongs to the same company
-          const { data: adminProfile } = await supabase
+          const { data: adminProfile, error: adminProfileError } = await supabase
             .from("profiles")
             .select("id")
             .eq("company_id", userData.companyId)
@@ -160,9 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .limit(1)
             .maybeSingle();
 
+          console.log("Admin profile search result:", adminProfile, "Error:", adminProfileError);
+
           if (adminProfile) {
             targetUserId = adminProfile.id;
             console.log("Found company admin for subscription check:", targetUserId);
+          } else {
+            console.log("No admin found for company, will use user's own subscription");
           }
         }
       }
