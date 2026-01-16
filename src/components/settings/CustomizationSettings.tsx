@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,17 +85,17 @@ const defaultColors: FormData = {
   border_radius: "md",
 };
 
-const colorFields: ColorField[] = [
-  { key: "primary_color", label: "Botões Principais", description: "Cor dos botões de ação" },
-  { key: "secondary_color", label: "Elementos Secundários", description: "Botões secundários, tags" },
-  { key: "accent_color", label: "Links e Destaques", description: "Links, hover, foco" },
-  { key: "background_color", label: "Fundo da Página", description: "Cor de fundo geral" },
-  { key: "foreground_color", label: "Texto Principal", description: "Textos e títulos" },
-  { key: "muted_color", label: "Texto Desabilitado", description: "Textos secundários, placeholders" },
-  { key: "destructive_color", label: "Botões de Exclusão", description: "Excluir, alertas de erro" },
-  { key: "success_color", label: "Sucesso", description: "Confirmações, status positivo" },
-  { key: "card_color", label: "Fundo dos Cards", description: "Painéis, modais, cartões" },
-  { key: "border_color", label: "Bordas", description: "Contornos de elementos" },
+const getColorFields = (t: (key: string) => string): ColorField[] => [
+  { key: "primary_color", label: t('settings.primaryButtons'), description: t('settings.primaryButtonsDesc') },
+  { key: "secondary_color", label: t('settings.secondaryElements'), description: t('settings.secondaryElementsDesc') },
+  { key: "accent_color", label: t('settings.linksHighlights'), description: t('settings.linksHighlightsDesc') },
+  { key: "background_color", label: t('settings.pageBackground'), description: t('settings.pageBackgroundDesc') },
+  { key: "foreground_color", label: t('settings.mainText'), description: t('settings.mainTextDesc') },
+  { key: "muted_color", label: t('settings.disabledText'), description: t('settings.disabledTextDesc') },
+  { key: "destructive_color", label: t('settings.deleteButtons'), description: t('settings.deleteButtonsDesc') },
+  { key: "success_color", label: t('settings.success'), description: t('settings.successDesc') },
+  { key: "card_color", label: t('settings.cardBackground'), description: t('settings.cardBackgroundDesc') },
+  { key: "border_color", label: t('settings.borders'), description: t('settings.bordersDesc') },
 ];
 
 const popularFonts = [
@@ -120,13 +121,13 @@ const popularFonts = [
   "Figtree",
 ];
 
-const borderRadiusOptions = [
-  { value: "none", label: "Reto", css: "0" },
-  { value: "sm", label: "Pequeno", css: "0.125rem" },
-  { value: "md", label: "Médio", css: "0.375rem" },
-  { value: "lg", label: "Grande", css: "0.5rem" },
-  { value: "xl", label: "Extra Grande", css: "0.75rem" },
-  { value: "full", label: "Arredondado", css: "9999px" },
+const getBorderRadiusOptions = (t: (key: string) => string) => [
+  { value: "none", label: t('settings.straight'), css: "0" },
+  { value: "sm", label: t('settings.small'), css: "0.125rem" },
+  { value: "md", label: t('settings.medium'), css: "0.375rem" },
+  { value: "lg", label: t('settings.large'), css: "0.5rem" },
+  { value: "xl", label: t('settings.extraLarge'), css: "0.75rem" },
+  { value: "full", label: t('settings.rounded'), css: "9999px" },
 ];
 
 interface CustomizationSettingsProps {
@@ -134,6 +135,7 @@ interface CustomizationSettingsProps {
 }
 
 export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps) => {
+  const { t } = useTranslation();
   const [company, setCompany] = useState<CompanyCustomization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -142,6 +144,10 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
   const [formData, setFormData] = useState<FormData>(defaultColors);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const { toast } = useToast();
+
+  // Get translated options
+  const colorFields = getColorFields(t);
+  const borderRadiusOptions = getBorderRadiusOptions(t);
 
   useEffect(() => {
     fetchCompany();
@@ -500,14 +506,14 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
   };
 
   if (loading) {
-    return <div className="text-muted-foreground">Carregando...</div>;
+    return <div className="text-muted-foreground">{t('common.loading')}</div>;
   }
 
   if (!company) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">Nenhuma empresa cadastrada.</p>
+          <p className="text-muted-foreground">{t('settings.noCompany')}</p>
         </CardContent>
       </Card>
     );
@@ -520,10 +526,10 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle>Extração Automática com IA</CardTitle>
+            <CardTitle>{t('settings.aiExtraction')}</CardTitle>
           </div>
           <CardDescription>
-            Faça upload do brandbook (PDF) da sua empresa para extrair automaticamente cores, fontes e estilos visuais
+            {t('settings.aiExtractionDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -542,19 +548,19 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                   {extracting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Analisando brandbook...
+                      {t('settings.analyzingBrandbook')}
                     </>
                   ) : (
                     <>
                       <FileText className="h-4 w-4" />
-                      Carregar Brandbook (PDF)
+                      {t('settings.uploadBrandbook')}
                     </>
                   )}
                 </span>
               </Button>
             </Label>
             <p className="text-sm text-muted-foreground">
-              Máximo 10MB. A IA extrairá cores, fontes e estilos automaticamente.
+              {t('settings.maxFileSize')}
             </p>
           </div>
 
@@ -563,15 +569,15 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
             <div className="mt-4 space-y-4 rounded-lg border p-4 bg-muted/30">
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
-                <span className="font-medium">Análise Concluída</span>
+                <span className="font-medium">{t('settings.analysisComplete')}</span>
                 <Badge variant={extractedData.confidence === 'high' ? 'default' : extractedData.confidence === 'medium' ? 'secondary' : 'outline'}>
-                  Confiança {extractedData.confidence === 'high' ? 'Alta' : extractedData.confidence === 'medium' ? 'Média' : 'Baixa'}
+                  {extractedData.confidence === 'high' ? t('settings.confidenceHigh') : extractedData.confidence === 'medium' ? t('settings.confidenceMedium') : t('settings.confidenceLow')}
                 </Badge>
               </div>
 
               {extractedData.brand_name && (
                 <div>
-                  <span className="text-sm text-muted-foreground">Marca identificada: </span>
+                  <span className="text-sm text-muted-foreground">{t('settings.brandIdentified')} </span>
                   <span className="font-medium">{extractedData.brand_name}</span>
                 </div>
               )}
@@ -580,10 +586,10 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                 <div className="flex flex-wrap gap-2">
                   <Type className="h-4 w-4 text-muted-foreground" />
                   {extractedData.fonts.primary && (
-                    <Badge variant="outline">Títulos: {extractedData.fonts.primary}</Badge>
+                    <Badge variant="outline">{t('settings.titles')}: {extractedData.fonts.primary}</Badge>
                   )}
                   {extractedData.fonts.secondary && (
-                    <Badge variant="outline">Textos: {extractedData.fonts.secondary}</Badge>
+                    <Badge variant="outline">{t('settings.texts')}: {extractedData.fonts.secondary}</Badge>
                   )}
                 </div>
               )}
@@ -591,10 +597,10 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
               {extractedData.style && (
                 <div className="flex flex-wrap gap-2">
                   {extractedData.style.visual_tone && (
-                    <Badge variant="secondary">Tom: {extractedData.style.visual_tone}</Badge>
+                    <Badge variant="secondary">{t('settings.tone')}: {extractedData.style.visual_tone}</Badge>
                   )}
                   {extractedData.style.contrast_level && (
-                    <Badge variant="secondary">Contraste: {extractedData.style.contrast_level}</Badge>
+                    <Badge variant="secondary">{t('settings.contrast')}: {extractedData.style.contrast_level}</Badge>
                   )}
                 </div>
               )}
@@ -603,7 +609,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Lightbulb className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-medium">Recomendações de Design:</span>
+                    <span className="text-sm font-medium">{t('settings.designRecommendations')}</span>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1 ml-6">
                     {extractedData.design_recommendations.map((rec, index) => (
@@ -623,26 +629,26 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Palette className="h-5 w-5 text-primary" />
-              <CardTitle>Personalização Visual</CardTitle>
+              <CardTitle>{t('settings.visualCustomization')}</CardTitle>
             </div>
             <Button variant="ghost" size="sm" onClick={handleResetColors}>
-              Resetar Tudo
+              {t('settings.resetAll')}
             </Button>
           </div>
           <CardDescription>
-            Personalize a aparência da plataforma com o logo, cores e fontes da sua empresa
+            {t('settings.visualCustomizationDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Logo Upload */}
           <div className="space-y-3">
-            <Label>Logo da Empresa</Label>
+            <Label>{t('settings.companyLogo')}</Label>
             <div className="flex items-center gap-4">
               {formData.logo_url ? (
                 <div className="relative">
                   <img
                     src={formData.logo_url}
-                    alt="Logo da empresa"
+                    alt={t('settings.companyLogo')}
                     className="h-20 w-auto max-w-[200px] object-contain rounded-lg border bg-card p-2"
                   />
                   <Button
@@ -656,7 +662,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                 </div>
               ) : (
                 <div className="h-20 w-40 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
-                  Sem logo
+                  {t('settings.noLogo')}
                 </div>
               )}
               <div>
@@ -672,14 +678,14 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                   <Button variant="outline" asChild disabled={uploading}>
                     <span>
                       <Upload className="mr-2 h-4 w-4" />
-                      {uploading ? "Enviando..." : "Carregar Logo"}
+                      {uploading ? t('settings.uploading') : t('settings.uploadLogo')}
                     </span>
                   </Button>
                 </Label>
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Recomendado: PNG ou SVG com fundo transparente, max 2MB
+              {t('settings.logoRecommendation')}
             </p>
           </div>
 
@@ -689,17 +695,17 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Type className="h-4 w-4" />
-              <Label className="text-base font-medium">Tipografia</Label>
+              <Label className="text-base font-medium">{t('settings.typography')}</Label>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="font_primary">Fonte para Títulos</Label>
+                <Label htmlFor="font_primary">{t('settings.headingFont')}</Label>
                 <Select
                   value={formData.font_primary}
                   onValueChange={(value) => handleColorChange("font_primary", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma fonte" />
+                    <SelectValue placeholder={t('settings.selectFont')} />
                   </SelectTrigger>
                   <SelectContent>
                     {popularFonts.map((font) => (
@@ -711,13 +717,13 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="font_secondary">Fonte para Textos</Label>
+                <Label htmlFor="font_secondary">{t('settings.bodyFont')}</Label>
                 <Select
                   value={formData.font_secondary}
                   onValueChange={(value) => handleColorChange("font_secondary", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma fonte" />
+                    <SelectValue placeholder={t('settings.selectFont')} />
                   </SelectTrigger>
                   <SelectContent>
                     {popularFonts.map((font) => (
@@ -735,7 +741,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           {/* Border Radius Settings */}
           <div className="space-y-4">
-            <Label className="text-base font-medium">Arredondamento de Cantos</Label>
+            <Label className="text-base font-medium">{t('settings.cornerRounding')}</Label>
             <div className="flex flex-wrap gap-2">
               {borderRadiusOptions.map((option) => (
                 <Button
@@ -766,7 +772,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           {/* Color Palette */}
           <div className="space-y-4">
-            <Label className="text-base font-medium">Paleta de Cores</Label>
+            <Label className="text-base font-medium">{t('settings.colorPalette')}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {colorFields.map((field) => (
                 <div key={field.key} className="space-y-2">
@@ -801,7 +807,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           {/* Enhanced Preview */}
           <div className="space-y-3">
-            <Label className="text-base font-medium">Pré-visualização</Label>
+            <Label className="text-base font-medium">{t('settings.preview')}</Label>
             <div 
               className="rounded-lg p-6 space-y-4"
               style={{ 
@@ -829,7 +835,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                   className="text-white font-semibold"
                   style={{ fontFamily: formData.font_primary ? `"${formData.font_primary}", sans-serif` : undefined }}
                 >
-                  {extractedData?.brand_name || 'Sua Empresa'}
+                  {extractedData?.brand_name || t('settings.yourCompany')}
                 </span>
               </div>
               
@@ -851,10 +857,10 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                   }} 
                   className="font-semibold text-lg"
                 >
-                  Título do Card
+                  {t('settings.cardTitle')}
                 </h3>
                 <p style={{ color: formData.muted_color }} className="text-sm">
-                  Este é um exemplo de texto secundário para demonstrar como ficará a aparência visual da sua plataforma.
+                  {t('settings.previewText')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button 
@@ -864,7 +870,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                       borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                     }}
                   >
-                    Primário
+                    {t('settings.primaryBtn')}
                   </button>
                   <button 
                     className="px-4 py-2 text-white text-sm font-medium"
@@ -873,7 +879,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                       borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                     }}
                   >
-                    Destaque
+                    {t('settings.highlightBtn')}
                   </button>
                   <button 
                     className="px-4 py-2 text-sm font-medium border"
@@ -884,7 +890,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                       borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                     }}
                   >
-                    Secundário
+                    {t('settings.secondaryBtn')}
                   </button>
                   <button 
                     className="px-4 py-2 text-white text-sm font-medium"
@@ -893,7 +899,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                       borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                     }}
                   >
-                    Sucesso
+                    {t('settings.successBtn')}
                   </button>
                   <button 
                     className="px-4 py-2 text-white text-sm font-medium"
@@ -902,7 +908,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
                       borderRadius: borderRadiusOptions.find(opt => opt.value === formData.border_radius)?.css || '0.375rem'
                     }}
                   >
-                    Excluir
+                    {t('settings.deleteBtn')}
                   </button>
                 </div>
               </div>
@@ -911,7 +917,7 @@ export const CustomizationSettings = ({ companyId }: CustomizationSettingsProps)
 
           <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Salvando..." : "Salvar Personalização"}
+            {saving ? t('settings.saving') : t('settings.saveCustomization')}
           </Button>
         </CardContent>
       </Card>
