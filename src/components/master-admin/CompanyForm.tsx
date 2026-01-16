@@ -12,28 +12,35 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Mapeamento dos planos com produtos Stripe
+// Mapeamento dos planos com produtos Stripe (deve corresponder aos plan_key da tabela subscription_plans)
 export const SUBSCRIPTION_PLANS = {
-  free: {
-    name: "Free",
-    price_id: "price_1SackXIanwCICrsHO7wfG1WM",
-    product_id: "prod_TXiAfvNuN13Bdj",
-    description: "1 Credencial Power BI, 3 Dashboards, 5 Usuários",
-    price: "R$ 1,00/mês",
+  starter: {
+    name: "Starter",
+    price_id: "price_1ShDX5IanwCICrsHbCQUkwOL",
+    product_id: "prod_TeWady6zqxrSAV",
+    description: "1 Dashboard, 2 Usuários",
+    price: "R$ 59,00/mês",
   },
-  professional: {
-    name: "Profissional",
-    price_id: "price_1SackmIanwCICrsHPUOabQqQ",
-    product_id: "prod_TXiBsq6Urco479",
-    description: "5 Credenciais Power BI, 20 Dashboards, 50 Usuários",
-    price: "R$ 2,00/mês",
+  growth: {
+    name: "Growth",
+    price_id: "price_1ShDXIIanwCICrsHGtrVKrzj",
+    product_id: "prod_TeWawmp8A9b1nk",
+    description: "5 Dashboards, 10 Usuários",
+    price: "R$ 149,00/mês",
+  },
+  scale: {
+    name: "Scale",
+    price_id: "price_1ShDXSIanwCICrsH4wlNhSpK",
+    product_id: "prod_TeWatFycxkDxtn",
+    description: "15 Dashboards, 25 Usuários",
+    price: "R$ 249,00/mês",
   },
   enterprise: {
     name: "Enterprise",
-    price_id: "price_1Sacl7IanwCICrsHcwxFlClE",
-    product_id: "prod_TXiB1hRL7kIi0Z",
-    description: "Credenciais, Dashboards e Usuários ilimitados",
-    price: "R$ 3,00/mês",
+    price_id: null,
+    product_id: null,
+    description: "Ilimitado, customizado",
+    price: "Sob consulta",
   },
   master_managed: {
     name: "Gerenciado pelo Master",
@@ -58,7 +65,7 @@ export function CompanyForm({ editingCompany, onSuccess, onCancel }: CompanyForm
   const [formData, setFormData] = useState({
     name: editingCompany?.name || "",
     cnpj: editingCompany?.cnpj || "",
-    plan: "free" as keyof typeof SUBSCRIPTION_PLANS,
+    plan: "starter" as keyof typeof SUBSCRIPTION_PLANS,
   });
   const [loading, setLoading] = useState(false);
 
