@@ -32,6 +32,16 @@ interface Plan {
   display_order: number;
 }
 
+interface CurrencyRate {
+  id: string;
+  currency_code: string;
+  currency_name: string;
+  currency_symbol: string;
+  rate_to_brl: number;
+  is_base_currency: boolean;
+  is_active: boolean;
+}
+
 const LearnMore = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -84,6 +94,19 @@ const LearnMore = () => {
     }
   });
 
+  const { data: currencyRates } = useQuery({
+    queryKey: ['currency-rates-public'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('currency_rates')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data as CurrencyRate[];
+    }
+  });
+
   const getPlanFeatures = (planId: string) => {
     return features?.filter(f => f.plan_id === planId) || [];
   };
@@ -104,15 +127,39 @@ const LearnMore = () => {
     return feature?.is_enabled ?? false;
   };
 
-  const formatPrice = (price: number) => {
+  // Get the appropriate currency based on language
+  const getCurrencyForLanguage = () => {
+    const langToCurrency: Record<string, string> = {
+      'pt-BR': 'BRL',
+      'en': 'USD',
+      'es': 'EUR',
+      'zh': 'CNY'
+    };
+    const currencyCode = langToCurrency[i18n.language] || 'BRL';
+    return currencyRates?.find(r => r.currency_code === currencyCode) || currencyRates?.find(r => r.is_base_currency);
+  };
+
+  const formatPrice = (priceInBRL: number) => {
+    const currency = getCurrencyForLanguage();
+    if (!currency) {
+      // Fallback to simple BRL formatting
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2
+      }).format(priceInBRL);
+    }
+
+    // Convert price from BRL to target currency
+    const convertedPrice = priceInBRL * currency.rate_to_brl;
+    
     const locale = i18n.language === 'pt-BR' ? 'pt-BR' : i18n.language === 'es' ? 'es-ES' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
-    const currency = i18n.language === 'pt-BR' ? 'BRL' : i18n.language === 'es' ? 'EUR' : i18n.language === 'zh' ? 'CNY' : 'USD';
     
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency,
+      currency: currency.currency_code,
       minimumFractionDigits: 2
-    }).format(price);
+    }).format(convertedPrice);
   };
 
   const systemFeatures = [
