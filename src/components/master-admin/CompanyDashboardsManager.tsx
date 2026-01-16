@@ -87,19 +87,28 @@ export function CompanyDashboardsManager({ companyId, companyName }: CompanyDash
         .select("id, name, description, category, company_id")
         .eq("company_id", companyId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching company dashboards:", error);
+        throw error;
+      }
+      console.log("Company dashboards found:", companyDashboards?.length || 0);
       setDashboards(companyDashboards || []);
 
       // Fetch ALL dashboards (from all companies and unassigned)
+      // Use or filter to get both: dashboards from other companies AND unassigned dashboards
       const { data: available, error: availableError } = await supabase
         .from("dashboards")
         .select("id, name, description, category, company_id, companies(name)")
-        .neq("company_id", companyId);
+        .or(`company_id.neq.${companyId},company_id.is.null`);
 
-      if (availableError) throw availableError;
+      if (availableError) {
+        console.error("Error fetching available dashboards:", availableError);
+        throw availableError;
+      }
       setAllDashboards(available || []);
     } catch (error: any) {
-      toast.error("Erro ao carregar dashboards");
+      console.error("Fetch dashboards error:", error);
+      toast.error("Erro ao carregar dashboards: " + error.message);
     } finally {
       setLoading(false);
     }
