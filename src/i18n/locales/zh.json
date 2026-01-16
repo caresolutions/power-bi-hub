@@ -121,15 +121,6 @@
     "new": "新建",
     "all": "全部"
   },
-  "auth": {
-    "login": "登录",
-    "signup": "注册",
-    "email": "电子邮件",
-    "password": "密码",
-    "forgotPassword": "忘记密码？",
-    "resetPassword": "重置密码",
-    "confirmPassword": "确认密码"
-  },
   "home": {
     "welcome": "欢迎使用",
     "masterAdminDesc": "管理公司并获得完整的系统访问权限",

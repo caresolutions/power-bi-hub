@@ -121,15 +121,6 @@
     "new": "New",
     "all": "All"
   },
-  "auth": {
-    "login": "Login",
-    "signup": "Sign Up",
-    "email": "Email",
-    "password": "Password",
-    "forgotPassword": "Forgot password?",
-    "resetPassword": "Reset Password",
-    "confirmPassword": "Confirm Password"
-  },
   "home": {
     "welcome": "Welcome to",
     "masterAdminDesc": "Manage companies and have full system access",
