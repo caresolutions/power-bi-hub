@@ -162,12 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Check subscription
       if (targetUserId !== userData.userId) {
-        // Use local DB for non-admin users
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", targetUserId)
-          .maybeSingle();
+        // Use RPC function with SECURITY DEFINER to bypass RLS for non-admin users
+        const { data: subscriptionData } = await supabase
+          .rpc('get_user_subscription', { _user_id: targetUserId });
+        
+        const subscription = subscriptionData && subscriptionData.length > 0 ? subscriptionData[0] : null;
+        console.log("Subscription from RPC:", subscription);
 
         if (subscription) {
           const isTrialing = subscription.status === "trial";

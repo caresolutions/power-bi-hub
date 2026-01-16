@@ -1351,6 +1351,20 @@ export type Database = {
     }
     Functions: {
       get_company_admin_id: { Args: { _company_id: string }; Returns: string }
+      get_user_subscription: {
+        Args: { _user_id: string }
+        Returns: {
+          current_period_end: string
+          current_period_start: string
+          id: string
+          is_master_managed: boolean
+          plan: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          user_id: string
+        }[]
+      }
       has_group_dashboard_access: {
         Args: { _dashboard_id: string; _user_id: string }
         Returns: boolean
