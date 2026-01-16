@@ -3,6 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Settings, 
   Users, 
@@ -19,7 +29,8 @@ import {
   UserPlus,
   Loader2,
   Rocket,
-  ArrowRight
+  ArrowRight,
+  Pencil
 } from "lucide-react";
 import careLogo from "@/assets/logo_care_azul.png";
 import { motion } from "framer-motion";
@@ -28,6 +39,7 @@ import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 type UserRole = 'admin' | 'user' | 'master_admin';
 
@@ -42,9 +54,13 @@ const Home = () => {
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [savingName, setSavingName] = useState(false);
   const navigate = useNavigate();
   const { customization } = useCompanyCustomization();
   const { favorites } = useDashboardFavorites();
+  const { toast } = useToast();
 
   // Fetch user profile and company name
   useEffect(() => {
@@ -160,6 +176,40 @@ const Home = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/auth";
+  };
+
+  const handleOpenEditName = () => {
+    setEditingName(userName || "");
+    setIsEditNameOpen(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!user || !editingName.trim()) return;
+    
+    setSavingName(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: editingName.trim() })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      setUserName(editingName.trim());
+      setIsEditNameOpen(false);
+      toast({
+        title: "Nome atualizado!",
+        description: "Seu nome foi salvo com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar nome",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingName(false);
+    }
   };
 
   // Map context role to component role type
@@ -310,10 +360,14 @@ const Home = () => {
             
             <div className="flex items-center gap-4">
               {userRole !== 'master_admin' && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <button 
+                  onClick={handleOpenEditName}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+                >
                   <Shield className="h-4 w-4" />
                   <span>{userName || getRoleLabel()}</span>
-                </div>
+                  <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
               )}
               
               {userRole === 'master_admin' && (
@@ -450,10 +504,78 @@ const Home = () => {
 
   // Master admins don't need subscription guard
   if (userRole === 'master_admin') {
-    return content;
+    return (
+      <>
+        {content}
+        <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Editar Nome</DialogTitle>
+              <DialogDescription>
+                Atualize seu nome de exibição
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  placeholder="Seu nome completo"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveName} disabled={savingName || !editingName.trim()}>
+                {savingName ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
 
-  return <SubscriptionGuard>{content}</SubscriptionGuard>;
+  return (
+    <SubscriptionGuard>
+      {content}
+      <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Nome</DialogTitle>
+            <DialogDescription>
+              Atualize seu nome de exibição
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Seu nome completo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveName} disabled={savingName || !editingName.trim()}>
+              {savingName ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SubscriptionGuard>
+  );
 };
 
 export default Home;
