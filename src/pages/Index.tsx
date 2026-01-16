@@ -3,9 +3,13 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Lock, Users, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import careLogo from "@/assets/logo_care_azul.png";
+import LanguageSelector from "@/components/LanguageSelector";
+
 const Index = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Reset to default colors on landing page
   useEffect(() => {
@@ -20,23 +24,23 @@ const Index = () => {
   const features = [
     {
       icon: BarChart3,
-      title: "Power BI Embedded",
-      description: "Publique e compartilhe dashboards Power BI de forma profissional e segura"
+      title: t('landing.powerBiEmbedded'),
+      description: t('landing.powerBiDescription')
     },
     {
       icon: Lock,
-      title: "Controle de Acesso",
-      description: "Gerencie permissões e controle quem pode visualizar cada dashboard"
+      title: t('landing.accessControl'),
+      description: t('landing.accessControlDescription')
     },
     {
       icon: Users,
-      title: "Multi-usuário",
-      description: "Cobrança por usuário com gestão completa de contas e acessos"
+      title: t('landing.multiUser'),
+      description: t('landing.multiUserDescription')
     },
     {
       icon: Zap,
-      title: "Configuração Rápida",
-      description: "Setup simples com Azure AD em apenas 2 passos"
+      title: t('landing.quickSetup'),
+      description: t('landing.quickSetupDescription')
     }
   ];
 
@@ -51,20 +55,23 @@ const Index = () => {
           
           <nav className="hidden md:flex items-center gap-8">
             <a href="#recursos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Recursos
+              {t('landing.features')}
             </a>
             <a href="https://www.care-business.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sobre Nós
+              {t('landing.aboutUs')}
             </a>
           </nav>
           
-          <Button 
-            variant="default"
-            onClick={() => navigate("/auth")}
-            className="bg-primary hover:bg-primary/90"
-          >
-            Acessar
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+            <Button 
+              variant="default"
+              onClick={() => navigate("/auth")}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {t('landing.access')}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -80,17 +87,16 @@ const Index = () => {
             className="max-w-4xl mx-auto text-center"
           >
             <p className="text-primary font-medium mb-4 uppercase tracking-wider text-sm">
-              Care BI
+              {t('landing.careBi')}
             </p>
             
             <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight text-foreground">
-              Transformamos dados complexos{" "}
-              <span className="text-primary">em insights</span>
+              {t('landing.heroTitle')}{" "}
+              <span className="text-primary">{t('landing.heroTitleHighlight')}</span>
             </h1>
             
             <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
-              A plataforma profissional para compartilhar dashboards Power BI com sua equipe.
-              Controle de acesso, segurança e as melhores metodologias em Business Intelligence.
+              {t('landing.heroDescription')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -99,7 +105,7 @@ const Index = () => {
                 className="text-base h-12 px-8 bg-primary hover:bg-primary/90"
                 onClick={() => navigate("/auth")}
               >
-                Começar Agora
+                {t('landing.startNow')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               
@@ -109,7 +115,7 @@ const Index = () => {
                 className="text-base h-12 px-8 border-primary/30 text-foreground hover:bg-primary/10"
                 onClick={() => navigate("/saiba-mais")}
               >
-                Saiba Mais
+                {t('landing.learnMore')}
               </Button>
             </div>
           </motion.div>
@@ -127,13 +133,13 @@ const Index = () => {
             className="text-center mb-16"
           >
             <p className="text-primary font-medium mb-2 uppercase tracking-wider text-sm">
-              Nossas Soluções
+              {t('landing.ourSolutions')}
             </p>
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Recursos Principais
+              {t('landing.mainFeatures')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Tudo que você precisa para gerenciar e compartilhar seus dashboards Power BI
+              {t('landing.featuresDescription')}
             </p>
           </motion.div>
 
@@ -175,11 +181,11 @@ const Index = () => {
             className="bg-gradient-to-r from-primary/20 to-primary/5 max-w-4xl mx-auto p-12 rounded-2xl border border-primary/20 text-center"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Pronto para começar?
+              {t('landing.readyToStart')}
             </h2>
             
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Configure sua conta em minutos e comece a compartilhar dashboards Power BI com sua equipe hoje mesmo.
+              {t('landing.ctaDescription')}
             </p>
             
             <Button 
@@ -187,7 +193,7 @@ const Index = () => {
               className="text-base h-12 px-8 bg-primary hover:bg-primary/90"
               onClick={() => navigate("/auth")}
             >
-              Criar Conta
+              {t('landing.createAccount')}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
@@ -203,7 +209,7 @@ const Index = () => {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Care Business. Todos os direitos reservados.
+              © {new Date().getFullYear()} Care Business. {t('landing.allRightsReserved')}
             </p>
           </div>
         </div>

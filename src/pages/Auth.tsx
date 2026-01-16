@@ -9,35 +9,39 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Shield, Eye, UserPlus, AlertCircle, Check, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import careLogo from "@/assets/logo_care_azul.png";
 import { z } from "zod";
 import CompanyRegistrationForm from "@/components/company/CompanyRegistrationForm";
 import ChangePasswordDialog from "@/components/auth/ChangePasswordDialog";
-
-const loginSchema = z.object({
-  email: z.string().trim().email("E-mail inválido"),
-  password: z.string().min(1, "Senha é obrigatória"),
-});
-
-const signupSchema = z.object({
-  email: z.string().trim().email("E-mail inválido"),
-  password: z
-    .string()
-    .min(8, "Senha deve ter no mínimo 8 caracteres")
-    .regex(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
-    .regex(/[a-z]/, "Senha deve conter pelo menos uma letra minúscula")
-    .regex(/[0-9]/, "Senha deve conter pelo menos um número"),
-  fullName: z
-    .string()
-    .trim()
-    .min(2, "Nome deve ter no mínimo 2 caracteres")
-    .max(100, "Nome deve ter no máximo 100 caracteres"),
-});
+import LanguageSelector from "@/components/LanguageSelector";
 
 type SignupStep = "role-selection" | "form";
 type SelectedRole = "admin" | "user" | null;
 
 const Auth = () => {
+  const { t } = useTranslation();
+  
+  const loginSchema = z.object({
+    email: z.string().trim().email(t('auth.invalidEmail')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+  });
+
+  const signupSchema = z.object({
+    email: z.string().trim().email(t('auth.invalidEmail')),
+    password: z
+      .string()
+      .min(8, t('auth.passwordMinLength'))
+      .regex(/[A-Z]/, t('auth.passwordUppercase'))
+      .regex(/[a-z]/, t('auth.passwordLowercase'))
+      .regex(/[0-9]/, t('auth.passwordNumber')),
+    fullName: z
+      .string()
+      .trim()
+      .min(2, t('auth.nameMinLength'))
+      .max(100, t('auth.nameMaxLength')),
+  });
+
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -77,11 +81,11 @@ const Auth = () => {
       if (error) {
         console.error("Auth error from URL:", error, errorDescription);
         const friendlyMessage = errorDescription?.includes('expired') 
-          ? "O link expirou. Por favor, solicite um novo link de recuperação."
-          : errorDescription?.replace(/\+/g, ' ') || "Erro na autenticação.";
+          ? t('auth.linkExpired')
+          : errorDescription?.replace(/\+/g, ' ') || t('auth.error');
         
         toast({
-          title: "Link inválido",
+          title: t('auth.invalidLink'),
           description: friendlyMessage,
           variant: "destructive",
         });
@@ -107,8 +111,8 @@ const Auth = () => {
         if (sessionError) {
           console.error("Error setting session:", sessionError);
           toast({
-            title: "Erro",
-            description: "Link de recuperação inválido ou expirado. Solicite um novo link.",
+            title: t('auth.error'),
+            description: t('auth.invalidRecoveryLink'),
             variant: "destructive",
           });
           setIsResettingPassword(false);
@@ -220,7 +224,7 @@ const Auth = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const emailValidation = z.string().trim().email("E-mail inválido").safeParse(email);
+    const emailValidation = z.string().trim().email(t('auth.invalidEmail')).safeParse(email);
     if (!emailValidation.success) {
       setErrors({ email: emailValidation.error.errors[0].message });
       return;
@@ -240,15 +244,15 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "E-mail enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        title: t('auth.emailSent'),
+        description: t('auth.checkInbox'),
       });
       
       setIsForgotPassword(false);
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao enviar e-mail de recuperação",
+        title: t('auth.error'),
+        description: error.message || t('auth.errorSendingRecoveryEmail'),
         variant: "destructive",
       });
     } finally {
@@ -262,27 +266,27 @@ const Auth = () => {
     
     // Validate passwords
     if (password.length < 8) {
-      setErrors({ password: "Senha deve ter no mínimo 8 caracteres" });
+      setErrors({ password: t('auth.passwordMinLength') });
       return;
     }
     
     if (!/[A-Z]/.test(password)) {
-      setErrors({ password: "Senha deve conter pelo menos uma letra maiúscula" });
+      setErrors({ password: t('auth.passwordUppercase') });
       return;
     }
     
     if (!/[a-z]/.test(password)) {
-      setErrors({ password: "Senha deve conter pelo menos uma letra minúscula" });
+      setErrors({ password: t('auth.passwordLowercase') });
       return;
     }
     
     if (!/[0-9]/.test(password)) {
-      setErrors({ password: "Senha deve conter pelo menos um número" });
+      setErrors({ password: t('auth.passwordNumber') });
       return;
     }
     
     if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "As senhas não coincidem" });
+      setErrors({ confirmPassword: t('auth.passwordsDoNotMatch') });
       return;
     }
     
@@ -296,8 +300,8 @@ const Auth = () => {
       setPasswordResetSuccess(true);
       
       toast({
-        title: "Senha alterada!",
-        description: "Sua senha foi redefinida com sucesso.",
+        title: t('auth.passwordChanged'),
+        description: t('auth.passwordResetSuccessMsg'),
       });
       
       // Clear hash from URL
@@ -325,17 +329,17 @@ const Auth = () => {
       
       if (isCompromisedPassword) {
         setErrors({
-          password: "Esta senha foi encontrada em vazamentos de dados. Por segurança, escolha outra senha.",
+          password: t('auth.compromisedPassword'),
         });
         toast({
-          title: "Senha comprometida detectada",
-          description: "Sua senha aparece em bancos de dados de vazamentos conhecidos. Por favor, escolha uma senha mais segura.",
+          title: t('auth.compromisedPasswordTitle'),
+          description: t('auth.compromisedPasswordDesc'),
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Erro",
-          description: error.message || "Erro ao redefinir senha",
+          title: t('auth.error'),
+          description: error.message || t('auth.errorResettingPassword'),
           variant: "destructive",
         });
       }
@@ -374,8 +378,8 @@ const Auth = () => {
           if (profile && profile.is_active === false) {
             await supabase.auth.signOut();
             toast({
-              title: "Acesso bloqueado",
-              description: "Sua conta está inativa. Entre em contato com o administrador.",
+              title: t('auth.accessBlocked'),
+              description: t('auth.accountInactive'),
               variant: "destructive",
             });
             setLoading(false);
@@ -404,8 +408,8 @@ const Auth = () => {
         }
 
         toast({
-          title: "Login realizado!",
-          description: "Você será redirecionado...",
+          title: t('auth.loginSuccess'),
+          description: t('auth.willBeRedirected'),
         });
         
         navigate("/home");
@@ -425,8 +429,8 @@ const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "Conta criada!",
-          description: "Complete o cadastro da sua empresa...",
+          title: t('auth.accountCreated'),
+          description: t('auth.completeCompanySetup'),
         });
         
         // New admin needs to register company
@@ -444,16 +448,16 @@ const Auth = () => {
       
       if (isCompromisedPassword) {
         setErrors({
-          password: "Esta senha foi encontrada em vazamentos de dados. Por segurança, escolha outra senha.",
+          password: t('auth.compromisedPassword'),
         });
         toast({
-          title: "Senha comprometida detectada",
-          description: "Sua senha aparece em bancos de dados de vazamentos conhecidos. Por favor, escolha uma senha mais segura que não tenha sido exposta anteriormente.",
+          title: t('auth.compromisedPasswordTitle'),
+          description: t('auth.compromisedPasswordDesc'),
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Erro",
+          title: t('auth.error'),
           description: error.message,
           variant: "destructive",
         });
@@ -485,7 +489,7 @@ const Auth = () => {
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+        <div className="animate-pulse text-muted-foreground">{t('auth.loading')}</div>
       </div>
     );
   }
@@ -519,6 +523,9 @@ const Auth = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSelector />
+        </div>
         
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -537,16 +544,16 @@ const Auth = () => {
                   <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
                     <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <h1 className="text-2xl font-bold mb-2">Senha redefinida!</h1>
+                  <h1 className="text-2xl font-bold mb-2">{t('auth.passwordResetSuccess')}</h1>
                   <p className="text-muted-foreground text-sm">
-                    Você será redirecionado para o login...
+                    {t('auth.redirectingToLogin')}
                   </p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-2xl font-bold mb-2">Nova senha</h1>
+                  <h1 className="text-2xl font-bold mb-2">{t('auth.newPassword')}</h1>
                   <p className="text-muted-foreground text-sm">
-                    Digite sua nova senha
+                    {t('auth.enterNewPassword')}
                   </p>
                 </>
               )}
@@ -557,7 +564,7 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="password" className="flex items-center gap-2">
                     <Lock className="h-4 w-4" />
-                    Nova senha
+                    {t('auth.newPassword')}
                   </Label>
                   <Input
                     id="password"
@@ -571,14 +578,14 @@ const Auth = () => {
                     <p className="text-sm text-destructive">{errors.password}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Mínimo 8 caracteres, com maiúscula, minúscula e número
+                    {t('auth.passwordRequirements')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword" className="flex items-center gap-2">
                     <Lock className="h-4 w-4" />
-                    Confirmar senha
+                    {t('auth.confirmPassword')}
                   </Label>
                   <Input
                     id="confirmPassword"
@@ -598,7 +605,7 @@ const Auth = () => {
                   className="w-full bg-primary hover:bg-primary/90 shadow-glow"
                   disabled={loading}
                 >
-                  {loading ? "Salvando..." : "Redefinir senha"}
+                  {loading ? t('auth.saving') : t('auth.passwordReset')}
                 </Button>
               </form>
             )}
@@ -612,9 +619,9 @@ const Auth = () => {
   const renderRoleSelection = () => (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold mb-2">Como você deseja se cadastrar?</h2>
+        <h2 className="text-xl font-semibold mb-2">{t('auth.howToSignUp')}</h2>
         <p className="text-sm text-muted-foreground">
-          Selecione o tipo de conta que deseja criar
+          {t('auth.selectAccountType')}
         </p>
       </div>
 
@@ -626,12 +633,8 @@ const Auth = () => {
         >
           <Alert className="border-primary/50 bg-primary/5">
             <AlertCircle className="h-4 w-4 text-primary" />
-            <AlertTitle>Convite necessário</AlertTitle>
-            <AlertDescription className="mt-2">
-              Para se cadastrar como <strong>Usuário</strong>, você precisa receber um convite de um administrador da sua empresa.
-              <br /><br />
-              Solicite ao administrador que envie um convite para o seu e-mail. Você receberá uma senha provisória para acessar o sistema.
-            </AlertDescription>
+            <AlertTitle>{t('auth.inviteRequired')}</AlertTitle>
+            <AlertDescription className="mt-2" dangerouslySetInnerHTML={{ __html: t('auth.inviteRequiredDescription') + '<br /><br />' + t('auth.inviteInstructions') }} />
           </Alert>
           
           <div className="flex gap-3">
@@ -640,7 +643,7 @@ const Auth = () => {
               className="flex-1"
               onClick={() => setShowUserAlert(false)}
             >
-              Voltar
+              {t('auth.back')}
             </Button>
             <Button 
               className="flex-1"
@@ -649,7 +652,7 @@ const Auth = () => {
                 setIsLogin(true);
               }}
             >
-              Já tenho convite
+              {t('auth.haveInvite')}
             </Button>
           </div>
         </motion.div>
@@ -665,9 +668,9 @@ const Auth = () => {
               <Shield className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">Administrador</h3>
+              <h3 className="font-semibold">{t('auth.administrator')}</h3>
               <p className="text-sm text-muted-foreground">
-                Crie sua empresa e gerencie dashboards, usuários e assinaturas. Teste grátis por 7 dias.
+                {t('auth.adminDescription')}
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -683,9 +686,9 @@ const Auth = () => {
               <Eye className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">Usuário</h3>
+              <h3 className="font-semibold">{t('auth.user')}</h3>
               <p className="text-sm text-muted-foreground">
-                Acesse dashboards compartilhados pela sua empresa. Requer convite do administrador.
+                {t('auth.userDescription')}
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -701,7 +704,7 @@ const Auth = () => {
           }}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Já tem uma conta? Entre
+          {t('auth.hasAccount')}
         </button>
       </div>
     </div>
@@ -710,6 +713,9 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-gradient-hero opacity-30" />
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSelector />
+      </div>
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -729,7 +735,7 @@ const Auth = () => {
           }}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
+          {t('auth.back')}
         </Button>
 
         <Card className="bg-card/80 backdrop-blur-md p-8 border-border/50">
@@ -739,21 +745,21 @@ const Auth = () => {
             </div>
             <h1 className="text-2xl font-bold mb-2">
               {isForgotPassword 
-                ? "Recuperar senha" 
+                ? t('auth.recoverPassword')
                 : isLogin 
-                  ? "Bem-vindo de volta" 
+                  ? t('auth.welcomeBack')
                   : signupStep === "role-selection"
-                    ? "Criar conta"
-                    : "Cadastro de Administrador"}
+                    ? t('auth.createAccount')
+                    : t('auth.adminRegistration')}
             </h1>
             <p className="text-muted-foreground text-sm">
               {isForgotPassword
-                ? "Digite seu e-mail para receber o link de recuperação"
+                ? t('auth.enterEmailForRecovery')
                 : isLogin
-                  ? "Entre com suas credenciais"
+                  ? t('auth.enterCredentials')
                   : signupStep === "role-selection"
-                    ? "Escolha como deseja acessar a plataforma"
-                    : "Crie sua conta e configure sua empresa"}
+                    ? t('auth.chooseAccess')
+                    : t('auth.createAndConfigure')}
             </p>
           </div>
 
@@ -762,14 +768,14 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  E-mail
+                  {t('auth.email')}
                 </Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
                 />
                 {errors.email && (
@@ -782,7 +788,7 @@ const Auth = () => {
                 className="w-full bg-primary hover:bg-primary/90 shadow-glow"
                 disabled={loading}
               >
-                {loading ? "Enviando..." : "Enviar link de recuperação"}
+                {loading ? t('auth.sending') : t('auth.sendRecoveryLink')}
               </Button>
 
               <div className="text-center">
@@ -794,7 +800,7 @@ const Auth = () => {
                   }}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Voltar para o login
+                  {t('auth.backToLogin')}
                 </button>
               </div>
             </form>
@@ -805,13 +811,13 @@ const Auth = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {!isLogin && (
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Nome completo</Label>
+                    <Label htmlFor="fullName">{t('auth.fullName')}</Label>
                     <Input
                       id="fullName"
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Seu nome"
+                      placeholder={t('auth.yourName')}
                       className={`bg-background/50 ${errors.fullName ? 'border-destructive' : ''}`}
                     />
                     {errors.fullName && (
@@ -823,14 +829,14 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    E-mail
+                    {t('auth.email')}
                   </Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
                   />
                   {errors.email && (
@@ -841,7 +847,7 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="password" className="flex items-center gap-2">
                     <Lock className="h-4 w-4" />
-                    Senha
+                    {t('auth.password')}
                   </Label>
                   <Input
                     id="password"
@@ -856,7 +862,7 @@ const Auth = () => {
                   )}
                   {!isLogin && !errors.password && (
                     <p className="text-xs text-muted-foreground">
-                      Mínimo 8 caracteres, com maiúscula, minúscula e número
+                      {t('auth.passwordRequirements')}
                     </p>
                   )}
                 </div>
@@ -871,7 +877,7 @@ const Auth = () => {
                       }}
                       className="text-sm text-primary hover:text-primary/80 transition-colors"
                     >
-                      Esqueceu sua senha?
+                      {t('auth.forgotPassword')}
                     </button>
                   </div>
                 )}
@@ -881,7 +887,7 @@ const Auth = () => {
                   className="w-full bg-primary hover:bg-primary/90 shadow-glow"
                   disabled={loading}
                 >
-                  {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+                  {loading ? t('auth.loading') : isLogin ? t('auth.login') : t('auth.signUp')}
                 </Button>
               </form>
 
@@ -899,8 +905,8 @@ const Auth = () => {
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {isLogin
-                    ? "Não tem uma conta? Cadastre-se"
-                    : "Já tem uma conta? Entre"}
+                    ? t('auth.noAccount')
+                    : t('auth.hasAccount')}
                 </button>
               </div>
             </>
