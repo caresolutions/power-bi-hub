@@ -459,6 +459,48 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          credentials_configured: boolean
+          dashboards_created: boolean
+          dismissed: boolean
+          id: string
+          invited_users: boolean
+          updated_at: string
+          user_id: string
+          viewed_dashboards: boolean
+          viewed_settings: boolean
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          credentials_configured?: boolean
+          dashboards_created?: boolean
+          dismissed?: boolean
+          id?: string
+          invited_users?: boolean
+          updated_at?: string
+          user_id: string
+          viewed_dashboards?: boolean
+          viewed_settings?: boolean
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          credentials_configured?: boolean
+          dashboards_created?: boolean
+          dismissed?: boolean
+          id?: string
+          invited_users?: boolean
+          updated_at?: string
+          user_id?: string
+          viewed_dashboards?: boolean
+          viewed_settings?: boolean
+        }
+        Relationships: []
+      }
       plan_features: {
         Row: {
           created_at: string
