@@ -55,7 +55,12 @@ interface EmbedTokenResponse {
 
 // Decrypt function for encrypted credentials
 async function decryptValue(ciphertext: string, keyString: string): Promise<string> {
-  if (!ciphertext) return "";
+  if (!ciphertext) {
+    console.error("[AUDIT] Decryption called with empty ciphertext");
+    return "";
+  }
+  
+  console.log("[DEBUG] Decrypting value, ciphertext length:", ciphertext.length);
   
   try {
     const encoder = new TextEncoder();
@@ -79,9 +84,11 @@ async function decryptValue(ciphertext: string, keyString: string): Promise<stri
       data
     );
     
-    return new TextDecoder().decode(decrypted);
+    const result = new TextDecoder().decode(decrypted);
+    console.log("[DEBUG] Decrypted successfully, result length:", result.length, "first 5 chars:", result.substring(0, 5));
+    return result;
   } catch (error) {
-    console.error("[AUDIT] Decryption failed - returning as-is for backward compatibility");
+    console.error("[AUDIT] Decryption failed - returning as-is for backward compatibility. Error:", error);
     // Return as-is if decryption fails (for backward compatibility with unencrypted data)
     return ciphertext;
   }

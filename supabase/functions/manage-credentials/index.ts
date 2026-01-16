@@ -122,9 +122,26 @@ serve(async (req) => {
       }
       // For master admin: company_id can be null (global credential) or specific company
 
+      // Validate required fields
+      if (!data.client_secret || data.client_secret.trim() === '') {
+        throw new Error("Client secret is required");
+      }
+      if (!data.client_id || data.client_id.trim() === '') {
+        throw new Error("Client ID is required");
+      }
+      if (!data.tenant_id || data.tenant_id.trim() === '') {
+        throw new Error("Tenant ID is required");
+      }
+
+      console.log("[DEBUG] Received data keys:", Object.keys(data));
+      console.log("[DEBUG] client_secret length:", data.client_secret?.length || 0);
+      console.log("[DEBUG] client_secret first 5 chars:", data.client_secret?.substring(0, 5) || "EMPTY");
+
       // Encrypt sensitive fields before storing
       const encryptedClientSecret = await encrypt(data.client_secret);
       const encryptedPassword = data.password ? await encrypt(data.password) : null;
+
+      console.log("[DEBUG] Encrypted client_secret length:", encryptedClientSecret?.length || 0);
 
       const { data: result, error } = await supabase
         .from("power_bi_configs")
@@ -143,7 +160,7 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      console.log("Credential created successfully:", result.id);
+      console.log("[DEBUG] Credential created successfully:", result.id);
       return new Response(JSON.stringify({ success: true, data: result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
