@@ -177,7 +177,8 @@ const Auth = () => {
 
   const handleCompanyRegistrationSuccess = () => {
     setNeedsCompanyRegistration(false);
-    navigate("/home");
+    // Redirect to plan selection instead of home
+    navigate("/select-plan");
   };
 
   const validateForm = () => {
