@@ -35,7 +35,7 @@ export function CompanySubscriptionManager({ companyId, companyName }: CompanySu
   const [adminUser, setAdminUser] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<keyof typeof SUBSCRIPTION_PLANS>("free");
+  const [selectedPlan, setSelectedPlan] = useState<keyof typeof SUBSCRIPTION_PLANS>("starter");
   const [isMasterManaged, setIsMasterManaged] = useState(false);
 
   useEffect(() => {
@@ -75,7 +75,9 @@ export function CompanySubscriptionManager({ companyId, companyName }: CompanySu
 
           if (sub) {
             setSubscription(sub);
-            setSelectedPlan((sub.plan as keyof typeof SUBSCRIPTION_PLANS) || "free");
+            // Map legacy plan keys to new ones
+            const planKey = sub.plan === "free" || sub.plan === "essentials" ? "starter" : sub.plan;
+            setSelectedPlan((planKey as keyof typeof SUBSCRIPTION_PLANS) || "starter");
             setIsMasterManaged(sub.is_master_managed || false);
           }
           break;

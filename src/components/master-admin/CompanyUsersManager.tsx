@@ -64,7 +64,7 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
     email: "",
     full_name: "",
     role: "user" as "admin" | "user",
-    plan: "free" as keyof typeof SUBSCRIPTION_PLANS,
+    plan: "starter" as keyof typeof SUBSCRIPTION_PLANS,
   });
   const [inviting, setInviting] = useState(false);
 
@@ -191,7 +191,7 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
       }
 
       setDialogOpen(false);
-      setInviteForm({ email: "", full_name: "", role: "user", plan: "free" });
+      setInviteForm({ email: "", full_name: "", role: "user", plan: "starter" });
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao convidar usuário");
