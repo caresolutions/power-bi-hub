@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ interface CompanySettingsProps {
 }
 
 export const CompanySettings = ({ companyId }: CompanySettingsProps) => {
+  const { t } = useTranslation();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -86,28 +88,28 @@ export const CompanySettings = ({ companyId }: CompanySettingsProps) => {
 
     if (error) {
       toast({
-        title: "Erro",
-        description: "Não foi possível salvar as alterações",
+        title: t('common.error'),
+        description: t('settings.saveError'),
         variant: "destructive",
       });
     } else {
       toast({
-        title: "Sucesso",
-        description: "Dados da empresa atualizados com sucesso",
+        title: t('common.success'),
+        description: t('settings.saveSuccess'),
       });
     }
     setSaving(false);
   };
 
   if (loading) {
-    return <div className="text-muted-foreground">Carregando...</div>;
+    return <div className="text-muted-foreground">{t('common.loading')}</div>;
   }
 
   if (!company) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">Nenhuma empresa cadastrada.</p>
+          <p className="text-muted-foreground">{t('settings.noCompany')}</p>
         </CardContent>
       </Card>
     );
@@ -118,37 +120,37 @@ export const CompanySettings = ({ companyId }: CompanySettingsProps) => {
       <CardHeader>
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary" />
-          <CardTitle>Dados da Empresa</CardTitle>
+          <CardTitle>{t('settings.companyData')}</CardTitle>
         </div>
         <CardDescription>
-          Gerencie as informações cadastrais da sua empresa
+          {t('settings.companyDataDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="company-name">Nome da Empresa</Label>
+          <Label htmlFor="company-name">{t('settings.companyName')}</Label>
           <Input
             id="company-name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Nome da empresa"
+            placeholder={t('settings.companyNamePlaceholder')}
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="cnpj">CNPJ</Label>
+          <Label htmlFor="cnpj">{t('settings.cnpj')}</Label>
           <Input
             id="cnpj"
             value={formatCNPJ(formData.cnpj)}
             onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-            placeholder="00.000.000/0000-00"
+            placeholder={t('settings.cnpjPlaceholder')}
             maxLength={18}
           />
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           <Save className="mr-2 h-4 w-4" />
-          {saving ? "Salvando..." : "Salvar Alterações"}
+          {saving ? t('settings.saving') : t('settings.saveChanges')}
         </Button>
       </CardContent>
     </Card>
