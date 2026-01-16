@@ -15,12 +15,17 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const navigate = useNavigate();
   const { subscriptionStatus, subscriptionLoading, isAccessBlocked, blockReason, role, user } = useAuth();
 
-  // Redirect to plan selection if plan is "free" (not selected yet)
+  // Redirect to plan selection only if plan is "free" AND status is not "trial" 
+  // (status=trial means user already selected a plan and started trial)
+  const needsPlanSelection = 
+    subscriptionStatus?.planKey === "free" && 
+    subscriptionStatus?.status !== "trial";
+
   useEffect(() => {
-    if (!subscriptionLoading && role === "admin" && subscriptionStatus?.planKey === "free") {
+    if (!subscriptionLoading && role === "admin" && needsPlanSelection) {
       navigate("/select-plan");
     }
-  }, [subscriptionLoading, subscriptionStatus, role, navigate]);
+  }, [subscriptionLoading, subscriptionStatus, role, navigate, needsPlanSelection]);
 
   // Show minimal loading without subscription message
   if (subscriptionLoading) {
@@ -32,7 +37,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   }
 
   // Don't render children if redirecting to plan selection
-  if (role === "admin" && subscriptionStatus?.planKey === "free") {
+  if (role === "admin" && needsPlanSelection) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
