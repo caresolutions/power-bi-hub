@@ -13,6 +13,7 @@ import SliderViewer from "@/components/dashboards/SliderViewer";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { useAccessLog } from "@/hooks/useAccessLog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
@@ -72,7 +73,9 @@ const DashboardViewer = () => {
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
   const { role } = useAuth();
+  const { hasFeature } = useSubscriptionPlan();
   const isAdmin = role === 'admin' || role === 'master_admin';
+  const canUseAiChat = hasFeature("ai_chat");
 
   // Load page visibility settings
   const loadPageVisibility = useCallback(async (pages: ReportPage[]) => {
@@ -538,8 +541,8 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
-          {/* Chat with Data button */}
-          {dashboard.embed_type === "workspace_id" && (
+          {/* Chat with Data button - only for plans with ai_chat feature */}
+          {dashboard.embed_type === "workspace_id" && canUseAiChat && (
             <Button
               variant="ghost"
               size="sm"

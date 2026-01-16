@@ -1,11 +1,13 @@
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Clock, CreditCard } from "lucide-react";
+import { AlertTriangle, Clock, CreditCard, UserCog } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function SubscriptionAlert() {
   const { subscriptionStatus, loading } = useSubscriptionStatus();
+  const { isUser, isAdmin, isMasterAdmin } = useUserRole();
   const navigate = useNavigate();
 
   if (loading || !subscriptionStatus) return null;
@@ -16,6 +18,9 @@ export function SubscriptionAlert() {
   // Don't show for master managed subscriptions
   if (subscriptionStatus.isMasterManaged) return null;
 
+  // Check if user is a viewer (not admin)
+  const isViewer = isUser && !isAdmin && !isMasterAdmin;
+
   // Trial warning
   if (subscriptionStatus.isTrialing && subscriptionStatus.trialDaysRemaining > 0) {
     return (
@@ -25,14 +30,21 @@ export function SubscriptionAlert() {
           <span className="text-amber-500">
             <strong>Período de trial:</strong> {subscriptionStatus.trialDaysRemaining} {subscriptionStatus.trialDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
           </span>
-          <Button 
-            size="sm" 
-            className="bg-amber-500 hover:bg-amber-600"
-            onClick={() => navigate("/subscription")}
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            Assinar agora
-          </Button>
+          {isViewer ? (
+            <span className="text-sm text-amber-600 flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Solicite ao administrador para assinar um plano
+            </span>
+          ) : (
+            <Button 
+              size="sm" 
+              className="bg-amber-500 hover:bg-amber-600"
+              onClick={() => navigate("/subscription")}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Assinar agora
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
     );
@@ -47,14 +59,21 @@ export function SubscriptionAlert() {
           <span className="text-destructive">
             <strong>Assinatura cancelada:</strong> Você tem {subscriptionStatus.gracePeriodDaysRemaining} dias para reativar antes do bloqueio.
           </span>
-          <Button 
-            size="sm" 
-            variant="destructive"
-            onClick={() => navigate("/subscription")}
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            Reativar assinatura
-          </Button>
+          {isViewer ? (
+            <span className="text-sm text-destructive flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Solicite ao administrador para reativar a assinatura
+            </span>
+          ) : (
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={() => navigate("/subscription")}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Reativar assinatura
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
     );
@@ -67,15 +86,17 @@ export function SubscriptionAlert() {
         <AlertTriangle className="h-4 w-4 text-amber-500" />
         <AlertDescription className="flex items-center justify-between flex-wrap gap-4">
           <span>
-            <strong>Sem assinatura ativa.</strong> Assine um plano para desbloquear todos os recursos.
+            <strong>Sem assinatura ativa.</strong> {isViewer ? "Contate seu administrador para assinar um plano." : "Assine um plano para desbloquear todos os recursos."}
           </span>
-          <Button 
-            size="sm"
-            onClick={() => navigate("/subscription")}
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            Ver planos
-          </Button>
+          {!isViewer && (
+            <Button 
+              size="sm"
+              onClick={() => navigate("/subscription")}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Ver planos
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
     );
