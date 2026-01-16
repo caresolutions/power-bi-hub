@@ -46,6 +46,8 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   }
 
   if (isAccessBlocked) {
+    const isViewer = role === "user";
+    
     return (
       <div className="min-h-screen bg-background">
         <div className="absolute inset-0 bg-gradient-hero opacity-30" />
@@ -63,33 +65,48 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
               
               <h1 className="text-2xl font-bold mb-4">Acesso Bloqueado</h1>
               
-              <p className="text-muted-foreground mb-6">
-                {blockReason}
-              </p>
+              {isViewer ? (
+                <>
+                  <p className="text-muted-foreground mb-6">
+                    A assinatura da sua empresa está inativa ou expirou.
+                  </p>
+                  <p className="text-sm text-amber-500 mb-6">
+                    Entre em contato com o administrador da sua empresa para regularizar a situação.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted-foreground mb-6">
+                    {blockReason}
+                  </p>
 
-              {subscriptionStatus?.isTrialing && subscriptionStatus.trialDaysRemaining === 0 && (
-                <p className="text-sm text-amber-500 mb-6">
-                  Seu trial de 7 dias expirou.
-                </p>
-              )}
+                  {subscriptionStatus?.isTrialing && subscriptionStatus.trialDaysRemaining === 0 && (
+                    <p className="text-sm text-amber-500 mb-6">
+                      Seu trial de 7 dias expirou.
+                    </p>
+                  )}
 
-              {subscriptionStatus?.status === "canceled" && subscriptionStatus.gracePeriodDaysRemaining !== undefined && (
-                <p className="text-sm text-amber-500 mb-6">
-                  {subscriptionStatus.gracePeriodDaysRemaining > 0 
-                    ? `Você tem ${subscriptionStatus.gracePeriodDaysRemaining} dias restantes do período de carência.`
-                    : "Seu período de carência de 30 dias expirou."
-                  }
-                </p>
+                  {subscriptionStatus?.status === "canceled" && subscriptionStatus.gracePeriodDaysRemaining !== undefined && (
+                    <p className="text-sm text-amber-500 mb-6">
+                      {subscriptionStatus.gracePeriodDaysRemaining > 0 
+                        ? `Você tem ${subscriptionStatus.gracePeriodDaysRemaining} dias restantes do período de carência.`
+                        : "Seu período de carência de 30 dias expirou."
+                      }
+                    </p>
+                  )}
+                </>
               )}
               
               <div className="space-y-3">
-                <Button 
-                  className="w-full"
-                  onClick={() => window.location.href = "/subscription"}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Ver Planos de Assinatura
-                </Button>
+                {!isViewer && (
+                  <Button 
+                    className="w-full"
+                    onClick={() => window.location.href = "/subscription"}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Ver Planos de Assinatura
+                  </Button>
+                )}
                 
                 <Button 
                   variant="outline" 
