@@ -66,9 +66,10 @@ serve(async (req) => {
           await supabaseAdmin.from("user_dashboard_bookmarks").delete().eq("user_id", authUser.id);
           await supabaseAdmin.from("support_messages").delete().eq("user_id", authUser.id);
           await supabaseAdmin.from("privacy_consent_records").delete().eq("user_id", authUser.id);
+          await supabaseAdmin.from("onboarding_progress").delete().eq("user_id", authUser.id);
+          await supabaseAdmin.from("subscriptions").delete().eq("user_id", authUser.id);
           await supabaseAdmin.from("user_roles").delete().eq("user_id", authUser.id);
           await supabaseAdmin.from("profiles").delete().eq("id", authUser.id);
-          await supabaseAdmin.from("subscriptions").delete().eq("user_id", authUser.id);
           await supabaseAdmin.from("user_invitations").delete().eq("email", userEmail);
 
           // Delete from auth
