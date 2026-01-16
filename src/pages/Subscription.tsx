@@ -389,17 +389,19 @@ const Subscription = () => {
                       }`}
                       variant={isHighlighted && !current ? "default" : "outline"}
                       onClick={() => handleSelectPlan(plan)}
-                      disabled={current || checkoutLoading !== null || subscriptionStatus?.isMasterManaged}
+                      disabled={checkoutLoading !== null || subscriptionStatus?.isMasterManaged}
                     >
                       {checkoutLoading === plan.id ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Processando...
                         </>
-                      ) : current ? (
-                        "Plano atual"
                       ) : plan.is_custom ? (
                         "Falar com vendas"
+                      ) : current && subscriptionStatus?.isTrialing ? (
+                        "Assinar agora"
+                      ) : current && subscriptionStatus?.subscribed ? (
+                        "Renovar"
                       ) : (
                         "Assinar"
                       )}
