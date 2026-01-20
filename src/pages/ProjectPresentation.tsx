@@ -1,13 +1,16 @@
+import React from "react";
 import { motion } from "framer-motion";
 import { 
   Server, Users, CreditCard, Rocket, LayoutDashboard, Mail, 
   Shield, MessageSquare, Settings, Database, Lock, Building2,
   UserCheck, Crown, User, ChevronRight, Layers, Zap, Globe,
   BarChart3, FileText, Clock, RefreshCw, Bot, Bookmark,
-  Star, Play, Download, Calendar, Bell, Palette, Key, FileEdit
+  Star, Play, Download, Calendar, Bell, Palette, Key, FileEdit,
+  GitBranch, Table, FolderTree, Workflow
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import logoCareBi from "@/assets/logo_care_azul.png";
 
@@ -103,6 +106,260 @@ const ProjectPresentation = () => {
               </div>
             </div>
           </div>
+        </motion.section>
+
+        {/* Technical Schema - NEW SECTION */}
+        <motion.section {...fadeIn} className="space-y-8">
+          <SectionHeader 
+            icon={<GitBranch className="w-6 h-6" />} 
+            title="Schema de Estrutura Técnica" 
+            subtitle="Diagrama detalhado da arquitetura e banco de dados"
+          />
+          
+          <Tabs defaultValue="database" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-[hsl(187,85%,95%)]">
+              <TabsTrigger value="database" className="data-[state=active]:bg-[hsl(187,85%,43%)] data-[state=active]:text-white">
+                <Table className="w-4 h-4 mr-2" />
+                Banco de Dados
+              </TabsTrigger>
+              <TabsTrigger value="components" className="data-[state=active]:bg-[hsl(187,85%,43%)] data-[state=active]:text-white">
+                <FolderTree className="w-4 h-4 mr-2" />
+                Componentes
+              </TabsTrigger>
+              <TabsTrigger value="flows" className="data-[state=active]:bg-[hsl(187,85%,43%)] data-[state=active]:text-white">
+                <Workflow className="w-4 h-4 mr-2" />
+                Fluxos
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Database Schema Tab */}
+            <TabsContent value="database" className="mt-6">
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-[hsl(187,85%,90%)] space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Core Tables */}
+                  <SchemaGroup 
+                    title="Tabelas Core" 
+                    icon={<Database className="w-5 h-5" />}
+                    tables={[
+                      { name: "profiles", description: "Perfis de usuários", columns: ["id", "email", "full_name", "company_id", "is_active"] },
+                      { name: "companies", description: "Empresas (tenants)", columns: ["id", "name", "cnpj", "logo_url", "colors..."] },
+                      { name: "user_roles", description: "Papéis dos usuários", columns: ["user_id", "role (admin/user/master_admin)"] },
+                    ]}
+                  />
+                  
+                  {/* Dashboard Tables */}
+                  <SchemaGroup 
+                    title="Dashboards" 
+                    icon={<LayoutDashboard className="w-5 h-5" />}
+                    tables={[
+                      { name: "dashboards", description: "Dashboards Power BI", columns: ["id", "name", "workspace_id", "dashboard_id", "company_id"] },
+                      { name: "power_bi_configs", description: "Credenciais Power BI", columns: ["id", "name", "tenant_id", "client_id", "client_secret"] },
+                      { name: "user_dashboard_access", description: "Acesso por usuário", columns: ["user_id", "dashboard_id", "granted_by"] },
+                      { name: "group_dashboard_access", description: "Acesso por grupo", columns: ["group_id", "dashboard_id", "granted_by"] },
+                    ]}
+                  />
+                  
+                  {/* Subscription Tables */}
+                  <SchemaGroup 
+                    title="Assinaturas" 
+                    icon={<CreditCard className="w-5 h-5" />}
+                    tables={[
+                      { name: "subscriptions", description: "Assinaturas de usuários", columns: ["user_id", "plan", "status", "stripe_subscription_id"] },
+                      { name: "subscription_plans", description: "Planos disponíveis", columns: ["id", "name", "plan_key", "price_monthly", "stripe_price_id"] },
+                      { name: "plan_limits", description: "Limites por plano", columns: ["plan_id", "limit_key", "limit_value", "is_unlimited"] },
+                      { name: "plan_features", description: "Features por plano", columns: ["plan_id", "feature_key", "is_enabled"] },
+                    ]}
+                  />
+                  
+                  {/* Report Subscription Tables */}
+                  <SchemaGroup 
+                    title="Envio de Relatórios" 
+                    icon={<Mail className="w-5 h-5" />}
+                    tables={[
+                      { name: "report_subscriptions", description: "Assinaturas de envio", columns: ["dashboard_id", "frequency", "schedule_time", "export_format"] },
+                      { name: "subscription_recipients", description: "Destinatários", columns: ["subscription_id", "email", "apply_rls", "rls_user_id"] },
+                      { name: "subscription_logs", description: "Logs de envio", columns: ["subscription_id", "status", "recipients_count"] },
+                    ]}
+                  />
+                  
+                  {/* User Management Tables */}
+                  <SchemaGroup 
+                    title="Gestão de Usuários" 
+                    icon={<Users className="w-5 h-5" />}
+                    tables={[
+                      { name: "user_groups", description: "Grupos de usuários", columns: ["id", "name", "company_id", "description"] },
+                      { name: "user_group_members", description: "Membros dos grupos", columns: ["group_id", "user_id", "added_by"] },
+                      { name: "user_invitations", description: "Convites pendentes", columns: ["email", "invited_role", "company_id", "token", "expires_at"] },
+                    ]}
+                  />
+                  
+                  {/* Auxiliary Tables */}
+                  <SchemaGroup 
+                    title="Auxiliares" 
+                    icon={<Layers className="w-5 h-5" />}
+                    tables={[
+                      { name: "dashboard_access_logs", description: "Logs de acesso", columns: ["user_id", "dashboard_id", "accessed_at", "report_page"] },
+                      { name: "dashboard_page_visibility", description: "Visibilidade de páginas", columns: ["dashboard_id", "page_name", "is_visible"] },
+                      { name: "user_dashboard_bookmarks", description: "Bookmarks salvos", columns: ["user_id", "dashboard_id", "name", "bookmark_state"] },
+                      { name: "slider_slides", description: "Slides do modo slider", columns: ["dashboard_id", "slide_order", "duration_seconds"] },
+                    ]}
+                  />
+                </div>
+                
+                {/* Relationships Diagram */}
+                <div className="mt-8 p-6 bg-gradient-to-r from-[hsl(187,85%,97%)] to-[hsl(195,80%,97%)] rounded-xl">
+                  <h4 className="font-semibold text-[hsl(195,50%,25%)] mb-4 flex items-center gap-2">
+                    <GitBranch className="w-5 h-5 text-[hsl(187,85%,43%)]" />
+                    Relacionamentos Principais
+                  </h4>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    <RelationshipBadge from="profiles" to="companies" type="N:1" />
+                    <RelationshipBadge from="dashboards" to="companies" type="N:1" />
+                    <RelationshipBadge from="dashboards" to="power_bi_configs" type="N:1" />
+                    <RelationshipBadge from="user_dashboard_access" to="dashboards" type="N:1" />
+                    <RelationshipBadge from="subscriptions" to="subscription_plans" type="N:1" />
+                    <RelationshipBadge from="report_subscriptions" to="dashboards" type="N:1" />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* Components Tab */}
+            <TabsContent value="components" className="mt-6">
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-[hsl(187,85%,90%)]">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Pages */}
+                  <ComponentGroup 
+                    title="Páginas (pages/)"
+                    items={[
+                      "Index.tsx - Landing page",
+                      "Auth.tsx - Login/Registro",
+                      "Home.tsx - Dashboard home",
+                      "Dashboards.tsx - Catálogo",
+                      "DashboardViewer.tsx - Visualização",
+                      "Settings.tsx - Configurações",
+                      "Users.tsx - Gestão usuários",
+                      "UserGroups.tsx - Grupos",
+                      "Credentials.tsx - Power BI",
+                      "ReportSubscriptions.tsx - Envios",
+                      "MasterAdmin.tsx - Admin global",
+                    ]}
+                  />
+                  
+                  {/* Components */}
+                  <ComponentGroup 
+                    title="Componentes Principais"
+                    items={[
+                      "auth/ - Autenticação",
+                      "dashboards/ - Visualização BI",
+                      "settings/ - Configurações",
+                      "users/ - Gestão usuários",
+                      "subscription/ - Planos",
+                      "onboarding/ - Onboarding",
+                      "master-admin/ - Admin",
+                      "support/ - Chat suporte",
+                      "ui/ - Componentes base",
+                    ]}
+                  />
+                  
+                  {/* Edge Functions */}
+                  <ComponentGroup 
+                    title="Edge Functions"
+                    items={[
+                      "get-powerbi-embed - Token embed",
+                      "refresh-dataset - Atualiza dados",
+                      "export-report - Exporta PDF/PPTX",
+                      "query-dataset-chat - Chat IA",
+                      "create-checkout - Stripe checkout",
+                      "stripe-webhook - Webhooks",
+                      "send-email - Envio emails",
+                      "zapi-webhook - WhatsApp",
+                      "process-subscriptions - Envios",
+                    ]}
+                  />
+                </div>
+                
+                {/* Hooks and Contexts */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <ComponentGroup 
+                    title="Hooks Customizados (hooks/)"
+                    items={[
+                      "useUserRole - Papel do usuário",
+                      "useSubscriptionStatus - Status assinatura",
+                      "useSubscriptionPlan - Limites do plano",
+                      "useDashboardFavorites - Favoritos",
+                      "useDashboardBookmarks - Bookmarks",
+                      "useCompanyCustomization - Tema empresa",
+                      "useOnboardingProgress - Progresso",
+                      "useAccessLog - Logs de acesso",
+                    ]}
+                  />
+                  
+                  <ComponentGroup 
+                    title="Contextos (contexts/)"
+                    items={[
+                      "AuthContext - Estado de autenticação",
+                      "ConsentProvider - Consentimento LGPD",
+                    ]}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* Flows Tab */}
+            <TabsContent value="flows" className="mt-6">
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-[hsl(187,85%,90%)] space-y-8">
+                {/* Auth Flow */}
+                <FlowDiagram 
+                  title="Fluxo de Autenticação"
+                  steps={[
+                    { icon: <User />, label: "Usuário acessa" },
+                    { icon: <Lock />, label: "Supabase Auth" },
+                    { icon: <Database />, label: "Busca profile" },
+                    { icon: <Shield />, label: "Verifica role" },
+                    { icon: <LayoutDashboard />, label: "Redireciona" },
+                  ]}
+                />
+                
+                {/* Dashboard View Flow */}
+                <FlowDiagram 
+                  title="Fluxo de Visualização de Dashboard"
+                  steps={[
+                    { icon: <User />, label: "Usuário seleciona" },
+                    { icon: <Shield />, label: "Verifica acesso" },
+                    { icon: <Key />, label: "Busca credencial" },
+                    { icon: <Server />, label: "Edge Function" },
+                    { icon: <Zap />, label: "Token embed" },
+                    { icon: <BarChart3 />, label: "Renderiza BI" },
+                  ]}
+                />
+                
+                {/* Subscription Flow */}
+                <FlowDiagram 
+                  title="Fluxo de Assinatura"
+                  steps={[
+                    { icon: <User />, label: "Escolhe plano" },
+                    { icon: <CreditCard />, label: "Stripe Checkout" },
+                    { icon: <Zap />, label: "Webhook" },
+                    { icon: <Database />, label: "Atualiza DB" },
+                    { icon: <Shield />, label: "Libera acesso" },
+                  ]}
+                />
+                
+                {/* Report Export Flow */}
+                <FlowDiagram 
+                  title="Fluxo de Envio de Relatório"
+                  steps={[
+                    { icon: <Clock />, label: "Cron trigger" },
+                    { icon: <Database />, label: "Busca assinaturas" },
+                    { icon: <Download />, label: "Exporta report" },
+                    { icon: <Shield />, label: "Aplica RLS" },
+                    { icon: <Mail />, label: "Envia email" },
+                  ]}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </motion.section>
 
         {/* Technical Structure */}
@@ -562,6 +819,84 @@ const SecurityCard = ({ icon, title, description }: { icon: React.ReactNode; tit
     <div>
       <h4 className="font-semibold text-[hsl(195,50%,25%)]">{title}</h4>
       <p className="text-sm text-[hsl(195,50%,45%)]">{description}</p>
+    </div>
+  </div>
+);
+
+// New Schema Components
+const SchemaGroup = ({ title, icon, tables }: { 
+  title: string; 
+  icon: React.ReactNode; 
+  tables: { name: string; description: string; columns: string[] }[] 
+}) => (
+  <div className="p-5 rounded-xl border border-[hsl(187,85%,85%)] bg-gradient-to-br from-white to-[hsl(187,85%,98%)]">
+    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[hsl(187,85%,90%)]">
+      <span className="text-[hsl(187,85%,43%)]">{icon}</span>
+      <h4 className="font-semibold text-[hsl(195,50%,25%)]">{title}</h4>
+    </div>
+    <div className="space-y-3">
+      {tables.map((table, index) => (
+        <div key={index} className="text-sm">
+          <div className="flex items-center gap-2">
+            <code className="px-2 py-0.5 bg-[hsl(187,85%,43%)] text-white rounded text-xs font-mono">
+              {table.name}
+            </code>
+            <span className="text-[hsl(195,50%,45%)] text-xs">{table.description}</span>
+          </div>
+          <div className="mt-1 pl-4 text-xs text-[hsl(195,50%,55%)] font-mono">
+            {table.columns.join(" · ")}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const RelationshipBadge = ({ from, to, type }: { from: string; to: string; type: string }) => (
+  <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-[hsl(187,85%,85%)]">
+    <code className="text-xs font-mono text-[hsl(187,85%,35%)]">{from}</code>
+    <span className="text-[hsl(187,85%,50%)]">→</span>
+    <code className="text-xs font-mono text-[hsl(195,80%,35%)]">{to}</code>
+    <Badge variant="outline" className="text-xs border-[hsl(187,85%,70%)] text-[hsl(195,50%,40%)]">
+      {type}
+    </Badge>
+  </div>
+);
+
+const ComponentGroup = ({ title, items }: { title: string; items: string[] }) => (
+  <div className="p-5 rounded-xl border border-[hsl(187,85%,85%)] bg-gradient-to-br from-white to-[hsl(187,85%,98%)]">
+    <h4 className="font-semibold text-[hsl(195,50%,25%)] mb-3 pb-2 border-b border-[hsl(187,85%,90%)]">
+      {title}
+    </h4>
+    <ul className="space-y-1.5">
+      {items.map((item, index) => (
+        <li key={index} className="text-sm text-[hsl(195,50%,35%)] flex items-start gap-2">
+          <ChevronRight className="w-4 h-4 text-[hsl(187,85%,50%)] flex-shrink-0 mt-0.5" />
+          <span className="font-mono text-xs">{item}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+const FlowDiagram = ({ title, steps }: { 
+  title: string; 
+  steps: { icon: React.ReactNode; label: string }[] 
+}) => (
+  <div className="p-5 rounded-xl border border-[hsl(187,85%,85%)] bg-gradient-to-r from-[hsl(187,85%,97%)] to-[hsl(195,80%,97%)]">
+    <h4 className="font-semibold text-[hsl(195,50%,25%)] mb-4">{title}</h4>
+    <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
+      {steps.map((step, index) => (
+        <React.Fragment key={index}>
+          <div className="flex flex-col items-center gap-1 px-3 py-2 bg-white rounded-lg shadow-sm border border-[hsl(187,85%,85%)]">
+            <span className="text-[hsl(187,85%,43%)]">{step.icon}</span>
+            <span className="text-xs text-[hsl(195,50%,35%)] font-medium text-center">{step.label}</span>
+          </div>
+          {index < steps.length - 1 && (
+            <ChevronRight className="w-5 h-5 text-[hsl(187,85%,50%)] hidden md:block" />
+          )}
+        </React.Fragment>
+      ))}
     </div>
   </div>
 );
