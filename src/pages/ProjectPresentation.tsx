@@ -58,43 +58,72 @@ const ProjectPresentation = () => {
           </p>
         </motion.section>
 
-        {/* Architecture Overview */}
+        {/* Architecture & Technical Structure - Unified Section */}
         <motion.section {...fadeIn} className="space-y-8">
           <SectionHeader 
             icon={<Layers className="w-6 h-6" />} 
-            title="Arquitetura da Plataforma" 
-            subtitle="Visão geral dos componentes e integrações"
+            title="1. Arquitetura e Stack Tecnológico" 
+            subtitle="Visão geral da plataforma, componentes e integrações"
           />
           
           <div className="bg-white rounded-2xl p-8 shadow-lg border border-[hsl(187,85%,90%)]">
+            {/* Tech Stack Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Frontend */}
-              <ArchitectureCard
-                title="Frontend"
-                icon={<Globe className="w-8 h-8 text-[hsl(187,85%,43%)]" />}
-                items={["React 18", "Vite", "TypeScript", "Tailwind CSS", "shadcn/ui", "Framer Motion"]}
-                color="hsl(187,85%,43%)"
-              />
+              <div className="p-6 bg-gradient-to-br from-[hsl(187,85%,97%)] to-white rounded-xl border border-[hsl(187,85%,90%)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-[hsl(187,85%,43%)] rounded-lg">
+                    <Globe className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-bold text-lg text-[hsl(195,50%,25%)]">Frontend</h3>
+                </div>
+                <div className="space-y-2">
+                  <TechItem label="Framework" value="React 18 + Vite" />
+                  <TechItem label="Linguagem" value="TypeScript" />
+                  <TechItem label="Estilos" value="Tailwind CSS" />
+                  <TechItem label="Componentes" value="shadcn/ui" />
+                  <TechItem label="Animações" value="Framer Motion" />
+                </div>
+              </div>
               
               {/* Backend */}
-              <ArchitectureCard
-                title="Backend"
-                icon={<Server className="w-8 h-8 text-[hsl(195,80%,35%)]" />}
-                items={["Supabase", "PostgreSQL", "Edge Functions", "Row Level Security", "Realtime"]}
-                color="hsl(195,80%,35%)"
-              />
+              <div className="p-6 bg-gradient-to-br from-[hsl(195,80%,97%)] to-white rounded-xl border border-[hsl(195,80%,90%)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-[hsl(195,80%,35%)] rounded-lg">
+                    <Server className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-bold text-lg text-[hsl(195,50%,25%)]">Backend</h3>
+                </div>
+                <div className="space-y-2">
+                  <TechItem label="Plataforma" value="Supabase" />
+                  <TechItem label="Banco de Dados" value="PostgreSQL" />
+                  <TechItem label="Funções" value="Edge Functions (Deno)" />
+                  <TechItem label="Auth" value="Supabase Auth" />
+                  <TechItem label="Segurança" value="Row Level Security" />
+                </div>
+              </div>
               
-              {/* Integrações */}
-              <ArchitectureCard
-                title="Integrações"
-                icon={<Zap className="w-8 h-8 text-[hsl(200,90%,40%)]" />}
-                items={["Power BI API", "Stripe Payments", "Z-API (WhatsApp)", "Mailjet (Email)"]}
-                color="hsl(200,90%,40%)"
-              />
+              {/* Integrations */}
+              <div className="p-6 bg-gradient-to-br from-[hsl(200,90%,97%)] to-white rounded-xl border border-[hsl(200,90%,90%)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-[hsl(200,90%,40%)] rounded-lg">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-bold text-lg text-[hsl(195,50%,25%)]">Integrações</h3>
+                </div>
+                <div className="space-y-2">
+                  <TechItem label="BI" value="Power BI Embed API" />
+                  <TechItem label="Pagamentos" value="Stripe" />
+                  <TechItem label="WhatsApp" value="Z-API" />
+                  <TechItem label="Email" value="Mailjet" />
+                  <TechItem label="Realtime" value="Supabase Realtime" />
+                </div>
+              </div>
             </div>
             
             {/* Flow Diagram */}
             <div className="mt-8 p-6 bg-gradient-to-r from-[hsl(187,85%,97%)] to-[hsl(195,80%,97%)] rounded-xl">
+              <h4 className="text-sm font-semibold text-[hsl(195,50%,40%)] mb-4 text-center">Fluxo Principal de Requisições</h4>
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
                 <FlowStep icon={<User />} label="Usuário" />
                 <ChevronRight className="w-5 h-5 text-[hsl(187,85%,50%)]" />
@@ -108,7 +137,7 @@ const ProjectPresentation = () => {
           </div>
         </motion.section>
 
-        {/* Technical Schema - NEW SECTION */}
+        {/* Technical Schema */}
         <motion.section {...fadeIn} className="space-y-8">
           <SectionHeader 
             icon={<GitBranch className="w-6 h-6" />} 
@@ -360,51 +389,6 @@ const ProjectPresentation = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </motion.section>
-
-        {/* Technical Structure */}
-        <motion.section {...fadeIn} className="space-y-8">
-          <SectionHeader 
-            icon={<Server className="w-6 h-6" />} 
-            title="1. Estrutura Técnica" 
-            subtitle="Stack tecnológico e infraestrutura"
-          />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <TechCard 
-              title="Frontend" 
-              icon={<Globe />}
-              items={[
-                { label: "Framework", value: "React + Vite" },
-                { label: "Linguagem", value: "TypeScript" },
-                { label: "Estilos", value: "Tailwind CSS" },
-                { label: "Componentes", value: "shadcn/ui" },
-                { label: "Animações", value: "Framer Motion" }
-              ]}
-            />
-            
-            <TechCard 
-              title="Backend" 
-              icon={<Server />}
-              items={[
-                { label: "Plataforma", value: "Supabase" },
-                { label: "Banco de Dados", value: "PostgreSQL" },
-                { label: "Funções", value: "Edge Functions (Deno)" },
-                { label: "Segurança", value: "Row Level Security" }
-              ]}
-            />
-            
-            <TechCard 
-              title="Integrações" 
-              icon={<Zap />}
-              items={[
-                { label: "BI", value: "Power BI Embed API" },
-                { label: "Pagamentos", value: "Stripe" },
-                { label: "WhatsApp", value: "Z-API" },
-                { label: "Email", value: "Mailjet" }
-              ]}
-            />
-          </div>
         </motion.section>
 
         {/* Administrative Structure */}
@@ -721,6 +705,13 @@ const TechCard = ({ title, icon, items }: { title: string; icon: React.ReactNode
       ))}
     </CardContent>
   </Card>
+);
+
+const TechItem = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between items-center text-sm py-1">
+    <span className="text-[hsl(195,50%,45%)]">{label}</span>
+    <span className="font-medium text-[hsl(195,50%,25%)]">{value}</span>
+  </div>
 );
 
 const FeatureItem = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
