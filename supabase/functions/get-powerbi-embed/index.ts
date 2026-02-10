@@ -197,16 +197,24 @@ async function getReportEmbedToken(
   workspaceId: string,
   reportId: string
 ): Promise<EmbedTokenResponse> {
-  // First, get report details
-  const reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}`;
-
+  // Try standard workspace API first
+  let reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}`;
   console.log("Fetching report details...");
 
-  const reportResponse = await fetchWithRetry(reportUrl, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+  let reportResponse = await fetchWithRetry(reportUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
+
+  // If 404, the workspaceId might be an App ID - try the Apps API
+  let useAppsApi = false;
+  if (!reportResponse.ok && reportResponse.status === 404) {
+    console.log("[AUDIT] Standard API returned 404, trying Apps API with appId:", workspaceId);
+    const appsReportUrl = `https://api.powerbi.com/v1.0/myorg/apps/${workspaceId}/reports/${reportId}`;
+    reportResponse = await fetchWithRetry(appsReportUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    useAppsApi = true;
+  }
 
   if (!reportResponse.ok) {
     const errorText = await reportResponse.text();
@@ -217,8 +225,18 @@ async function getReportEmbedToken(
   const reportData = await reportResponse.json();
   console.log("Report details fetched:", reportData.name);
 
-  // Now generate embed token
-  const embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`;
+  // For Apps API, we need the actual workspace ID from the report data to generate embed token
+  const actualWorkspaceId = reportData.datasetWorkspaceId || workspaceId;
+  
+  // Generate embed token - always use the groups API with actual workspace ID
+  let embedTokenUrl: string;
+  if (useAppsApi && reportData.datasetWorkspaceId) {
+    // Use the real workspace ID from the report metadata
+    embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${reportData.datasetWorkspaceId}/reports/${reportId}/GenerateToken`;
+    console.log("Using discovered workspace ID for embed token:", reportData.datasetWorkspaceId);
+  } else {
+    embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`;
+  }
 
   console.log("Generating embed token...");
 
@@ -228,9 +246,7 @@ async function getReportEmbedToken(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      accessLevel: "View",
-    }),
+    body: JSON.stringify({ accessLevel: "View" }),
   });
 
   if (!embedResponse.ok) {
