@@ -192,6 +192,45 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   return data.access_token;
 }
 
+// Resolve actual workspace ID from an App ID
+async function resolveWorkspaceFromApp(appId: string, accessToken: string): Promise<string | null> {
+  try {
+    // Try to get app details which includes the workspaceId
+    const appUrl = `https://api.powerbi.com/v1.0/myorg/apps/${appId}`;
+    console.log("[AUDIT] Resolving workspace from App ID:", appId);
+    
+    const response = await fetchWithRetry(appUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    
+    if (!response.ok) {
+      console.log("[AUDIT] App details API returned:", response.status);
+      // Try the reports list endpoint to get report details with workspaceId
+      const reportsUrl = `https://api.powerbi.com/v1.0/myorg/apps/${appId}/reports`;
+      const reportsResponse = await fetchWithRetry(reportsUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      
+      if (reportsResponse.ok) {
+        const reportsData = await reportsResponse.json();
+        if (reportsData.value && reportsData.value.length > 0) {
+          const workspaceId = reportsData.value[0].datasetWorkspaceId;
+          console.log("[AUDIT] Resolved workspace from app reports:", workspaceId);
+          return workspaceId || null;
+        }
+      }
+      return null;
+    }
+    
+    const appData = await response.json();
+    console.log("[AUDIT] App details:", JSON.stringify(appData).slice(0, 500));
+    return appData.workspaceId || null;
+  } catch (error) {
+    console.error("[AUDIT] Failed to resolve workspace from app:", error);
+    return null;
+  }
+}
+
 async function getReportEmbedToken(
   accessToken: string,
   workspaceId: string,
@@ -199,46 +238,57 @@ async function getReportEmbedToken(
 ): Promise<EmbedTokenResponse> {
   // Try standard workspace API first
   let reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}`;
-  console.log("Fetching report details...");
+  console.log("Fetching report details with workspaceId:", workspaceId, "reportId:", reportId);
 
   let reportResponse = await fetchWithRetry(reportUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  // If 404, the workspaceId might be an App ID - try the Apps API
-  let useAppsApi = false;
-  if (!reportResponse.ok && reportResponse.status === 404) {
-    console.log("[AUDIT] Standard API returned 404, trying Apps API with appId:", workspaceId);
-    const appsReportUrl = `https://api.powerbi.com/v1.0/myorg/apps/${workspaceId}/reports/${reportId}`;
-    reportResponse = await fetchWithRetry(appsReportUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    useAppsApi = true;
+  console.log("[AUDIT] Standard API response status:", reportResponse.status);
+
+  // If not found, the workspaceId might be an App ID - try to resolve the real workspace
+  if (!reportResponse.ok && (reportResponse.status === 404 || reportResponse.status === 403)) {
+    console.log("[AUDIT] Standard API failed, attempting to resolve App ID:", workspaceId);
+    
+    const resolvedWorkspaceId = await resolveWorkspaceFromApp(workspaceId, accessToken);
+    
+    if (resolvedWorkspaceId) {
+      console.log("[AUDIT] Resolved workspace ID:", resolvedWorkspaceId);
+      reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${resolvedWorkspaceId}/reports/${reportId}`;
+      reportResponse = await fetchWithRetry(reportUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      console.log("[AUDIT] Retry with resolved workspace status:", reportResponse.status);
+      
+      if (reportResponse.ok) {
+        // Update workspaceId for embed token generation
+        workspaceId = resolvedWorkspaceId;
+      }
+    } else {
+      // Fallback: try Apps API directly for report details
+      console.log("[AUDIT] Trying Apps API directly");
+      const appsReportUrl = `https://api.powerbi.com/v1.0/myorg/apps/${workspaceId}/reports/${reportId}`;
+      reportResponse = await fetchWithRetry(appsReportUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      console.log("[AUDIT] Apps API response status:", reportResponse.status);
+    }
   }
 
   if (!reportResponse.ok) {
     const errorText = await reportResponse.text();
-    console.error("[AUDIT] Report fetch error:", errorText);
+    console.error("[AUDIT] Report fetch error (status", reportResponse.status, "):", errorText);
     throw new Error(USER_ERROR_MESSAGES.resource_not_found);
   }
 
   const reportData = await reportResponse.json();
-  console.log("Report details fetched:", reportData.name);
+  console.log("Report details fetched:", reportData.name, "datasetWorkspaceId:", reportData.datasetWorkspaceId);
 
-  // For Apps API, we need the actual workspace ID from the report data to generate embed token
-  const actualWorkspaceId = reportData.datasetWorkspaceId || workspaceId;
+  // Use the real workspace ID if available from report data
+  const effectiveWorkspaceId = reportData.datasetWorkspaceId || workspaceId;
   
-  // Generate embed token - always use the groups API with actual workspace ID
-  let embedTokenUrl: string;
-  if (useAppsApi && reportData.datasetWorkspaceId) {
-    // Use the real workspace ID from the report metadata
-    embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${reportData.datasetWorkspaceId}/reports/${reportId}/GenerateToken`;
-    console.log("Using discovered workspace ID for embed token:", reportData.datasetWorkspaceId);
-  } else {
-    embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}/GenerateToken`;
-  }
-
-  console.log("Generating embed token...");
+  const embedTokenUrl = `https://api.powerbi.com/v1.0/myorg/groups/${effectiveWorkspaceId}/reports/${reportId}/GenerateToken`;
+  console.log("Generating embed token with workspace:", effectiveWorkspaceId);
 
   const embedResponse = await fetchWithRetry(embedTokenUrl, {
     method: "POST",
