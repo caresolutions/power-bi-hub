@@ -315,6 +315,33 @@ const Dashboards = () => {
     }
   };
 
+  const handleDashboardClick = async (dashboard: Dashboard) => {
+    logDashboardAccess(dashboard.id);
+    
+    if (dashboard.embed_type === "app") {
+      // Fetch first child dashboard of the app
+      const { data } = await supabase
+        .from("dashboard_app_items")
+        .select("child_dashboard_id")
+        .eq("app_dashboard_id", dashboard.id)
+        .order("display_order")
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        navigate(`/dashboard/${data.child_dashboard_id}?app=${dashboard.id}`);
+      } else {
+        toast({
+          title: "App vazio",
+          description: "Este App não possui dashboards configurados",
+          variant: "destructive",
+        });
+      }
+    } else {
+      navigate(`/dashboard/${dashboard.id}`);
+    }
+  };
+
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditingDashboard(null);
@@ -492,10 +519,7 @@ const Dashboards = () => {
                   >
                     <Card 
                       className="glass border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-glow cursor-pointer overflow-hidden"
-                      onClick={() => {
-                        logDashboardAccess(dashboard.id);
-                        navigate(`/dashboard/${dashboard.id}`);
-                      }}
+                      onClick={() => handleDashboardClick(dashboard)}
                     >
                       {/* Thumbnail Preview */}
                       <div className="relative h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
@@ -507,6 +531,16 @@ const Dashboards = () => {
                           {dashboard.embed_type === "public_link" && (
                             <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
                               {t('dashboards.publicLink')}
+                            </span>
+                          )}
+                          {dashboard.embed_type === "app" && (
+                            <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
+                              App
+                            </span>
+                          )}
+                          {dashboard.embed_type === "slider" && (
+                            <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
+                              Slider
                             </span>
                           )}
                           {dashboard.category && (
@@ -663,10 +697,7 @@ const Dashboards = () => {
                       <TableRow 
                         key={dashboard.id}
                         className="cursor-pointer hover:bg-muted/50 border-border/50"
-                        onClick={() => {
-                          logDashboardAccess(dashboard.id);
-                          navigate(`/dashboard/${dashboard.id}`);
-                        }}
+                        onClick={() => handleDashboardClick(dashboard)}
                       >
                         <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                           <FavoriteButton
@@ -731,8 +762,14 @@ const Dashboards = () => {
                           )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <Badge variant={dashboard.embed_type === "public_link" ? "default" : "outline"}>
-                            {dashboard.embed_type === "public_link" ? t('dashboards.publicLink') : t('dashboards.workspace')}
+                          <Badge variant={dashboard.embed_type === "public_link" || dashboard.embed_type === "app" ? "default" : "outline"}>
+                            {dashboard.embed_type === "public_link" 
+                              ? t('dashboards.publicLink') 
+                              : dashboard.embed_type === "app"
+                              ? "App"
+                              : dashboard.embed_type === "slider"
+                              ? "Slider"
+                              : t('dashboards.workspace')}
                           </Badge>
                         </TableCell>
                         {isAdmin && (
