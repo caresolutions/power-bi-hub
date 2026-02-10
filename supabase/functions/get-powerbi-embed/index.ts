@@ -247,7 +247,7 @@ async function getReportEmbedToken(
   console.log("[AUDIT] Standard API response status:", reportResponse.status);
 
   // If not found, the workspaceId might be an App ID - try to resolve the real workspace
-  if (!reportResponse.ok && (reportResponse.status === 404 || reportResponse.status === 403)) {
+  if (!reportResponse.ok && (reportResponse.status === 404 || reportResponse.status === 403 || reportResponse.status === 401)) {
     console.log("[AUDIT] Standard API failed, attempting to resolve App ID:", workspaceId);
     
     const resolvedWorkspaceId = await resolveWorkspaceFromApp(workspaceId, accessToken);
