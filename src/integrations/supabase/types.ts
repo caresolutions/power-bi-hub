@@ -238,6 +238,45 @@ export type Database = {
           },
         ]
       }
+      dashboard_app_items: {
+        Row: {
+          app_dashboard_id: string
+          child_dashboard_id: string
+          created_at: string
+          display_order: number
+          id: string
+        }
+        Insert: {
+          app_dashboard_id: string
+          child_dashboard_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+        }
+        Update: {
+          app_dashboard_id?: string
+          child_dashboard_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_app_items_app_dashboard_id_fkey"
+            columns: ["app_dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_app_items_child_dashboard_id_fkey"
+            columns: ["child_dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_page_visibility: {
         Row: {
           created_at: string

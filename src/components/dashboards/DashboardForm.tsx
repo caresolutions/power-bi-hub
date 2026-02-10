@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2, Play, Lock } from "lucide-react";
+import { BarChart3, ArrowLeft, Link2, Sparkles, X, Tag, Building2, Play, Lock, LayoutGrid } from "lucide-react";
 import { motion } from "framer-motion";
 import SliderSlidesManager, { SliderSlide } from "./SliderSlidesManager";
+import DashboardAppItemsManager from "./DashboardAppItemsManager";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 
 interface Dashboard {
@@ -76,6 +77,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
   const [loading, setLoading] = useState(false);
   const [urlParsed, setUrlParsed] = useState(false);
   const [sliderSlides, setSliderSlides] = useState<SliderSlide[]>([]);
+  const [appItems, setAppItems] = useState<{ dashboard_id: string; name: string; display_order: number }[]>([]);
   const { toast } = useToast();
 
   const isEditing = !!dashboard;
@@ -89,6 +91,9 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
   useEffect(() => {
     if (isEditing && dashboard?.embed_type === "slider") {
       fetchSliderSlides();
+    }
+    if (isEditing && dashboard?.embed_type === "app") {
+      fetchAppItems();
     }
   }, [isEditing, dashboard]);
 
@@ -118,6 +123,33 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
         transition_type: s.transition_type,
         is_visible: s.is_visible,
       })));
+    }
+  };
+
+  const fetchAppItems = async () => {
+    if (!dashboard?.id) return;
+    const { data } = await supabase
+      .from("dashboard_app_items")
+      .select("child_dashboard_id, display_order")
+      .eq("app_dashboard_id", dashboard.id)
+      .order("display_order");
+
+    if (data) {
+      // Fetch dashboard names
+      const ids = data.map((d) => d.child_dashboard_id);
+      const { data: dashboards } = await supabase
+        .from("dashboards")
+        .select("id, name")
+        .in("id", ids);
+
+      const nameMap = new Map(dashboards?.map((d) => [d.id, d.name]) || []);
+      setAppItems(
+        data.map((d) => ({
+          dashboard_id: d.child_dashboard_id,
+          name: nameMap.get(d.child_dashboard_id) || "Dashboard",
+          display_order: d.display_order,
+        }))
+      );
     }
   };
 
@@ -236,6 +268,11 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
         throw new Error("Adicione pelo menos um slide ao Slider");
       }
 
+      // Validate app has items
+      if (embedType === "app" && appItems.length === 0) {
+        throw new Error("Selecione pelo menos um dashboard para o App");
+      }
+
       // Get company_id - use selected for master admin, or fetch from profile
       let targetCompanyId = companyId;
       if (!isMasterAdmin) {
@@ -255,11 +292,11 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
 
       // Determine workspace_id and dashboard_id based on embed type
       const getWorkspaceId = () => {
-        if (embedType === "public_link" || embedType === "slider") return "slider";
+        if (embedType === "public_link" || embedType === "slider" || embedType === "app") return embedType;
         return workspaceId;
       };
       const getDashboardId = () => {
-        if (embedType === "public_link" || embedType === "slider") return "slider";
+        if (embedType === "public_link" || embedType === "slider" || embedType === "app") return embedType;
         return dashboardId;
       };
 
@@ -271,7 +308,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           workspace_id: getWorkspaceId(),
           dashboard_id: getDashboardId(),
           report_section: reportSection || null,
-          credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
+          credential_id: embedType === "public_link" || embedType === "slider" || embedType === "app" ? null : (credentialId || null),
           description: description || null,
           category: category || null,
           tags: tags.length > 0 ? tags : null,
@@ -295,6 +332,11 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           await saveSliderSlides(dashboard.id);
         }
 
+        // Handle app items
+        if (embedType === "app") {
+          await saveAppItems(dashboard.id);
+        }
+
         toast({
           title: "Sucesso",
           description: "Dashboard atualizado com sucesso",
@@ -310,7 +352,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
             workspace_id: getWorkspaceId(),
             dashboard_id: getDashboardId(),
             report_section: reportSection || null,
-            credential_id: embedType === "public_link" || embedType === "slider" ? null : (credentialId || null),
+            credential_id: embedType === "public_link" || embedType === "slider" || embedType === "app" ? null : (credentialId || null),
             company_id: targetCompanyId,
             description: description || null,
             category: category || null,
@@ -325,6 +367,11 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
         // Handle slider slides
         if (embedType === "slider" && newDashboard) {
           await saveSliderSlides(newDashboard.id);
+        }
+
+        // Handle app items
+        if (embedType === "app" && newDashboard) {
+          await saveAppItems(newDashboard.id);
         }
 
         toast({
@@ -365,6 +412,23 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
       }));
 
       const { error } = await supabase.from("slider_slides").insert(slidesToInsert);
+      if (error) throw error;
+    }
+  };
+
+  const saveAppItems = async (dashboardId: string) => {
+    // Delete existing items
+    await supabase.from("dashboard_app_items").delete().eq("app_dashboard_id", dashboardId);
+
+    // Insert new items
+    if (appItems.length > 0) {
+      const itemsToInsert = appItems.map((item, index) => ({
+        app_dashboard_id: dashboardId,
+        child_dashboard_id: item.dashboard_id,
+        display_order: index + 1,
+      }));
+
+      const { error } = await supabase.from("dashboard_app_items").insert(itemsToInsert);
       if (error) throw error;
     }
   };
@@ -426,6 +490,12 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
                     )}
                   </div>
                 </SelectItem>
+                <SelectItem value="app">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4" />
+                    App (Coleção de Dashboards)
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -433,6 +503,8 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
                 ? "Use um link público para incorporar o dashboard diretamente" 
                 : embedType === "slider"
                 ? "Mescle múltiplos dashboards em uma apresentação rotativa para exibição em TVs"
+                : embedType === "app"
+                ? "Agrupe múltiplos dashboards em uma navegação lateral estilo App"
                 : "Use as credenciais do Power BI para incorporar dashboards privados"}
             </p>
             {!canUseSlider && (
@@ -450,6 +522,18 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
                 slides={sliderSlides}
                 onSlidesChange={setSliderSlides}
                 credentials={credentials}
+              />
+            </div>
+          )}
+
+          {/* App Items Section */}
+          {embedType === "app" && (
+            <div className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <DashboardAppItemsManager
+                items={appItems}
+                onItemsChange={setAppItems}
+                companyId={companyId || defaultCompanyId || ""}
+                excludeDashboardId={dashboard?.id}
               />
             </div>
           )}

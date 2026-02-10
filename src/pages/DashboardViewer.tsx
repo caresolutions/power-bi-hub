@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare } from "lucide-react";
@@ -10,6 +10,7 @@ import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
 import { PageVisibilityManager } from "@/components/dashboards/PageVisibilityManager";
 import SliderViewer from "@/components/dashboards/SliderViewer";
+import DashboardAppSidebar from "@/components/dashboards/DashboardAppSidebar";
 import { useDashboardFavorites } from "@/hooks/useDashboardFavorites";
 import { useAccessLog } from "@/hooks/useAccessLog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,6 +51,8 @@ interface ReportPage {
 
 const DashboardViewer = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get("app");
   const navigate = useNavigate();
   const { toast } = useToast();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -620,7 +623,17 @@ const DashboardViewer = () => {
       />
 
       {/* Dashboard content */}
-      <div className="flex-1 w-full h-full overflow-hidden">
+      <div className="flex-1 w-full h-full overflow-hidden flex">
+        {/* App Sidebar */}
+        {appId && (
+          <DashboardAppSidebar
+            appDashboardId={appId}
+            activeDashboardId={id || ""}
+            appName={dashboard.name}
+          />
+        )}
+
+        <div className="flex-1 h-full overflow-hidden">
         {dashboard.embed_type === "slider" ? (
           <div className="w-full h-full">
             <SliderViewer dashboardId={dashboard.id} />
@@ -669,6 +682,7 @@ const DashboardViewer = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
