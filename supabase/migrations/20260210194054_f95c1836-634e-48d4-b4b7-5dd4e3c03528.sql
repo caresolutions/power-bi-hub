@@ -1,0 +1,2 @@
+ALTER TABLE public.dashboards DROP CONSTRAINT dashboards_embed_type_check;
+ALTER TABLE public.dashboards ADD CONSTRAINT dashboards_embed_type_check CHECK (embed_type = ANY (ARRAY['workspace_id'::text, 'public_link'::text, 'slider'::text, 'app'::text]));
