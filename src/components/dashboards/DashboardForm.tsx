@@ -155,13 +155,29 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
 
   const parseDashboardUrl = (inputUrl: string) => {
     try {
-      // Expected format: https://app.powerbi.com/groups/{workspaceId}/reports/{dashboardId}/{reportSection}
-      const match = inputUrl.match(/groups\/([^/]+)\/reports\/([^/]+)\/([^?]+)/);
+      // Format 1: https://app.powerbi.com/groups/{workspaceId}/reports/{reportId}/{section}
+      // Format 2: https://app.powerbi.com/groups/me/apps/{appId}/reports/{reportId}/{section}
+      const appsMatch = inputUrl.match(/groups\/([^/]+)\/apps\/([^/]+)\/reports\/([^/]+)\/([^?]+)/);
+      const directMatch = inputUrl.match(/groups\/([^/]+)\/reports\/([^/]+)\/([^?]+)/);
       
-      if (match) {
-        setWorkspaceId(match[1]);
-        setDashboardId(match[2]);
-        setReportSection(match[3]);
+      if (appsMatch) {
+        // Apps format: workspace = "me" or group id, use appId context
+        setWorkspaceId(appsMatch[1] === "me" ? appsMatch[2] : appsMatch[1]);
+        setDashboardId(appsMatch[3]);
+        setReportSection(appsMatch[4]);
+        setUrlParsed(true);
+        
+        toast({
+          title: "URL processada!",
+          description: "Campos preenchidos automaticamente (formato App)",
+        });
+        return true;
+      }
+      
+      if (directMatch) {
+        setWorkspaceId(directMatch[1]);
+        setDashboardId(directMatch[2]);
+        setReportSection(directMatch[3]);
         setUrlParsed(true);
         
         toast({
@@ -182,7 +198,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
     setUrlParsed(false);
     
     // Auto-parse when URL looks complete
-    if (value.includes("powerbi.com") && value.includes("/reports/")) {
+    if (value.includes("powerbi.com") && (value.includes("/reports/") || value.includes("/apps/"))) {
       parseDashboardUrl(value);
     }
   };
