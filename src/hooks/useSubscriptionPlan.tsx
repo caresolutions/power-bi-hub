@@ -164,6 +164,52 @@ export function useSubscriptionPlan(): UseSubscriptionPlanReturn {
 
       // Get current usage for the company
       if (companyId) {
+        // Fetch company custom overrides
+        const { data: customLimits } = await supabase
+          .from("company_custom_limits")
+          .select("*")
+          .eq("company_id", companyId);
+
+        const { data: customFeatures } = await supabase
+          .from("company_custom_features")
+          .select("*")
+          .eq("company_id", companyId);
+
+        // Apply limit overrides
+        if (customLimits && customLimits.length > 0) {
+          setPlanLimits((prev) => {
+            const overrideMap = new Map(customLimits.map((cl: any) => [cl.limit_key, cl]));
+            return prev.map((limit) => {
+              const override = overrideMap.get(limit.limit_key);
+              if (override) {
+                return {
+                  ...limit,
+                  limit_value: (override as any).limit_value,
+                  is_unlimited: (override as any).is_unlimited,
+                };
+              }
+              return limit;
+            });
+          });
+        }
+
+        // Apply feature overrides
+        if (customFeatures && customFeatures.length > 0) {
+          setPlanFeatures((prev) => {
+            const overrideMap = new Map(customFeatures.map((cf: any) => [cf.feature_key, cf]));
+            return prev.map((feature) => {
+              const override = overrideMap.get(feature.feature_key);
+              if (override) {
+                return {
+                  ...feature,
+                  is_enabled: (override as any).is_enabled,
+                };
+              }
+              return feature;
+            });
+          });
+        }
+
         // Count dashboards
         const { count: dashboardCount } = await supabase
           .from("dashboards")

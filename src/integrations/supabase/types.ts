@@ -112,6 +112,79 @@ export type Database = {
         }
         Relationships: []
       }
+      company_custom_features: {
+        Row: {
+          company_id: string
+          created_at: string
+          feature_description: string | null
+          feature_key: string
+          id: string
+          is_enabled: boolean
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          feature_description?: string | null
+          feature_key: string
+          id?: string
+          is_enabled?: boolean
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          feature_description?: string | null
+          feature_key?: string
+          id?: string
+          is_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_custom_features_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_custom_limits: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_unlimited: boolean
+          limit_key: string
+          limit_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_unlimited?: boolean
+          limit_key: string
+          limit_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_unlimited?: boolean
+          limit_key?: string
+          limit_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_custom_limits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credential_company_access: {
         Row: {
           company_id: string
