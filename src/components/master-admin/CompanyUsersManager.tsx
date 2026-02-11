@@ -144,28 +144,36 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
       const temporaryPassword = createData.temporaryPassword;
       const isExistingUser = createData.isExistingUser;
 
+      // Show success immediately and close dialog
+      toast.success(isExistingUser ? "Usuário vinculado com sucesso!" : "Usuário criado com sucesso! Credenciais sendo enviadas por e-mail...");
+      setDialogOpen(false);
+      setInviteForm({ email: "", full_name: "", role: "user", plan: "starter" });
+      setInviting(false);
+
+      // Run remaining tasks in parallel (background)
+      const backgroundTasks: Promise<any>[] = [];
+
       // Update full_name if provided
       if (inviteForm.full_name && createData.userId) {
-        await supabase
-          .from("profiles")
-          .update({ full_name: inviteForm.full_name })
-          .eq("id", createData.userId);
+        backgroundTasks.push(
+          (async () => { await supabase.from("profiles").update({ full_name: inviteForm.full_name }).eq("id", createData.userId); })()
+        );
       }
 
       // Handle subscription for admin
       if (inviteForm.role === "admin" && createData.userId) {
         const plan = SUBSCRIPTION_PLANS[inviteForm.plan];
-        await supabase
-          .from("subscriptions")
-          .upsert({
+        backgroundTasks.push(
+          (async () => { await supabase.from("subscriptions").upsert({
             user_id: createData.userId,
             status: "active",
             plan: inviteForm.plan,
             is_master_managed: !plan.price_id,
-          });
+          }); })()
+        );
       }
 
-      // Send email
+      // Send email in background
       const loginLink = "https://dashboards.care-br.com/auth";
       const roleLabel = inviteForm.role === "admin" ? "Administrador" : "Usuário";
 
@@ -233,28 +241,22 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
 </body>
 </html>`;
 
-      const { error: emailError } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: inviteForm.email,
-          subject: isExistingUser ? "Novo Acesso Concedido - Care BI" : "Bem-vindo ao Care BI - Suas credenciais de acesso",
-          htmlContent: emailTemplate,
-        },
-      });
+      backgroundTasks.push(
+        supabase.functions.invoke("send-email", {
+          body: {
+            to: inviteForm.email,
+            subject: isExistingUser ? "Novo Acesso Concedido - Care BI" : "Bem-vindo ao Care BI - Suas credenciais de acesso",
+            htmlContent: emailTemplate,
+          },
+        })
+      );
 
-      if (emailError) {
-        console.error("Error sending email:", emailError);
-        if (!isExistingUser && temporaryPassword) {
-          toast.success(`Usuário criado! Senha provisória: ${temporaryPassword} (e-mail não enviado)`);
-        } else {
-          toast.success("Usuário adicionado (e-mail não enviado)");
-        }
-      } else {
-        toast.success(isExistingUser ? "Usuário vinculado e e-mail enviado!" : "Usuário criado e credenciais enviadas por e-mail!");
-      }
+      // Execute all background tasks in parallel, then refresh user list
+      Promise.all(backgroundTasks)
+        .then(() => fetchUsers())
+        .catch((err) => console.error("Background tasks error:", err));
 
-      setDialogOpen(false);
-      setInviteForm({ email: "", full_name: "", role: "user", plan: "starter" });
-      fetchUsers();
+      return;
     } catch (error: any) {
       toast.error(error.message || "Erro ao adicionar usuário");
     } finally {
