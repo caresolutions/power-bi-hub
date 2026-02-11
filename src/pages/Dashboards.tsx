@@ -304,6 +304,7 @@ const Dashboards = () => {
       });
       
       fetchDashboards();
+      refetchPlan();
     } catch (error: any) {
       toast({
         title: t('common.error'),
