@@ -15,6 +15,7 @@ import { CreditCard, Crown, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_PLANS } from "./CompanyForm";
+import { CompanyPlanCustomizer } from "./CompanyPlanCustomizer";
 
 interface Subscription {
   id: string;
@@ -268,6 +269,15 @@ export function CompanySubscriptionManager({ companyId, companyName }: CompanySu
           {updating ? "Atualizando..." : "Salvar Alterações"}
         </Button>
       </Card>
+
+      {/* Custom Plan Configuration for Enterprise/Master Managed */}
+      {(selectedPlan === "enterprise" || selectedPlan === "master_managed" || isMasterManaged) && (
+        <CompanyPlanCustomizer
+          companyId={companyId}
+          companyName={companyName}
+          planKey={selectedPlan}
+        />
+      )}
 
       {/* Features by Plan */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
