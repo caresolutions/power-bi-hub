@@ -303,8 +303,8 @@ const Dashboards = () => {
         description: t('dashboards.removed'),
       });
       
-      fetchDashboards();
-      refetchPlan();
+      await fetchDashboards();
+      await refetchPlan();
     } catch (error: any) {
       toast({
         title: t('common.error'),
@@ -343,11 +343,11 @@ const Dashboards = () => {
     }
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = async () => {
     setShowForm(false);
     setEditingDashboard(null);
-    fetchDashboards();
-    refetchPlan(); // Refresh usage counts
+    await fetchDashboards();
+    await refetchPlan();
   };
 
   const handleNewDashboard = () => {
