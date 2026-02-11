@@ -123,78 +123,140 @@ export function CompanyUsersManager({ companyId, companyName }: CompanyUsersMana
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from("profiles")
-        .select("id, company_id")
-        .eq("email", inviteForm.email)
-        .maybeSingle();
-
-      if (existingUser) {
-        if (existingUser.company_id) {
-          toast.error("Este usuário já está vinculado a uma empresa");
-          return;
-        }
-
-        // Update existing user's company
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({ 
-            company_id: companyId,
-            full_name: inviteForm.full_name || existingUser.id 
-          })
-          .eq("id", existingUser.id);
-
-        if (updateError) throw updateError;
-
-        // Update user role
-        await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", existingUser.id);
-
-        await supabase
-          .from("user_roles")
-          .insert({ user_id: existingUser.id, role: inviteForm.role });
-
-        // Handle subscription for admin
-        if (inviteForm.role === "admin") {
-          const plan = SUBSCRIPTION_PLANS[inviteForm.plan];
-          await supabase
-            .from("subscriptions")
-            .upsert({
-              user_id: existingUser.id,
-              status: plan.price_id ? "active" : "active",
-              plan: inviteForm.plan,
-              is_master_managed: !plan.price_id,
-            });
-        }
-
-        toast.success("Usuário vinculado à empresa com sucesso");
-      } else {
-        // Create invitation
-        const token = crypto.randomUUID();
-        const { error: inviteError } = await supabase
-          .from("user_invitations")
-          .insert({
+      // Call edge function to create user with temporary password
+      const { data: createData, error: createError } = await supabase.functions.invoke(
+        "create-invited-user",
+        {
+          body: {
             email: inviteForm.email,
-            company_id: companyId,
-            invited_by: user.id,
-            invited_role: inviteForm.role,
-            token,
-            dashboard_ids: [],
+            companyId: companyId,
+            dashboardIds: [],
+            invitedBy: user.id,
+            invitedRole: inviteForm.role,
+          },
+        }
+      );
+
+      if (createError || !createData?.success) {
+        throw new Error(createError?.message || createData?.error || "Erro ao criar usuário");
+      }
+
+      const temporaryPassword = createData.temporaryPassword;
+      const isExistingUser = createData.isExistingUser;
+
+      // Update full_name if provided
+      if (inviteForm.full_name && createData.userId) {
+        await supabase
+          .from("profiles")
+          .update({ full_name: inviteForm.full_name })
+          .eq("id", createData.userId);
+      }
+
+      // Handle subscription for admin
+      if (inviteForm.role === "admin" && createData.userId) {
+        const plan = SUBSCRIPTION_PLANS[inviteForm.plan];
+        await supabase
+          .from("subscriptions")
+          .upsert({
+            user_id: createData.userId,
+            status: "active",
+            plan: inviteForm.plan,
+            is_master_managed: !plan.price_id,
           });
+      }
 
-        if (inviteError) throw inviteError;
+      // Send email
+      const loginLink = "https://dashboards.care-br.com/auth";
+      const roleLabel = inviteForm.role === "admin" ? "Administrador" : "Usuário";
 
-        toast.success("Convite enviado com sucesso");
+      let emailContent: string;
+
+      if (isExistingUser) {
+        emailContent = `
+          <h2 style="color: #0891b2; margin-bottom: 24px;">Novo Acesso Concedido</h2>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+            Você foi adicionado à empresa <strong>${companyName}</strong> na plataforma Care BI como <strong>${roleLabel}</strong>.
+          </p>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+            Use suas credenciais existentes para acessar a plataforma:
+          </p>
+        `;
+      } else {
+        emailContent = `
+          <h2 style="color: #0891b2; margin-bottom: 24px;">Bem-vindo ao Care BI!</h2>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+            Você foi cadastrado na plataforma Care BI como <strong>${roleLabel}</strong> na empresa <strong>${companyName}</strong>.
+          </p>
+          <div style="background-color: #f0f9ff; border: 1px solid #0891b2; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="color: #0891b2; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+              Suas credenciais de acesso:
+            </p>
+            <p style="color: #334155; font-size: 16px; margin: 0;">
+              <strong>E-mail:</strong> ${inviteForm.email}<br/>
+              <strong>Senha provisória:</strong> ${temporaryPassword}
+            </p>
+          </div>
+          <p style="color: #dc2626; font-size: 14px; line-height: 1.6; margin-top: 16px;">
+            <strong>Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
+          </p>
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 24px;">
+            Clique no botão abaixo para acessar a plataforma:
+          </p>
+        `;
+      }
+
+      const emailTemplate = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; font-family: 'Open Sans', Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f4;">
+    <tr><td align="center" style="padding: 40px 20px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <tr><td style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 30px 40px; text-align: center;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Care BI</h1>
+        </td></tr>
+        <tr><td style="padding: 40px;">
+          ${emailContent}
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top: 30px;">
+            <tr><td align="center">
+              <a href="${loginLink}" style="display: inline-block; background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">Acessar Plataforma</a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0; color: #64748b; font-size: 14px;">© ${new Date().getFullYear()} Care BI. Todos os direitos reservados.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+      const { error: emailError } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: inviteForm.email,
+          subject: isExistingUser ? "Novo Acesso Concedido - Care BI" : "Bem-vindo ao Care BI - Suas credenciais de acesso",
+          htmlContent: emailTemplate,
+        },
+      });
+
+      if (emailError) {
+        console.error("Error sending email:", emailError);
+        if (!isExistingUser && temporaryPassword) {
+          toast.success(`Usuário criado! Senha provisória: ${temporaryPassword} (e-mail não enviado)`);
+        } else {
+          toast.success("Usuário adicionado (e-mail não enviado)");
+        }
+      } else {
+        toast.success(isExistingUser ? "Usuário vinculado e e-mail enviado!" : "Usuário criado e credenciais enviadas por e-mail!");
       }
 
       setDialogOpen(false);
       setInviteForm({ email: "", full_name: "", role: "user", plan: "starter" });
       fetchUsers();
     } catch (error: any) {
-      toast.error(error.message || "Erro ao convidar usuário");
+      toast.error(error.message || "Erro ao adicionar usuário");
     } finally {
       setInviting(false);
     }
