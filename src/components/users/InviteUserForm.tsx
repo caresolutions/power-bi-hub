@@ -196,7 +196,7 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           .join('');
 
         // Send email informing about new dashboard access
-        const loginLink = `${window.location.origin}/auth`;
+        const loginLink = "https://dashboards.care-br.com/auth";
         
         const emailContent = `
           <h2 style="color: #0891b2; margin-bottom: 24px;">Novos dashboards disponíveis!</h2>
@@ -262,7 +262,7 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           .map(name => `<li style="margin: 8px 0; color: #334155;">${name}</li>`)
           .join('');
 
-        const loginLink = `${window.location.origin}/auth`;
+        const loginLink = "https://dashboards.care-br.com/auth";
 
         if (isExistingUser) {
           // Send email for existing user - no password included

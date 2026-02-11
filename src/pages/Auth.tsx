@@ -237,7 +237,7 @@ const Auth = () => {
       const { data, error } = await supabase.functions.invoke("send-password-reset", {
         body: {
           email: email.trim(),
-          redirectUrl: `${window.location.origin}/auth?reset=true`,
+          redirectUrl: "https://dashboards.care-br.com/auth?reset=true",
         },
       });
 
@@ -419,7 +419,7 @@ const Auth = () => {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: "https://dashboards.care-br.com/auth",
             data: {
               full_name: fullName.trim(),
             },
