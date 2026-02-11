@@ -224,7 +224,7 @@ serve(async (req) => {
     logStep("Processing alert requests", { count: alertRequests.length });
 
     const results = [];
-    const appUrl = Deno.env.get("APP_URL") || "https://app.carebi.com.br";
+    const appUrl = "https://dashboards.care-br.com";
 
     for (const alert of alertRequests) {
       try {
