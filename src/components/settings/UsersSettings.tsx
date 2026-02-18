@@ -65,6 +65,8 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordMode, setPasswordMode] = useState<"random" | "custom">("random");
+  const [customPassword, setCustomPassword] = useState("");
   const [exportFilter, setExportFilter] = useState<"all" | "active" | "inactive">("all");
   const { toast } = useToast();
 
@@ -270,6 +272,15 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
 
   const handleResetPassword = async () => {
     if (!resettingUser) return;
+
+    if (passwordMode === "custom" && customPassword.length < 6) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.passwordTooShort'),
+        variant: "destructive",
+      });
+      return;
+    }
     
     setResettingPassword(true);
     
@@ -278,7 +289,10 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
       if (!session) throw new Error("Not authenticated");
 
       const response = await supabase.functions.invoke("reset-user-password", {
-        body: { targetUserId: resettingUser.id },
+        body: { 
+          targetUserId: resettingUser.id,
+          customPassword: passwordMode === "custom" ? customPassword : undefined,
+        },
       });
 
       if (response.error) throw response.error;
@@ -301,6 +315,8 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
     
     setResettingUser(null);
     setResettingPassword(false);
+    setPasswordMode("random");
+    setCustomPassword("");
   };
 
   const handleExport = () => {
@@ -554,29 +570,79 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reset Password Confirmation Dialog */}
-      <AlertDialog open={!!resettingUser} onOpenChange={() => setResettingUser(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('settings.resetPassword')}</AlertDialogTitle>
-            <AlertDialogDescription>
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resettingUser} onOpenChange={(open) => { if (!open) { setResettingUser(null); setPasswordMode("random"); setCustomPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('settings.resetPassword')}</DialogTitle>
+            <DialogDescription>
               <span dangerouslySetInnerHTML={{ 
                 __html: t('settings.resetPasswordConfirm', { email: resettingUser?.email }) 
               }} />
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              <Label>{t('settings.passwordType')}</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="passwordMode"
+                    checked={passwordMode === "random"}
+                    onChange={() => setPasswordMode("random")}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">{t('settings.randomPassword')}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="passwordMode"
+                    checked={passwordMode === "custom"}
+                    onChange={() => setPasswordMode("custom")}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">{t('settings.customPassword')}</span>
+                </label>
+              </div>
+            </div>
+
+            {passwordMode === "custom" && (
+              <div className="space-y-2">
+                <Label htmlFor="custom-password">{t('settings.temporaryPassword')}</Label>
+                <Input
+                  id="custom-password"
+                  type="text"
+                  value={customPassword}
+                  onChange={(e) => setCustomPassword(e.target.value)}
+                  placeholder={t('settings.enterTemporaryPassword')}
+                  minLength={6}
+                />
+                <p className="text-xs text-muted-foreground">{t('settings.passwordMinLength')}</p>
+              </div>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              {t('settings.mustChangeOnLogin')}
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setResettingUser(null); setPasswordMode("random"); setCustomPassword(""); }}>
+              {t('common.cancel')}
+            </Button>
+            <Button
               onClick={handleResetPassword}
-              disabled={resettingPassword}
+              disabled={resettingPassword || (passwordMode === "custom" && customPassword.length < 6)}
             >
               <KeyRound className="mr-2 h-4 w-4" />
               {resettingPassword ? t('settings.resettingPassword') : t('settings.confirmResetPassword')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
