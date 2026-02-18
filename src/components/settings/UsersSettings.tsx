@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Pencil, Save, Shield, User, Trash2, Download, UserCheck, UserX } from "lucide-react";
+import { Users, Pencil, Save, Shield, User, Trash2, Download, UserCheck, UserX, KeyRound } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -60,9 +60,11 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [resettingUser, setResettingUser] = useState<UserProfile | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", role: "" });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [exportFilter, setExportFilter] = useState<"all" | "active" | "inactive">("all");
   const { toast } = useToast();
 
@@ -266,6 +268,41 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
     fetchUsers();
   };
 
+  const handleResetPassword = async () => {
+    if (!resettingUser) return;
+    
+    setResettingPassword(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("reset-user-password", {
+        body: { targetUserId: resettingUser.id },
+      });
+
+      if (response.error) throw response.error;
+      
+      const result = response.data;
+      if (!result.success) throw new Error(result.error);
+
+      toast({
+        title: t('common.success'),
+        description: t('settings.passwordResetSent'),
+      });
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: t('common.error'),
+        description: t('settings.passwordResetError'),
+        variant: "destructive",
+      });
+    }
+    
+    setResettingUser(null);
+    setResettingPassword(false);
+  };
+
   const handleExport = () => {
     let filteredUsers = users;
     
@@ -410,6 +447,16 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setResettingUser(user)}
+                              title={t('settings.resetPassword')}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {user.id !== currentUserId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setDeletingUser(user)}
                               className="text-destructive hover:text-destructive"
                             >
@@ -502,6 +549,30 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? t('settings.removing') : t('settings.remove')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Password Confirmation Dialog */}
+      <AlertDialog open={!!resettingUser} onOpenChange={() => setResettingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.resetPassword')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span dangerouslySetInnerHTML={{ 
+                __html: t('settings.resetPasswordConfirm', { email: resettingUser?.email }) 
+              }} />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetPassword}
+              disabled={resettingPassword}
+            >
+              <KeyRound className="mr-2 h-4 w-4" />
+              {resettingPassword ? t('settings.resettingPassword') : t('settings.confirmResetPassword')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
