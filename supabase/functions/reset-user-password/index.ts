@@ -77,10 +77,15 @@ serve(async (req) => {
   }
 
   try {
-    const { targetUserId } = await req.json();
+    const { targetUserId, customPassword } = await req.json();
 
     if (!targetUserId) {
       throw new Error("targetUserId is required");
+    }
+
+    // Validate custom password if provided
+    if (customPassword && customPassword.length < 6) {
+      throw new Error("Password must be at least 6 characters");
     }
 
     // Create admin client
@@ -135,8 +140,8 @@ serve(async (req) => {
 
     if (!targetProfile) throw new Error("User not found");
 
-    // Generate new password
-    const newPassword = generateSecurePassword();
+    // Use custom password or generate random one
+    const newPassword = customPassword || generateSecurePassword();
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
