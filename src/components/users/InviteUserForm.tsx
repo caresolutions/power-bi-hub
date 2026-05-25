@@ -12,12 +12,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle } from "lucide-react";
+import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle, Users } from "lucide-react";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
 interface Dashboard {
+  id: string;
+  name: string;
+}
+
+interface GroupOption {
   id: string;
   name: string;
 }
@@ -32,6 +37,8 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "user">("user");
   const [selectedDashboards, setSelectedDashboards] = useState<string[]>([]);
+  const [groups, setGroups] = useState<GroupOption[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -40,6 +47,51 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const { checkLimit, loading: planLoading, refetch: refetchPlan } = useSubscriptionPlan();
   const userLimitCheck = checkLimit("users");
   const isAtUserLimit = !userLimitCheck.allowed && !userLimitCheck.isUnlimited;
+
+  // Carregar grupos disponíveis na empresa do admin
+  useEffect(() => {
+    const loadGroups = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!profile?.company_id) return;
+      const { data } = await supabase
+        .from("user_groups")
+        .select("id, name")
+        .eq("company_id", profile.company_id)
+        .order("name");
+      setGroups(data || []);
+    };
+    loadGroups();
+  }, []);
+
+  const handleGroupToggle = (groupId: string) => {
+    setSelectedGroups(prev =>
+      prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
+    );
+  };
+
+  const assignGroups = async (userId: string, grantedBy: string) => {
+    if (selectedGroups.length === 0) return;
+    // Evita duplicar membros já existentes
+    const { data: existing } = await supabase
+      .from("user_group_members")
+      .select("group_id")
+      .eq("user_id", userId)
+      .in("group_id", selectedGroups);
+    const existingIds = new Set((existing || []).map(e => e.group_id));
+    const toInsert = selectedGroups
+      .filter(g => !existingIds.has(g))
+      .map(group_id => ({ group_id, user_id: userId, added_by: grantedBy }));
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from("user_group_members").insert(toInsert);
+      if (error) console.error("Erro ao adicionar usuário aos grupos:", error);
+    }
+  };
 
   // Filter dashboards based on search query
   const filteredDashboards = useMemo(() => {
