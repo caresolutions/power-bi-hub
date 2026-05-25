@@ -264,7 +264,20 @@ const AddUsers = () => {
             </Card>
 
             {/* Add Users Card */}
-            {planInfo?.hasAdditionalUserPricing ? (
+            {planInfo?.planKey === 'enterprise' ? (
+              <Card className="glass border-border/50">
+                <CardContent className="py-12">
+                  <div className="text-center space-y-4">
+                    <AlertCircle className="h-12 w-12 text-primary mx-auto" />
+                    <h3 className="text-xl font-bold">Plano Enterprise</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Para contratar mais usuários, entre em contato com o administrador
+                      do seu contrato junto à Care Business para ajustar seu plano Enterprise.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : planInfo?.hasAdditionalUserPricing ? (
               <Card className="glass border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
