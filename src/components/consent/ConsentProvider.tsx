@@ -27,6 +27,7 @@ export const ConsentProvider = ({ children }: ConsentProviderProps) => {
   const [hasConsent, setHasConsent] = useState<boolean | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const location = useLocation();
 
   // Check for authenticated user
@@ -34,12 +35,14 @@ export const ConsentProvider = ({ children }: ConsentProviderProps) => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      setAuthResolved(true);
     };
     
     checkUser();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUserId(session?.user?.id || null);
+      setAuthResolved(true);
     });
     
     return () => subscription.unsubscribe();
@@ -47,25 +50,36 @@ export const ConsentProvider = ({ children }: ConsentProviderProps) => {
 
   // Check consent status from database
   useEffect(() => {
+    // Wait until we know auth state to prevent the dialog from flashing on load.
+    if (!authResolved) return;
+
+    const readLocal = (): boolean | null => {
+      const localConsent = localStorage.getItem("privacy_consent");
+      if (!localConsent) return null;
+      try {
+        const parsed = JSON.parse(localConsent);
+        if (parsed.accepted === true && parsed.version === privacyPolicyContent.lastUpdate) {
+          return true;
+        }
+        return parsed.accepted === true ? true : false;
+      } catch {
+        return null;
+      }
+    };
+
     const checkConsent = async () => {
       if (!userId) {
-        // Not logged in, check localStorage as fallback
-        const localConsent = localStorage.getItem("privacy_consent");
-        if (localConsent) {
-          try {
-            const parsed = JSON.parse(localConsent);
-            setHasConsent(parsed.accepted === true);
-            return;
-          } catch {
-            setHasConsent(false);
-            return;
-          }
-        }
-        setHasConsent(false);
+        const local = readLocal();
+        setHasConsent(local === true);
         return;
       }
 
-      // Check database for consent record
+      // Optimistically trust localStorage to avoid flicker while DB check runs
+      const local = readLocal();
+      if (local === true) {
+        setHasConsent(true);
+      }
+
       const { data, error } = await supabase
         .from("privacy_consent_records")
         .select("id, policy_version")
@@ -76,20 +90,33 @@ export const ConsentProvider = ({ children }: ConsentProviderProps) => {
 
       if (error) {
         console.error("Error checking consent:", error);
-        setHasConsent(false);
+        // Keep optimistic value if we had one; otherwise mark as no consent
+        if (local !== true) setHasConsent(false);
         return;
       }
 
-      // Check if user has consented to the current version
       if (data && data.policy_version === privacyPolicyContent.lastUpdate) {
         setHasConsent(true);
+      } else if (local === true) {
+        // localStorage says accepted but no DB record yet — persist it now
+        setHasConsent(true);
+        supabase
+          .from("privacy_consent_records")
+          .insert({
+            user_id: userId,
+            policy_version: privacyPolicyContent.lastUpdate,
+            user_agent: navigator.userAgent,
+          })
+          .then(({ error: insertErr }) => {
+            if (insertErr) console.error("Error backfilling consent:", insertErr);
+          });
       } else {
         setHasConsent(false);
       }
     };
 
     checkConsent();
-  }, [userId]);
+  }, [userId, authResolved]);
 
   useEffect(() => {
     if (hasConsent === null) return; // Still loading
