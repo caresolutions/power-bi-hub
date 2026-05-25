@@ -1,0 +1,1 @@
+DELETE FROM public.user_invitations WHERE id='1bd67f64-1dcf-429a-8fd0-5383ebe9bff3';
