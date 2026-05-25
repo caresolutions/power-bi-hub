@@ -652,6 +652,56 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
             </div>
           )}
 
+          {/* Grupos (opcional) */}
+          {groups.length > 0 && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Grupos (opcional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selecione um ou mais grupos para já associar o usuário no momento da criação.
+                As permissões dos grupos são cumulativas com as individuais.
+              </p>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {groups.map((g) => {
+                  const checked = selectedGroups.includes(g.id);
+                  return (
+                    <div
+                      key={g.id}
+                      onClick={() => handleGroupToggle(g.id)}
+                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        checked
+                          ? "bg-primary/20 border border-primary/30"
+                          : "bg-background/30 hover:bg-background/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-sm border flex items-center justify-center ${
+                          checked ? "bg-primary border-primary text-primary-foreground" : "border-primary"
+                        }`}
+                      >
+                        {checked && (
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium flex-1">{g.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedGroups.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedGroups.length} grupo(s) selecionado(s)
+                </p>
+              )}
+            </div>
+          )}
+
+
+
           <div className="flex gap-4">
             <Button
               type="button"
