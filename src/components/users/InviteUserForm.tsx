@@ -309,6 +309,12 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
         const temporaryPassword = createData.temporaryPassword;
         const isExistingUser = createData.isExistingUser;
 
+        // Adicionar o novo (ou recém-vinculado) usuário aos grupos selecionados
+        if (createData.userId) {
+          await assignGroups(createData.userId, user.id);
+        }
+
+
         // Build dashboard list for email
         const selectedDashboardNames = dashboards
           .filter(d => selectedDashboards.includes(d.id))
