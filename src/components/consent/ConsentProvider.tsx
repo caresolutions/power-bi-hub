@@ -120,15 +120,18 @@ export const ConsentProvider = ({ children }: ConsentProviderProps) => {
 
   useEffect(() => {
     if (hasConsent === null) return; // Still loading
-    
+    if (!authResolved) return;
+
     const isPublicRoute = PUBLIC_ROUTES.some(route => location.pathname === route);
-    
-    if (!hasConsent && !isPublicRoute) {
+
+    // Only require consent for authenticated users on protected routes.
+    // Logged-out users (e.g. right after sign-out) should never see the dialog.
+    if (userId && !hasConsent && !isPublicRoute) {
       setShowDialog(true);
     } else {
       setShowDialog(false);
     }
-  }, [hasConsent, location.pathname]);
+  }, [hasConsent, location.pathname, userId, authResolved]);
 
   const handleAccept = async () => {
     if (userId) {
