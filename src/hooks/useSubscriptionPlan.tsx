@@ -70,49 +70,23 @@ export function useSubscriptionPlan(): UseSubscriptionPlanReturn {
     try {
       setLoading(true);
 
-      // Get user's subscription
+      // Always resolve via the company's primary admin (whose subscription represents the company).
+      // This ensures secondary admins and invited users see the same plan.
       let adminUserId = userId;
-      
-      // If not admin, get admin user for the company
-      if (!isAdmin && companyId) {
-        const { data: adminData } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("company_id", companyId)
-          .limit(1)
-          .maybeSingle();
-        
-        if (adminData) {
-          // Get admin user role
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("user_id")
-            .eq("role", "admin")
-            .limit(100);
-          
-          const adminIds = roleData?.map(r => r.user_id) || [];
-          
-          // Find company admin
-          const { data: companyProfiles } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("company_id", companyId);
-          
-          const companyUserIds = companyProfiles?.map(p => p.id) || [];
-          const companyAdminId = adminIds.find(id => companyUserIds.includes(id));
-          
-          if (companyAdminId) {
-            adminUserId = companyAdminId;
-          }
+
+      if (companyId) {
+        const { data: resolvedAdminId } = await supabase
+          .rpc('get_company_admin_id', { _company_id: companyId });
+        if (resolvedAdminId) {
+          adminUserId = resolvedAdminId;
         }
       }
 
-      // Get subscription
-      const { data: subscription } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", adminUserId)
-        .maybeSingle();
+      // Use RPC (SECURITY DEFINER) to bypass RLS when reading another admin's subscription
+      const { data: subscriptionData } = await supabase
+        .rpc('get_user_subscription', { _user_id: adminUserId });
+
+      const subscription = subscriptionData && subscriptionData.length > 0 ? subscriptionData[0] : null;
 
       if (!subscription) {
         setLoading(false);

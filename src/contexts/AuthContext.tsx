@@ -137,16 +137,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // For non-admin users, find the admin's subscription via the company
+      // Always resolve via the company's primary admin (whose subscription represents the company).
+      // This handles secondary admins and invited users uniformly.
       let targetUserId = userData.userId;
-      
-      if (userData.role === "user" && userData.companyId) {
-        console.log("User is not admin, looking for company admin subscription", { 
-          userId: userData.userId, 
-          companyId: userData.companyId 
+
+      if (userData.companyId) {
+        console.log("Looking up company primary admin for subscription", {
+          userId: userData.userId,
+          companyId: userData.companyId,
+          role: userData.role,
         });
-        
-        // Use database function with SECURITY DEFINER to bypass RLS
+
         const { data: adminId, error: adminError } = await supabase
           .rpc('get_company_admin_id', { _company_id: userData.companyId });
 
@@ -154,9 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (adminId) {
           targetUserId = adminId;
-          console.log("Found company admin for subscription check:", targetUserId);
-        } else {
-          console.log("No admin found for company, will use user's own subscription");
         }
       }
 
