@@ -65,9 +65,9 @@ const SliderViewer = ({ dashboardId }: SliderViewerProps) => {
   const embedContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const powerbiRef = useRef<pbi.service.Service | null>(null);
   const reportsRef = useRef<Map<string, pbi.Report>>(new Map());
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const progressRef = useRef<NodeJS.Timeout | null>(null);
-  const controlsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visibleSlides = slides.filter(s => s.is_visible);
   const currentSlide = visibleSlides[currentSlideIndex];
