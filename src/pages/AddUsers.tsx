@@ -88,12 +88,16 @@ const AddUsers = () => {
         .select("*", { count: "exact", head: true })
         .eq("company_id", profile.company_id);
 
-      // Get subscription info
-      const { data: subscription } = await supabase
-        .from("subscriptions")
-        .select("plan")
-        .eq("user_id", userId)
-        .single();
+      // Resolve via the company's primary admin so secondary admins see the company's actual plan
+      let adminUserId = userId;
+      const { data: resolvedAdminId } = await supabase
+        .rpc('get_company_admin_id', { _company_id: profile.company_id });
+      if (resolvedAdminId) adminUserId = resolvedAdminId;
+
+      // Get subscription info via SECURITY DEFINER RPC to bypass RLS
+      const { data: subscriptionData } = await supabase
+        .rpc('get_user_subscription', { _user_id: adminUserId });
+      const subscription = subscriptionData && subscriptionData.length > 0 ? subscriptionData[0] : null;
 
       if (!subscription) {
         throw new Error("Assinatura não encontrada");
@@ -106,7 +110,7 @@ const AddUsers = () => {
         .eq("plan_key", subscription.plan)
         .single();
 
-      // Get users limit for this plan
+      // Get users limit for this plan (with company custom overrides)
       const { data: planLimits } = await supabase
         .from("plan_limits")
         .select("limit_value, is_unlimited")
@@ -114,7 +118,15 @@ const AddUsers = () => {
         .eq("limit_key", "users")
         .single();
 
-      const usersLimit = planLimits?.is_unlimited ? 999 : (planLimits?.limit_value || 0);
+      const { data: customLimit } = await supabase
+        .from("company_custom_limits")
+        .select("limit_value, is_unlimited")
+        .eq("company_id", profile.company_id)
+        .eq("limit_key", "users")
+        .maybeSingle();
+
+      const effectiveLimit = customLimit || planLimits;
+      const usersLimit = effectiveLimit?.is_unlimited ? 999 : (effectiveLimit?.limit_value || 0);
 
       setPlanInfo({
         planKey: plan?.plan_key || "",
