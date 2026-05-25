@@ -12,12 +12,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle } from "lucide-react";
+import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle, Users } from "lucide-react";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
 interface Dashboard {
+  id: string;
+  name: string;
+}
+
+interface GroupOption {
   id: string;
   name: string;
 }
@@ -32,6 +37,8 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "user">("user");
   const [selectedDashboards, setSelectedDashboards] = useState<string[]>([]);
+  const [groups, setGroups] = useState<GroupOption[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -40,6 +47,51 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
   const { checkLimit, loading: planLoading, refetch: refetchPlan } = useSubscriptionPlan();
   const userLimitCheck = checkLimit("users");
   const isAtUserLimit = !userLimitCheck.allowed && !userLimitCheck.isUnlimited;
+
+  // Carregar grupos disponíveis na empresa do admin
+  useEffect(() => {
+    const loadGroups = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!profile?.company_id) return;
+      const { data } = await supabase
+        .from("user_groups")
+        .select("id, name")
+        .eq("company_id", profile.company_id)
+        .order("name");
+      setGroups(data || []);
+    };
+    loadGroups();
+  }, []);
+
+  const handleGroupToggle = (groupId: string) => {
+    setSelectedGroups(prev =>
+      prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
+    );
+  };
+
+  const assignGroups = async (userId: string, grantedBy: string) => {
+    if (selectedGroups.length === 0) return;
+    // Evita duplicar membros já existentes
+    const { data: existing } = await supabase
+      .from("user_group_members")
+      .select("group_id")
+      .eq("user_id", userId)
+      .in("group_id", selectedGroups);
+    const existingIds = new Set((existing || []).map(e => e.group_id));
+    const toInsert = selectedGroups
+      .filter(g => !existingIds.has(g))
+      .map(group_id => ({ group_id, user_id: userId, added_by: grantedBy }));
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from("user_group_members").insert(toInsert);
+      if (error) console.error("Erro ao adicionar usuário aos grupos:", error);
+    }
+  };
 
   // Filter dashboards based on search query
   const filteredDashboards = useMemo(() => {
@@ -186,6 +238,10 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
         if (accessError) throw accessError;
 
+        // Adicionar a grupos selecionados
+        await assignGroups(existingProfile.id, user.id);
+
+
         // Get names of newly granted dashboards
         const newDashboardNames = dashboards
           .filter(d => newDashboardIds.includes(d.id))
@@ -252,6 +308,12 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
         const temporaryPassword = createData.temporaryPassword;
         const isExistingUser = createData.isExistingUser;
+
+        // Adicionar o novo (ou recém-vinculado) usuário aos grupos selecionados
+        if (createData.userId) {
+          await assignGroups(createData.userId, user.id);
+        }
+
 
         // Build dashboard list for email
         const selectedDashboardNames = dashboards
@@ -589,6 +651,56 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
               )}
             </div>
           )}
+
+          {/* Grupos (opcional) */}
+          {groups.length > 0 && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Grupos (opcional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selecione um ou mais grupos para já associar o usuário no momento da criação.
+                As permissões dos grupos são cumulativas com as individuais.
+              </p>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {groups.map((g) => {
+                  const checked = selectedGroups.includes(g.id);
+                  return (
+                    <div
+                      key={g.id}
+                      onClick={() => handleGroupToggle(g.id)}
+                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        checked
+                          ? "bg-primary/20 border border-primary/30"
+                          : "bg-background/30 hover:bg-background/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-sm border flex items-center justify-center ${
+                          checked ? "bg-primary border-primary text-primary-foreground" : "border-primary"
+                        }`}
+                      >
+                        {checked && (
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium flex-1">{g.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedGroups.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedGroups.length} grupo(s) selecionado(s)
+                </p>
+              )}
+            </div>
+          )}
+
+
 
           <div className="flex gap-4">
             <Button
