@@ -139,17 +139,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Always resolve via the company's primary admin (whose subscription represents the company).
       // This handles secondary admins and invited users uniformly.
+      let effectiveCompanyId = userData.companyId;
+
+      if (!effectiveCompanyId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", userData.userId)
+          .maybeSingle();
+
+        if (profileData?.company_id) {
+          effectiveCompanyId = profileData.company_id;
+          setCompanyId(profileData.company_id);
+
+          if (cachedUserData?.userId === userData.userId) {
+            cachedUserData = {
+              ...cachedUserData,
+              companyId: profileData.company_id,
+              timestamp: Date.now(),
+            };
+          }
+        }
+      }
+
       let targetUserId = userData.userId;
 
-      if (userData.companyId) {
+      if (effectiveCompanyId) {
         console.log("Looking up company primary admin for subscription", {
           userId: userData.userId,
-          companyId: userData.companyId,
+          companyId: effectiveCompanyId,
           role: userData.role,
         });
 
         const { data: adminId, error: adminError } = await supabase
-          .rpc('get_company_admin_id', { _company_id: userData.companyId });
+          .rpc('get_company_admin_id', { _company_id: effectiveCompanyId });
 
         console.log("Company admin ID result:", adminId, "Error:", adminError);
 
@@ -159,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Check subscription
-      if (targetUserId !== userData.userId) {
+      if (effectiveCompanyId || targetUserId !== userData.userId) {
         // Use RPC function with SECURITY DEFINER to bypass RLS for non-admin users
         const { data: subscriptionData } = await supabase
           .rpc('get_user_subscription', { _user_id: targetUserId });
