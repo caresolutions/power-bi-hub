@@ -238,6 +238,10 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
 
         if (accessError) throw accessError;
 
+        // Adicionar a grupos selecionados
+        await assignGroups(existingProfile.id, user.id);
+
+
         // Get names of newly granted dashboards
         const newDashboardNames = dashboards
           .filter(d => newDashboardIds.includes(d.id))
