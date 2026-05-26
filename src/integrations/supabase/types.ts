@@ -1580,6 +1580,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_visible_dashboard_pages: {
+        Args: { _dashboard_id: string }
+        Returns: {
+          display_order: number
+          is_visible: boolean
+          page_display_name: string
+          page_name: string
+        }[]
+      }
       has_group_dashboard_access: {
         Args: { _dashboard_id: string; _user_id: string }
         Returns: boolean
