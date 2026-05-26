@@ -88,85 +88,33 @@ const DashboardViewer = () => {
     }
 
     try {
-      const { data } = await supabase
-        .from("dashboard_page_visibility")
-        .select("id, page_name, is_visible, display_order")
-        .eq("dashboard_id", id);
+      const { data, error } = await supabase.rpc("get_visible_dashboard_pages", {
+        _dashboard_id: id,
+      });
+      if (error) throw error;
 
+      // If no config rows exist at all, show all pages
       if (!data || data.length === 0) {
-        setVisiblePages(pages);
-        return;
+        // Check if there's any config row (even hidden) to distinguish "no setup" from "all hidden"
+        const { data: anyCfg } = await supabase
+          .from("dashboard_page_visibility")
+          .select("id")
+          .eq("dashboard_id", id)
+          .limit(1);
+        if (!anyCfg || anyCfg.length === 0) {
+          setVisiblePages(pages);
+          return;
+        }
       }
 
-      const visibilityMap = new Map(data.map((d) => [d.page_name, d]));
-
-      // Admins bypass all page restrictions
-      if (isAdmin) {
-        const filtered = pages
-          .filter((page) => {
-            const cfg = visibilityMap.get(page.name);
-            return cfg ? cfg.is_visible : true;
-          })
-          .sort((a, b) => {
-            const oa = visibilityMap.get(a.name)?.display_order ?? 999;
-            const ob = visibilityMap.get(b.name)?.display_order ?? 999;
-            return oa - ob;
-          });
-        setVisiblePages(filtered);
-        return;
-      }
-
-      // Regular user: fetch their own user-level + group-level restrictions
-      const visibilityIds = data.map((d) => d.id);
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-
-      const [{ data: userR }, { data: groupR }] = await Promise.all([
-        supabase
-          .from("dashboard_page_user_restrictions")
-          .select("page_visibility_id")
-          .in("page_visibility_id", visibilityIds)
-          .eq("user_id", uid || ""),
-        supabase
-          .from("dashboard_page_group_restrictions")
-          .select("page_visibility_id")
-          .in("page_visibility_id", visibilityIds),
-      ]);
-
-      // Need to know total restrictions per page (to detect "has any restriction")
-      const [{ data: allUserR }, { data: allGroupR }] = await Promise.all([
-        supabase
-          .from("dashboard_page_user_restrictions")
-          .select("page_visibility_id"),
-        supabase
-          .from("dashboard_page_group_restrictions")
-          .select("page_visibility_id"),
-      ]);
-
-      const hasAnyRestrictionSet = new Set<string>();
-      [...(allUserR || []), ...(allGroupR || [])].forEach((r: any) =>
-        hasAnyRestrictionSet.add(r.page_visibility_id)
+      const allowedMap = new Map(
+        (data || []).map((d: any) => [d.page_name, d])
       );
-
-      const allowedSet = new Set<string>();
-      [...(userR || []), ...(groupR || [])].forEach((r: any) =>
-        allowedSet.add(r.page_visibility_id)
-      );
-
       const filtered = pages
-        .filter((page) => {
-          const cfg = visibilityMap.get(page.name);
-          if (!cfg) return true;
-          if (!cfg.is_visible) return false;
-          // If page has restrictions, user must be in allowed set
-          if (hasAnyRestrictionSet.has(cfg.id)) {
-            return allowedSet.has(cfg.id);
-          }
-          return true;
-        })
+        .filter((page) => allowedMap.has(page.name))
         .sort((a, b) => {
-          const oa = visibilityMap.get(a.name)?.display_order ?? 999;
-          const ob = visibilityMap.get(b.name)?.display_order ?? 999;
+          const oa = (allowedMap.get(a.name) as any)?.display_order ?? 999;
+          const ob = (allowedMap.get(b.name) as any)?.display_order ?? 999;
           return oa - ob;
         });
 
@@ -175,7 +123,7 @@ const DashboardViewer = () => {
       console.error("Error loading page visibility:", error);
       setVisiblePages(pages);
     }
-  }, [id, isAdmin]);
+  }, [id]);
 
   // Reload visibility when settings change
   const handleVisibilityChange = useCallback(() => {
