@@ -90,26 +90,84 @@ const DashboardViewer = () => {
     try {
       const { data } = await supabase
         .from("dashboard_page_visibility")
-        .select("page_name, is_visible, display_order")
+        .select("id, page_name, is_visible, display_order")
         .eq("dashboard_id", id);
 
       if (!data || data.length === 0) {
-        // No visibility config, show all pages
         setVisiblePages(pages);
         return;
       }
 
-      // Filter and sort visible pages
-      const visibilityMap = new Map(data.map(d => [d.page_name, d]));
+      const visibilityMap = new Map(data.map((d) => [d.page_name, d]));
+
+      // Admins bypass all page restrictions
+      if (isAdmin) {
+        const filtered = pages
+          .filter((page) => {
+            const cfg = visibilityMap.get(page.name);
+            return cfg ? cfg.is_visible : true;
+          })
+          .sort((a, b) => {
+            const oa = visibilityMap.get(a.name)?.display_order ?? 999;
+            const ob = visibilityMap.get(b.name)?.display_order ?? 999;
+            return oa - ob;
+          });
+        setVisiblePages(filtered);
+        return;
+      }
+
+      // Regular user: fetch their own user-level + group-level restrictions
+      const visibilityIds = data.map((d) => d.id);
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+
+      const [{ data: userR }, { data: groupR }] = await Promise.all([
+        supabase
+          .from("dashboard_page_user_restrictions")
+          .select("page_visibility_id")
+          .in("page_visibility_id", visibilityIds)
+          .eq("user_id", uid || ""),
+        supabase
+          .from("dashboard_page_group_restrictions")
+          .select("page_visibility_id")
+          .in("page_visibility_id", visibilityIds),
+      ]);
+
+      // Need to know total restrictions per page (to detect "has any restriction")
+      const [{ data: allUserR }, { data: allGroupR }] = await Promise.all([
+        supabase
+          .from("dashboard_page_user_restrictions")
+          .select("page_visibility_id"),
+        supabase
+          .from("dashboard_page_group_restrictions")
+          .select("page_visibility_id"),
+      ]);
+
+      const hasAnyRestrictionSet = new Set<string>();
+      [...(allUserR || []), ...(allGroupR || [])].forEach((r: any) =>
+        hasAnyRestrictionSet.add(r.page_visibility_id)
+      );
+
+      const allowedSet = new Set<string>();
+      [...(userR || []), ...(groupR || [])].forEach((r: any) =>
+        allowedSet.add(r.page_visibility_id)
+      );
+
       const filtered = pages
-        .filter(page => {
-          const config = visibilityMap.get(page.name);
-          return config ? config.is_visible : true; // Default to visible
+        .filter((page) => {
+          const cfg = visibilityMap.get(page.name);
+          if (!cfg) return true;
+          if (!cfg.is_visible) return false;
+          // If page has restrictions, user must be in allowed set
+          if (hasAnyRestrictionSet.has(cfg.id)) {
+            return allowedSet.has(cfg.id);
+          }
+          return true;
         })
         .sort((a, b) => {
-          const orderA = visibilityMap.get(a.name)?.display_order ?? 999;
-          const orderB = visibilityMap.get(b.name)?.display_order ?? 999;
-          return orderA - orderB;
+          const oa = visibilityMap.get(a.name)?.display_order ?? 999;
+          const ob = visibilityMap.get(b.name)?.display_order ?? 999;
+          return oa - ob;
         });
 
       setVisiblePages(filtered);
@@ -117,7 +175,7 @@ const DashboardViewer = () => {
       console.error("Error loading page visibility:", error);
       setVisiblePages(pages);
     }
-  }, [id]);
+  }, [id, isAdmin]);
 
   // Reload visibility when settings change
   const handleVisibilityChange = useCallback(() => {
