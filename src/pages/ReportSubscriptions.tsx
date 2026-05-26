@@ -68,14 +68,14 @@ const ReportSubscriptions = () => {
       return;
     }
 
-    // Check if admin
+    // Check if admin or master_admin
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (roleData?.role !== 'admin') {
+    const roles = (roleData || []).map((r: any) => r.role);
+    if (!roles.includes('admin') && !roles.includes('master_admin')) {
       navigate("/home");
       return;
     }
