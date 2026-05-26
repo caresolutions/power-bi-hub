@@ -350,6 +350,70 @@ export type Database = {
           },
         ]
       }
+      dashboard_page_group_restrictions: {
+        Row: {
+          created_at: string
+          granted_by: string
+          group_id: string
+          id: string
+          page_visibility_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by: string
+          group_id: string
+          id?: string
+          page_visibility_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string
+          group_id?: string
+          id?: string
+          page_visibility_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_page_group_restrictions_page_visibility_id_fkey"
+            columns: ["page_visibility_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_page_visibility"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_page_user_restrictions: {
+        Row: {
+          created_at: string
+          granted_by: string
+          id: string
+          page_visibility_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by: string
+          id?: string
+          page_visibility_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string
+          id?: string
+          page_visibility_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_page_user_restrictions_page_visibility_id_fkey"
+            columns: ["page_visibility_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_page_visibility"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_page_visibility: {
         Row: {
           created_at: string
@@ -1514,6 +1578,15 @@ export type Database = {
           stripe_customer_id: string
           stripe_subscription_id: string
           user_id: string
+        }[]
+      }
+      get_visible_dashboard_pages: {
+        Args: { _dashboard_id: string }
+        Returns: {
+          display_order: number
+          is_visible: boolean
+          page_display_name: string
+          page_name: string
         }[]
       }
       has_group_dashboard_access: {

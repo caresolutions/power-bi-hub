@@ -88,28 +88,34 @@ const DashboardViewer = () => {
     }
 
     try {
-      const { data } = await supabase
-        .from("dashboard_page_visibility")
-        .select("page_name, is_visible, display_order")
-        .eq("dashboard_id", id);
+      const { data, error } = await supabase.rpc("get_visible_dashboard_pages", {
+        _dashboard_id: id,
+      });
+      if (error) throw error;
 
+      // If no config rows exist at all, show all pages
       if (!data || data.length === 0) {
-        // No visibility config, show all pages
-        setVisiblePages(pages);
-        return;
+        // Check if there's any config row (even hidden) to distinguish "no setup" from "all hidden"
+        const { data: anyCfg } = await supabase
+          .from("dashboard_page_visibility")
+          .select("id")
+          .eq("dashboard_id", id)
+          .limit(1);
+        if (!anyCfg || anyCfg.length === 0) {
+          setVisiblePages(pages);
+          return;
+        }
       }
 
-      // Filter and sort visible pages
-      const visibilityMap = new Map(data.map(d => [d.page_name, d]));
+      const allowedMap = new Map(
+        (data || []).map((d: any) => [d.page_name, d])
+      );
       const filtered = pages
-        .filter(page => {
-          const config = visibilityMap.get(page.name);
-          return config ? config.is_visible : true; // Default to visible
-        })
+        .filter((page) => allowedMap.has(page.name))
         .sort((a, b) => {
-          const orderA = visibilityMap.get(a.name)?.display_order ?? 999;
-          const orderB = visibilityMap.get(b.name)?.display_order ?? 999;
-          return orderA - orderB;
+          const oa = (allowedMap.get(a.name) as any)?.display_order ?? 999;
+          const ob = (allowedMap.get(b.name) as any)?.display_order ?? 999;
+          return oa - ob;
         });
 
       setVisiblePages(filtered);
