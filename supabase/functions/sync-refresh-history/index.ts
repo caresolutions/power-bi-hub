@@ -249,15 +249,13 @@ serve(async (req) => {
               const startTime = new Date(refresh.startTime);
               if (startTime < cutoffDate) continue;
 
-              // Check if this refresh already exists (by request ID or start time match)
+              // Check if this refresh already exists (matched by start time)
               const { data: existing } = await supabase
                 .from("dashboard_refresh_history")
-                .select("id")
+                .select("id, status, completed_at")
                 .eq("dashboard_id", dashboard.id)
                 .eq("started_at", refresh.startTime)
                 .maybeSingle();
-
-              if (existing) continue; // Already synced
 
               // Map Power BI status to our status
               let status = "pending";
@@ -275,6 +273,27 @@ serve(async (req) => {
                 } catch {
                   errorMessage = "Falha na atualização";
                 }
+              }
+
+              if (existing) {
+                // Update only if status changed (e.g., pending -> completed/failed)
+                if (existing.status !== status || (!existing.completed_at && refresh.endTime)) {
+                  const { error: updateError } = await supabase
+                    .from("dashboard_refresh_history")
+                    .update({
+                      status,
+                      completed_at: refresh.endTime || existing.completed_at,
+                      error_message: errorMessage,
+                    })
+                    .eq("id", existing.id);
+
+                  if (updateError) {
+                    console.error(`Failed to update refresh for dashboard ${dashboard.id}:`, updateError);
+                  } else {
+                    syncedCount++;
+                  }
+                }
+                continue;
               }
 
               // Insert the refresh history
