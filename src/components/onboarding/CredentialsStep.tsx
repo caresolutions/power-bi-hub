@@ -21,6 +21,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useTranslation } from "react-i18next";
+import entraAppOverview from "@/assets/entra-app-overview.png";
+import entraClientSecret from "@/assets/entra-client-secret.png";
 
 interface CredentialsStepProps {
   onSubmit: (data: {
