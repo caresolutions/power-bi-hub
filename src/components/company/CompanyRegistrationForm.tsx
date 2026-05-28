@@ -70,14 +70,11 @@ const CompanyRegistrationForm = ({ onSuccess }: CompanyRegistrationFormProps) =>
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Check if CNPJ already exists
-      const { data: existingCompany } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("cnpj", result.data.cnpj)
-        .maybeSingle();
+      // Check if CNPJ already exists (via SECURITY DEFINER function to avoid exposing other companies)
+      const { data: cnpjExists } = await supabase
+        .rpc("check_cnpj_exists", { _cnpj: result.data.cnpj });
 
-      if (existingCompany) {
+      if (cnpjExists) {
         setErrors({ cnpj: "CNPJ já cadastrado no sistema" });
         setLoading(false);
         return;
