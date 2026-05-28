@@ -272,14 +272,14 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
                 <p className="text-xs">
                   No menu lateral do app, abra <strong>Certificados e segredos</strong> → aba <strong>Segredos do cliente</strong> → <strong>Novo segredo do cliente</strong>. Copie o <strong>Valor</strong> gerado imediatamente (só fica visível uma vez):
                 </p>
-                <a href={entraClientSecret} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-border/50 overflow-hidden hover:border-primary/50 transition-colors">
+                <div className="block rounded-lg border border-border/50 overflow-hidden">
                   <img
                     src={entraClientSecret}
                     alt="Tela de Certificados e segredos no Microsoft Entra mostrando onde gerar o Client Secret"
                     className="w-full h-auto"
                     loading="lazy"
                   />
-                </a>
+                </div>
               </div>
 
               <div>
