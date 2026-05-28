@@ -21,6 +21,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useTranslation } from "react-i18next";
+import entraAppOverview from "@/assets/entra-app-overview.png";
+import entraClientSecret from "@/assets/entra-client-secret.png";
 
 interface CredentialsStepProps {
   onSubmit: (data: {
@@ -234,31 +236,54 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
                 {t("onboarding.howToGetCredentials")}
               </span>
             </AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground space-y-3 pt-2">
+            <AccordionContent className="text-sm text-muted-foreground space-y-4 pt-2">
               <div className="space-y-2">
-                <p><strong>{t("onboarding.accessAzurePortal")}</strong></p>
-                <a 
-                  href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" 
-                  target="_blank" 
+                <p><strong>1. {t("onboarding.accessAzurePortal")}</strong></p>
+                <p className="text-xs">
+                  Acesse o <strong>Centro de administração do Microsoft Entra</strong> → <strong>Entra ID</strong> → <strong>Registros de aplicativo</strong>.
+                </p>
+                <a
+                  href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-primary hover:underline"
                 >
                   {t("onboarding.openAzurePortal")} <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <div>
-                <p><strong>{t("onboarding.registerApp")}</strong></p>
+
+              <div className="space-y-2">
+                <p><strong>2. {t("onboarding.registerApp")}</strong></p>
+                <p className="text-xs">
+                  Crie (ou abra) seu aplicativo. Na tela <strong>Visão geral</strong> você encontra o <strong>Client ID</strong> (ID do aplicativo) e o <strong>Tenant ID</strong> (ID do diretório):
+                </p>
+                <a href={entraAppOverview} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-border/50 overflow-hidden hover:border-primary/50 transition-colors">
+                  <img
+                    src={entraAppOverview}
+                    alt="Tela de visão geral do aplicativo no Microsoft Entra mostrando Client ID e Tenant ID"
+                    className="w-full h-auto"
+                    loading="lazy"
+                  />
+                </a>
               </div>
-              <div>
-                <p><strong>{t("onboarding.copyInfo")}</strong></p>
-                <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li>{t("onboarding.appClientId")}</li>
-                  <li>{t("onboarding.directoryTenantId")}</li>
-                  <li>{t("onboarding.createClientSecret")}</li>
-                </ul>
+
+              <div className="space-y-2">
+                <p><strong>3. {t("onboarding.createClientSecret")}</strong></p>
+                <p className="text-xs">
+                  No menu lateral do app, abra <strong>Certificados e segredos</strong> → aba <strong>Segredos do cliente</strong> → <strong>Novo segredo do cliente</strong>. Copie o <strong>Valor</strong> gerado imediatamente (só fica visível uma vez):
+                </p>
+                <a href={entraClientSecret} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-border/50 overflow-hidden hover:border-primary/50 transition-colors">
+                  <img
+                    src={entraClientSecret}
+                    alt="Tela de Certificados e segredos no Microsoft Entra mostrando onde gerar o Client Secret"
+                    className="w-full h-auto"
+                    loading="lazy"
+                  />
+                </a>
               </div>
+
               <div>
-                <p><strong>{t("onboarding.configurePermissions")}</strong></p>
+                <p><strong>4. {t("onboarding.configurePermissions")}</strong></p>
               </div>
             </AccordionContent>
           </AccordionItem>
