@@ -52,7 +52,7 @@ serve(async (req) => {
 
     logStep("Event received", { type: event.type, id: event.id });
 
-    const appUrl = Deno.env.get("APP_URL") || "https://app.carebi.com.br";
+    const appUrl = "https://dashboards.care-br.com";
 
     switch (event.type) {
       case "invoice.payment_failed": {
