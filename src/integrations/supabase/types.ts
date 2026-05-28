@@ -1565,6 +1565,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_cnpj_exists: { Args: { _cnpj: string }; Returns: boolean }
       get_company_admin_id: { Args: { _company_id: string }; Returns: string }
       get_user_subscription: {
         Args: { _user_id: string }
