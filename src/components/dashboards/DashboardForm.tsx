@@ -561,7 +561,7 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           )}
 
           {/* URL Parser Section - Only for workspace_id type */}
-          {embedType === "workspace_id" && !isEditing && (
+          {embedType === "workspace_id" && (
             <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
               <Label htmlFor="url" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
