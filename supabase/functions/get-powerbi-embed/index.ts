@@ -504,11 +504,14 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("[AUDIT] Error in get-powerbi-embed:", error.message);
-    
-    // Determine safe user-facing error message
-    const errorCategory = categorizeError(error);
-    const safeError = USER_ERROR_MESSAGES[errorCategory];
-    
+
+    // If the thrown message is already one of our friendly messages, keep it.
+    // Otherwise categorize from the raw error text.
+    const knownMessages = Object.values(USER_ERROR_MESSAGES) as string[];
+    const safeError = knownMessages.includes(error?.message)
+      ? error.message
+      : USER_ERROR_MESSAGES[categorizeError(error)];
+
     return new Response(
       JSON.stringify({
         success: false,
