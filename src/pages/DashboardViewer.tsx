@@ -328,6 +328,10 @@ const DashboardViewer = () => {
           pageNavigation: { visible: false }, // Hide default nav, use our custom one
         },
         background: pbi.models.BackgroundType.Default,
+        layoutType: pbi.models.LayoutType.Custom,
+        customLayout: {
+          displayOption: pbi.models.DisplayOption.FitToPage,
+        },
         visualSettings: {
           visualHeaders: [
             {
@@ -338,6 +342,7 @@ const DashboardViewer = () => {
           ],
         },
       },
+
     };
 
     if (embedData.reportSection) {
