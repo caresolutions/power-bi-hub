@@ -515,7 +515,9 @@ serve(async (req) => {
         error: safeError,
       }),
       {
-        status: 400,
+        // Return 200 so the client always receives the friendly message body
+        // (supabase-js hides bodies on non-2xx responses)
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
