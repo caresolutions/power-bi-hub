@@ -86,7 +86,9 @@ async function decryptValue(ciphertext: string, keyString: string): Promise<stri
     );
     
     const result = new TextDecoder().decode(decrypted);
-    console.log("[DEBUG] Decrypted successfully, result length:", result.length, "first 5 chars:", result.substring(0, 5));
+    const last4 = result.length >= 4 ? result.substring(result.length - 4) : "****";
+    const looksLikeGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result);
+    console.log("[DEBUG] Decrypted successfully, length:", result.length, "first 5:", result.substring(0, 5), "last 4:", last4, "looksLikeGuid (possible Secret ID):", looksLikeGuid);
     return result;
   } catch (error) {
     console.error("[AUDIT] Decryption failed - returning as-is for backward compatibility. Error:", error);
