@@ -6,14 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Generic user-facing error messages (hide internal details)
+// Friendly user-facing error messages (hide internal details, include support contact)
+const SUPPORT_CONTACT = "entre em contato com suporte@care-business.com";
 const USER_ERROR_MESSAGES = {
-  auth_failed: "Falha na autenticação. Verifique suas credenciais do Power BI.",
-  resource_not_found: "Recurso não encontrado. Verifique as configurações do dashboard.",
-  permission_denied: "Sem permissão para acessar este recurso.",
-  embed_error: "Erro ao gerar visualização. Verifique as permissões do workspace.",
-  service_error: "Erro ao processar solicitação. Tente novamente mais tarde.",
-  credentials_missing: "Credenciais não configuradas. Configure na página de Credenciais.",
+  auth_failed: `Os dados de credenciais estão incorretos, revise ou ${SUPPORT_CONTACT}`,
+  resource_not_found: `Não conseguimos localizar este dashboard. Revise as configurações ou ${SUPPORT_CONTACT}`,
+  permission_denied: `Você não tem permissão para acessar este conteúdo. Caso acredite que seja um engano, ${SUPPORT_CONTACT}`,
+  embed_error: `Não foi possível carregar o dashboard. Verifique as permissões do workspace ou ${SUPPORT_CONTACT}`,
+  service_error: `Não conseguimos concluir sua solicitação no momento. Tente novamente em instantes ou ${SUPPORT_CONTACT}`,
+  credentials_missing: `As credenciais do Power BI ainda não foram configuradas. Configure na página de Credenciais ou ${SUPPORT_CONTACT}`,
 };
 
 // Categorize errors for safe user messages
