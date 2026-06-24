@@ -10,6 +10,7 @@ const corsHeaders = {
 const SUPPORT_CONTACT = "entre em contato com suporte@care-business.com";
 const USER_ERROR_MESSAGES = {
   auth_failed: `Os dados de credenciais estão incorretos, revise ou ${SUPPORT_CONTACT}`,
+  consent_required: `As credenciais estão corretas, mas o aplicativo ainda não tem consentimento do administrador no Azure para acessar o Power BI. Conceda o consentimento administrativo para a aplicação Care BI e tente novamente, ou ${SUPPORT_CONTACT}`,
   resource_not_found: `Não conseguimos localizar este dashboard. Revise as configurações ou ${SUPPORT_CONTACT}`,
   permission_denied: `Você não tem permissão para acessar este conteúdo. Caso acredite que seja um engano, ${SUPPORT_CONTACT}`,
   embed_error: `Não foi possível carregar o dashboard. Verifique as permissões do workspace ou ${SUPPORT_CONTACT}`,
@@ -21,6 +22,10 @@ const USER_ERROR_MESSAGES = {
 function categorizeError(error: Error | string): keyof typeof USER_ERROR_MESSAGES {
   const message = typeof error === 'string' ? error : error.message;
   const lowerMsg = message.toLowerCase();
+
+  if (lowerMsg.includes('aadsts65001') || lowerMsg.includes('consent_required') || lowerMsg.includes('admin consent')) {
+    return 'consent_required';
+  }
   
   if (lowerMsg.includes('authentication') || lowerMsg.includes('token') || lowerMsg.includes('azure')) {
     return 'auth_failed';
@@ -187,6 +192,12 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
   if (!response.ok) {
     const errorText = await response.text();
     console.error("[AUDIT] Azure AD token error:", errorText);
+
+    const lowerError = errorText.toLowerCase();
+    if (lowerError.includes('aadsts65001') || lowerError.includes('consent_required')) {
+      throw new Error(USER_ERROR_MESSAGES.consent_required);
+    }
+
     throw new Error(USER_ERROR_MESSAGES.auth_failed);
   }
 
