@@ -31,7 +31,8 @@ import {
   Loader2,
   Rocket,
   ArrowRight,
-  Pencil
+  Pencil,
+  GraduationCap
 } from "lucide-react";
 import careLogo from "@/assets/logo_care_azul.png";
 import { motion } from "framer-motion";
@@ -246,6 +247,13 @@ const Home = () => {
       icon: Activity,
       path: "/access-logs",
       color: "bg-rose-500/10 text-rose-500"
+    },
+    {
+      title: "Tutorial inicial",
+      description: "Revisite o passo a passo de configuração da plataforma",
+      icon: GraduationCap,
+      path: "/onboarding",
+      color: "bg-sky-500/10 text-sky-500"
     }
   ];
 
@@ -298,6 +306,13 @@ const Home = () => {
       icon: UserPlus,
       path: "/add-users",
       color: "bg-teal-500/10 text-teal-500"
+    },
+    {
+      title: "Tutorial inicial",
+      description: "Revisite o passo a passo de configuração da plataforma",
+      icon: GraduationCap,
+      path: "/onboarding",
+      color: "bg-sky-500/10 text-sky-500"
     }
   ];
 

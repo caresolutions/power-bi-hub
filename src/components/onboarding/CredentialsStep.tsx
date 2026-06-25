@@ -270,7 +270,7 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
               <div className="space-y-2">
                 <p><strong>3. {t("onboarding.createClientSecret")}</strong></p>
                 <p className="text-xs">
-                  No menu lateral do app, abra <strong>Certificados e segredos</strong> → aba <strong>Segredos do cliente</strong> → <strong>Novo segredo do cliente</strong>. Copie o <strong>Valor</strong> gerado imediatamente (só fica visível uma vez):
+                  No menu lateral do app, abra <strong>Certificados e segredos</strong> → aba <strong>Segredos do cliente</strong> → <strong>Novo segredo do cliente</strong>. Defina uma descrição e validade e clique em <strong>Adicionar</strong>.
                 </p>
                 <div className="block rounded-lg border border-border/50 overflow-hidden">
                   <img
@@ -280,10 +280,66 @@ const CredentialsStep = ({ onSubmit, loading }: CredentialsStepProps) => {
                     loading="lazy"
                   />
                 </div>
+                <Alert className="border-amber-500/40 bg-amber-500/5">
+                  <Info className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="text-xs">
+                    <strong>Atenção:</strong> copie o valor da coluna <strong>"Valor" (Value)</strong>, e <u>não</u> o da coluna <strong>"ID do Segredo" (Secret ID)</strong>. O Valor só fica visível uma única vez — se sair da tela, terá que gerar um novo segredo. O Valor costuma ter ~40 caracteres com letras, números e símbolos (ex.: <code>abc1~XyZ...8Q</code>).
+                  </AlertDescription>
+                </Alert>
               </div>
 
-              <div>
+              <div className="space-y-3">
                 <p><strong>4. {t("onboarding.configurePermissions")}</strong></p>
+                <p className="text-xs">
+                  Ainda dentro do app, abra <strong>Permissões de API</strong> → <strong>Adicionar permissão</strong> → <strong>Power BI Service</strong>. Como usamos o fluxo ROPC (login com usuário e senha), todas devem ser do tipo <strong>Permissões delegadas</strong>:
+                </p>
+                <ul className="text-xs list-disc pl-5 space-y-1">
+                  <li><code>App.Read.All</code></li>
+                  <li><code>Dashboard.Read.All</code></li>
+                  <li><code>Dataset.Read.All</code></li>
+                  <li><code>Dataset.ReadWrite.All</code> <span className="text-muted-foreground">(necessário para atualização manual de datasets)</span></li>
+                  <li><code>Report.Read.All</code></li>
+                  <li><code>Workspace.Read.All</code></li>
+                  <li><code>Tenant.Read.All</code> <span className="text-muted-foreground">(opcional, usado por alguns recursos administrativos)</span></li>
+                </ul>
+                <p className="text-xs">
+                  Adicione também a permissão padrão do Microsoft Graph (<code>User.Read</code> — delegada) que já vem por padrão.
+                </p>
+                <Alert className="border-primary/30 bg-primary/5">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <AlertDescription className="text-xs">
+                    <strong>Conceder consentimento do administrador:</strong> depois de adicionar as permissões, clique em <strong>"Conceder consentimento do administrador para [seu tenant]"</strong> e confirme. Todas as linhas precisam ficar com o ícone verde <strong>"Concedido para..."</strong>. Sem esse passo o login retorna o erro <code>AADSTS65001 / consent_required</code>.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              <div className="space-y-2">
+                <p><strong>5. Permitir o fluxo ROPC (cliente público)</strong></p>
+                <p className="text-xs">
+                  No menu lateral do app, abra <strong>Autenticação</strong> → role até o final → em <strong>"Permitir fluxos de cliente público"</strong> selecione <strong>Sim</strong> e salve. Sem isso, o login com usuário/senha do Power BI falha com <code>unauthorized_client</code>.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p><strong>6. Habilitar APIs do Power BI no tenant</strong></p>
+                <p className="text-xs">
+                  Acesse o <a href="https://app.powerbi.com/admin-portal/tenantSettings" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Portal de administração do Power BI <ExternalLink className="h-3 w-3" /></a> → <strong>Configurações do locatário</strong> → seção <strong>Configurações de desenvolvedor</strong> e habilite:
+                </p>
+                <ul className="text-xs list-disc pl-5 space-y-1">
+                  <li><strong>Permitir que entidades de serviço usem APIs do Power BI</strong> (caso utilize service principal)</li>
+                  <li><strong>Inserir conteúdo em aplicativos</strong> (Embed content in apps)</li>
+                  <li><strong>Permitir que entidades de serviço criem e usem perfis</strong> (opcional)</li>
+                </ul>
+                <p className="text-xs">
+                  Recomenda-se aplicar a "grupos de segurança específicos" e adicionar o usuário/grupo do Power BI usado nas credenciais.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p><strong>7. Usuário Power BI (Master User)</strong></p>
+                <p className="text-xs">
+                  O usuário e senha informados precisam: (a) pertencer ao <strong>mesmo tenant</strong> do Tenant ID configurado; (b) ter <strong>licença Power BI Pro</strong> (ou PPU) ativa; (c) ter acesso de visualização aos workspaces dos relatórios; (d) <strong>não ter MFA</strong> habilitado — o fluxo ROPC não suporta autenticação multifator. Crie um usuário de serviço dedicado no Entra ID se necessário.
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>
