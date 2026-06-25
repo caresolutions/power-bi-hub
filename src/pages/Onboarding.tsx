@@ -91,8 +91,9 @@ const Onboarding = () => {
 
       // Determine the correct starting step based on actual data
       if (hasCredentials && hasDashboards) {
-        // Everything done - redirect to home (show banner there)
-        navigate("/home");
+        // Everything done — allow user to revisit the tutorial from the welcome step
+        setCurrentStep("welcome");
+        loadExistingCredential();
       } else if (hasCredentials) {
         // Credentials done, need dashboards
         setCurrentStep("dashboards");
