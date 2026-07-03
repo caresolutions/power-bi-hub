@@ -148,6 +148,23 @@ const DashboardViewer = () => {
     };
   }, []);
 
+  // Update layout when fit mode changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dashboard_fit_mode", fitMode);
+    }
+    if (reportRef.current) {
+      reportRef.current.updateSettings({
+        layoutType: pbi.models.LayoutType.Custom,
+        customLayout: {
+          displayOption: fitMode === "page"
+            ? pbi.models.DisplayOption.FitToPage
+            : pbi.models.DisplayOption.FitToWidth,
+        },
+      }).catch((err) => console.error("Error updating fit mode:", err));
+    }
+  }, [fitMode]);
+
   useEffect(() => {
     const checkAuthAndFetchDashboard = async () => {
       const { data: { user } } = await supabase.auth.getUser();
