@@ -334,7 +334,9 @@ const DashboardViewer = () => {
         background: pbi.models.BackgroundType.Default,
         layoutType: pbi.models.LayoutType.Custom,
         customLayout: {
-          displayOption: pbi.models.DisplayOption.FitToWidth,
+          displayOption: fitMode === "page"
+            ? pbi.models.DisplayOption.FitToPage
+            : pbi.models.DisplayOption.FitToWidth,
         },
 
         visualSettings: {
