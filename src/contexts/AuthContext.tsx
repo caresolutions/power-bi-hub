@@ -323,8 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSubscriptionStatus(null);
         setLoading(false);
         setSubscriptionLoading(false);
-      } else if (newSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        // Use setTimeout to prevent deadlock - never await inside onAuthStateChange
+      } else if (newSession?.user && event === 'SIGNED_IN') {
+        // Only refetch user data on actual sign-in, not on TOKEN_REFRESHED
+        // (TOKEN_REFRESHED fires when tab regains focus and would cause the app to re-render/refresh)
         setTimeout(async () => {
           if (!mounted) return;
           const userData = await fetchUserData(newSession.user);
@@ -334,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }, 0);
       }
+      // For TOKEN_REFRESHED: session/user are already updated above; skip data refetch to avoid UI refresh
     });
 
     return () => {
