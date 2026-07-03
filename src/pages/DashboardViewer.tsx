@@ -579,6 +579,20 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {/* Fit mode toggle */}
+          {dashboard.embed_type === "workspace_id" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFitMode(fitMode === "width" ? "page" : "width")}
+              className="text-xs h-7 px-2"
+              title={fitMode === "width" ? "Ajustar à tela (sem rolagem)" : "Ajustar à largura"}
+            >
+              {fitMode === "width" ? <Monitor className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+              <span className="ml-1 hidden sm:inline">{fitMode === "width" ? "Ajustar à tela" : "Ajustar largura"}</span>
+            </Button>
+          )}
+
           {/* Chat with Data button - only for plans with ai_chat feature */}
           {dashboard.embed_type === "workspace_id" && canUseAiChat && (
             <Button
