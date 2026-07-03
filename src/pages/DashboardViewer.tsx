@@ -68,6 +68,10 @@ const DashboardViewer = () => {
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [visiblePages, setVisiblePages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
+  const [fitMode, setFitMode] = useState<"width" | "page">(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard_fit_mode") : null;
+    return (saved === "page" ? "page" : "width");
+  });
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
