@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
@@ -68,6 +68,10 @@ const DashboardViewer = () => {
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [visiblePages, setVisiblePages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
+  const [fitMode, setFitMode] = useState<"width" | "page">(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard_fit_mode") : null;
+    return (saved === "page" ? "page" : "width");
+  });
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
@@ -143,6 +147,23 @@ const DashboardViewer = () => {
       }
     };
   }, []);
+
+  // Update layout when fit mode changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dashboard_fit_mode", fitMode);
+    }
+    if (reportRef.current) {
+      reportRef.current.updateSettings({
+        layoutType: pbi.models.LayoutType.Custom,
+        customLayout: {
+          displayOption: fitMode === "page"
+            ? pbi.models.DisplayOption.FitToPage
+            : pbi.models.DisplayOption.FitToWidth,
+        },
+      }).catch((err) => console.error("Error updating fit mode:", err));
+    }
+  }, [fitMode]);
 
   useEffect(() => {
     const checkAuthAndFetchDashboard = async () => {
@@ -330,7 +351,9 @@ const DashboardViewer = () => {
         background: pbi.models.BackgroundType.Default,
         layoutType: pbi.models.LayoutType.Custom,
         customLayout: {
-          displayOption: pbi.models.DisplayOption.FitToWidth,
+          displayOption: fitMode === "page"
+            ? pbi.models.DisplayOption.FitToPage
+            : pbi.models.DisplayOption.FitToWidth,
         },
 
         visualSettings: {
@@ -556,6 +579,20 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {/* Fit mode toggle */}
+          {dashboard.embed_type === "workspace_id" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFitMode(fitMode === "width" ? "page" : "width")}
+              className="text-xs h-7 px-2"
+              title={fitMode === "width" ? "Ajustar à tela (sem rolagem)" : "Ajustar à largura"}
+            >
+              {fitMode === "width" ? <Monitor className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+              <span className="ml-1 hidden sm:inline">{fitMode === "width" ? "Ajustar à tela" : "Ajustar largura"}</span>
+            </Button>
+          )}
+
           {/* Chat with Data button - only for plans with ai_chat feature */}
           {dashboard.embed_type === "workspace_id" && canUseAiChat && (
             <Button
