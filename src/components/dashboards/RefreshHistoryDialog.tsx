@@ -17,6 +17,7 @@ interface RefreshHistoryEntry {
   status: string;
   error_message: string | null;
   user_id: string;
+  triggered_by?: string | null;
 }
 
 interface RefreshHistoryDialogProps {
