@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
