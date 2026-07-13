@@ -513,7 +513,8 @@ serve(async (req) => {
     const embedData = await getReportEmbedToken(
       accessToken,
       targetWorkspaceId,
-      targetReportId
+      targetReportId,
+      mode
     );
 
     console.log("Embed data generated successfully");
