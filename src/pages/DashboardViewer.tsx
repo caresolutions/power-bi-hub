@@ -72,6 +72,8 @@ const DashboardViewer = () => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard_fit_mode") : null;
     return (saved === "page" ? "page" : "width");
   });
+  const [editMode, setEditMode] = useState(false);
+  const [switchingMode, setSwitchingMode] = useState(false);
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
