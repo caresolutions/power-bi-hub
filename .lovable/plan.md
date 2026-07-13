@@ -1,36 +1,66 @@
-## Objetivo
-Gerar um PDF com screenshots de todas as telas do sistema (públicas, autenticadas admin, master admin e viewer de dashboard), uma tela por página com título.
+# Agendamento de Refresh de Datasets
 
-## Como vou executar
+Adicionar agendamentos recorrentes por dashboard para disparar refresh do dataset Power BI automaticamente, sem impactar o refresh manual atual.
 
-1. **Preparar diretório de trabalho** em `/tmp/browser/screenshots/` com um script Playwright.
-2. **Autenticar** usando a sessão Supabase injetada no sandbox (`LOVABLE_BROWSER_SUPABASE_*`) para acessar rotas protegidas em `http://localhost:8080`.
-3. **Navegar e capturar** cada rota (viewport 1280x1800), salvando um PNG por tela.
-4. **Montar o PDF** com ReportLab: capa + uma imagem por página com título da tela, ajustada à largura útil (Letter, 1" de margem).
-5. **QA visual**: converter o PDF em imagens e inspecionar todas as páginas antes de entregar; recapturar telas que vierem em branco/loading.
-6. **Entregar** em `/mnt/documents/care-bi-telas.pdf` via `<presentation-artifact>`.
+## O que muda para o usuário
 
-## Rotas planejadas
+- Novo botão "Agendar refresh" no header do `DashboardViewer` (somente admin/master_admin, apenas para dashboards `workspace_id` com credencial vinculada).
+- Diálogo permite criar/editar/excluir múltiplos agendamentos por dashboard:
+  - Frequência: **Diário**, **Semanal** (com dias da semana) ou **Mensal** (dia do mês).
+  - Horário (HH:MM) + fuso (default `America/Sao_Paulo`).
+  - Toggle ativo/inativo.
+  - Lista mostra "próxima execução" e "última execução".
+- Cada execução automática entra no histórico existente (`dashboard_refresh_history`) marcada como `triggered_by = 'schedule'` para diferenciar de manuais.
 
-**Públicas**
-- `/` (Landing), `/saiba-mais`, `/auth`, `/privacy-policy`, `/cancellation-policy`, `/apresentacao`
+## Banco
 
-**Autenticadas (admin/master admin)**
-- `/home`, `/dashboards`, `/credentials`, `/users`, `/groups`, `/subscription`, `/add-users`, `/settings`, `/access-logs`, `/onboarding`, `/select-plan`
+Nova tabela `dashboard_refresh_schedules`:
+- `id uuid pk`, `dashboard_id uuid fk`, `company_id uuid`, `created_by text`
+- `frequency text` (`daily` | `weekly` | `monthly`)
+- `time_of_day time` (ex.: `06:00`)
+- `timezone text` default `America/Sao_Paulo`
+- `days_of_week int[]` (0-6, para weekly)
+- `day_of_month int` (1-28, para monthly)
+- `is_active boolean` default true
+- `last_run_at timestamptz`, `next_run_at timestamptz`
+- `created_at`, `updated_at`
 
-**Master Admin**
-- `/master-admin` (com abas principais: empresas, planos, moedas — uma captura por aba visível)
+RLS + GRANTs seguindo padrão existente:
+- Admin da empresa: full CRUD dos próprios dashboards.
+- Master admin: full CRUD global (via `is_master_admin`).
+- Usuários comuns: sem acesso.
 
-**Viewer Power BI**
-- `/dashboard/:id` do primeiro dashboard disponível (pode aparecer com mensagem de erro/loading se as credenciais Azure ainda estiverem inválidas — capturo o estado atual da tela)
+Adicionar coluna `triggered_by text default 'manual'` em `dashboard_refresh_history` (backfill = 'manual').
 
-## Observações
-- Modais/dialogs (ex.: convidar usuário, permissões de página) não entram por padrão — se quiser, listo depois quais abrir.
-- A qualidade do viewer depende de credenciais válidas no momento; capturo o que renderizar.
-- Sessão restaurada é a sua conta atual (master admin) — o PDF reflete o que essa conta vê.
+## Edge Function
 
-## Detalhes técnicos
-- Playwright Chromium headless, `viewport 1280x1800`, `waitUntil="networkidle"` + pequeno delay para animações.
-- Screenshots como PNG (não full_page, para respeitar limite do ambiente); páginas longas capturadas em altura fixa do viewport.
-- PDF gerado com `reportlab.platypus` (SimpleDocTemplate, Image redimensionada proporcionalmente).
-- Se alguma rota redirecionar (ex.: `/select-plan` quando já há plano), registro o redirect no PDF.
+Nova função `process-scheduled-refreshes` (verify_jwt=false, chamada só via cron):
+1. Busca agendamentos com `is_active=true` e `next_run_at <= now()`.
+2. Para cada um: chama internamente a mesma lógica do `refresh-dataset` (extraída para helper compartilhado ou reusada via invoke com service role).
+3. Atualiza `last_run_at = now()` e recalcula `next_run_at` com base na frequência/timezone.
+4. Grava linha em `dashboard_refresh_history` com `triggered_by='schedule'`.
+
+Cron via pg_cron a cada 5 minutos, chamando a função com `apikey` (mesmo padrão do `sync-refresh-history`).
+
+## Frontend
+
+- `src/components/dashboards/RefreshScheduleDialog.tsx` — novo diálogo (shadcn Dialog, Select, Checkbox, TimePicker simples).
+- Botão "Agendar" no header do `DashboardViewer.tsx`, ao lado de "Histórico".
+- `RefreshHistoryDialog` mostra badge "Agendado" quando `triggered_by='schedule'`.
+
+## Cuidados de compatibilidade
+
+- Refresh manual, `sync-refresh-history` e permissões existentes ficam intactos.
+- Novo campo `triggered_by` tem default `'manual'`, então histórico legado continua correto.
+- Cron novo é independente do cron de `sync-refresh-history`.
+- Respeita limites de refresh do Power BI (8/dia Pro, 48/dia Premium) — apenas alerta na UI, sem bloqueio rígido.
+
+## Passos de implementação
+
+1. Migration: nova tabela + coluna `triggered_by` + RLS/GRANTs.
+2. Edge function `process-scheduled-refreshes`.
+3. Cron job (via `supabase--insert`, não migration, por conter anon key).
+4. Componentes: `RefreshScheduleDialog` + botão no `DashboardViewer`.
+5. Ajuste visual no `RefreshHistoryDialog` para mostrar origem.
+
+Confirmar para prosseguir?
