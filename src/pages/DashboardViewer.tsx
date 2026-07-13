@@ -74,6 +74,7 @@ const DashboardViewer = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<LastRefresh | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
