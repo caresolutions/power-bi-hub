@@ -775,6 +775,35 @@ const DashboardViewer = () => {
         )}
         </div>
       </div>
+
+      <AlertDialog open={editConfirmOpen} onOpenChange={setEditConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" />
+              Entrar no modo de edição
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              As alterações salvas afetarão o relatório original no Power BI e
+              serão visíveis a todos os usuários com acesso. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!dashboard) return;
+                setSwitchingMode(true);
+                setEditMode(true);
+                await fetchEmbedToken(dashboard.id, "edit");
+                setSwitchingMode(false);
+              }}
+            >
+              Entrar em edição
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
