@@ -201,9 +201,81 @@ export function RefreshScheduleDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-6">
-          {/* Existing schedules */}
+          {/* Power BI native schedule */}
           <section className="space-y-2">
-            <h3 className="text-sm font-medium">Agendamentos ativos</h3>
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" /> Agendamento no Power BI (nativo)
+            </h3>
+            {pbiLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Consultando Power BI...
+              </div>
+            ) : pbiSchedule ? (
+              <div className="border border-border rounded-lg p-3 bg-muted/40 text-sm space-y-1">
+                <p>
+                  <span className="font-medium">Status:</span>{" "}
+                  {pbiSchedule.enabled ? "Ativo" : "Desativado"}
+                </p>
+                {pbiSchedule.days?.length > 0 && (
+                  <p>
+                    <span className="font-medium">Dias:</span> {pbiSchedule.days.join(", ")}
+                  </p>
+                )}
+                {pbiSchedule.times?.length > 0 && (
+                  <p>
+                    <span className="font-medium">Horários:</span> {pbiSchedule.times.join(", ")}
+                  </p>
+                )}
+                {pbiSchedule.localTimeZoneId && (
+                  <p>
+                    <span className="font-medium">Fuso:</span> {pbiSchedule.localTimeZoneId}
+                  </p>
+                )}
+                {pbiSchedule.notifyOption && (
+                  <p className="text-xs text-muted-foreground">
+                    Notificação: {pbiSchedule.notifyOption}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Nenhum agendamento nativo encontrado (ou dataset em Import não configurado no Power BI).
+              </p>
+            )}
+
+            {pbiHistory.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                  Ver últimas {pbiHistory.length} execuções no Power BI
+                </summary>
+                <div className="mt-2 space-y-1 max-h-48 overflow-auto">
+                  {pbiHistory.map((h: any, i: number) => (
+                    <div key={i} className="text-xs border-b border-border/50 py-1 flex justify-between gap-2">
+                      <span>
+                        {h.startTime ? format(new Date(h.startTime), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}
+                      </span>
+                      <span className="text-muted-foreground">{h.refreshType}</span>
+                      <span
+                        className={
+                          h.status === "Completed"
+                            ? "text-green-600"
+                            : h.status === "Failed"
+                            ? "text-destructive"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {h.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </section>
+
+          {/* Existing schedules */}
+          <section className="space-y-2 border-t border-border pt-4">
+            <h3 className="text-sm font-medium">Agendamentos ativos (Care BI)</h3>
             {loading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
