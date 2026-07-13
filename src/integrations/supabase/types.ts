@@ -464,6 +464,7 @@ export type Database = {
           id: string
           started_at: string
           status: string
+          triggered_by: string
           user_id: string
         }
         Insert: {
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          triggered_by?: string
           user_id: string
         }
         Update: {
@@ -484,11 +486,78 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          triggered_by?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "dashboard_refresh_history_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_refresh_schedules: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string
+          dashboard_id: string
+          day_of_month: number | null
+          days_of_week: number[] | null
+          frequency: string
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          next_run_at: string | null
+          time_of_day: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by: string
+          dashboard_id: string
+          day_of_month?: number | null
+          days_of_week?: number[] | null
+          frequency: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          time_of_day?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          dashboard_id?: string
+          day_of_month?: number | null
+          days_of_week?: number[] | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          time_of_day?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_refresh_schedules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_refresh_schedules_dashboard_id_fkey"
             columns: ["dashboard_id"]
             isOneToOne: false
             referencedRelation: "dashboards"

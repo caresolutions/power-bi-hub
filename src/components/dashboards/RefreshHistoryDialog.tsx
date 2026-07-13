@@ -17,6 +17,7 @@ interface RefreshHistoryEntry {
   status: string;
   error_message: string | null;
   user_id: string;
+  triggered_by?: string | null;
 }
 
 interface RefreshHistoryDialogProps {
@@ -137,6 +138,16 @@ export function RefreshHistoryDialog({
                     <div className="flex items-center gap-2">
                       {getStatusIcon(entry.status)}
                       <span className="font-medium">{getStatusLabel(entry.status)}</span>
+                      <span
+                        className={
+                          "text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded " +
+                          (entry.triggered_by === "schedule"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground")
+                        }
+                      >
+                        {entry.triggered_by === "schedule" ? "Agendado" : "Manual"}
+                      </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {formatDuration(entry.started_at, entry.completed_at)}

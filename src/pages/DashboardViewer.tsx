@@ -2,9 +2,10 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye, CalendarClock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
+import { RefreshScheduleDialog } from "@/components/dashboards/RefreshScheduleDialog";
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
 import { ReportPagesNav } from "@/components/dashboards/ReportPagesNav";
 import { DashboardChatDialog } from "@/components/dashboards/DashboardChatDialog";
@@ -73,6 +74,7 @@ const DashboardViewer = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<LastRefresh | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
@@ -92,7 +94,7 @@ const DashboardViewer = () => {
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
-  const { role } = useAuth();
+  const { role, companyId } = useAuth();
   const { hasFeature } = useSubscriptionPlan();
   const isAdmin = role === 'admin' || role === 'master_admin';
   const canUseAiChat = hasFeature("ai_chat");
@@ -663,6 +665,18 @@ const DashboardViewer = () => {
           
           {canRefresh && dashboard.embed_type === "workspace_id" && (
             <>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setScheduleOpen(true)}
+                  className="text-xs h-7 px-2"
+                  title="Agendar atualização automática"
+                >
+                  <CalendarClock className="h-3 w-3" />
+                  <span className="ml-1 hidden sm:inline">Agendar</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -694,6 +708,16 @@ const DashboardViewer = () => {
         dashboardId={dashboard.id}
         dashboardName={dashboard.name}
       />
+
+      {/* Refresh Schedule Dialog */}
+      <RefreshScheduleDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
+        companyId={companyId}
+      />
+
 
       {/* Bookmarks Dialog */}
       <BookmarksDialog
