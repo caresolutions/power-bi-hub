@@ -248,7 +248,8 @@ async function resolveWorkspaceFromApp(appId: string, accessToken: string): Prom
 async function getReportEmbedToken(
   accessToken: string,
   workspaceId: string,
-  reportId: string
+  reportId: string,
+  mode: "view" | "edit" = "view"
 ): Promise<EmbedTokenResponse> {
   // Try standard workspace API first
   let reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}`;
