@@ -248,7 +248,8 @@ async function resolveWorkspaceFromApp(appId: string, accessToken: string): Prom
 async function getReportEmbedToken(
   accessToken: string,
   workspaceId: string,
-  reportId: string
+  reportId: string,
+  mode: "view" | "edit" = "view"
 ): Promise<EmbedTokenResponse> {
   // Try standard workspace API first
   let reportUrl = `https://api.powerbi.com/v1.0/myorg/groups/${workspaceId}/reports/${reportId}`;
@@ -310,7 +311,7 @@ async function getReportEmbedToken(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ accessLevel: "View" }),
+    body: JSON.stringify({ accessLevel: mode === "edit" ? "Edit" : "View", allowSaveAs: false }),
   });
 
   if (!embedResponse.ok) {
@@ -355,7 +356,19 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { dashboardId, workspaceId, reportId, credentialId, reportSection } = body;
+    const { dashboardId, workspaceId, reportId, credentialId, reportSection, mode: requestedMode } = body;
+    const mode: "view" | "edit" = requestedMode === "edit" ? "edit" : "view";
+
+    // Edit mode is restricted to admin / master_admin
+    if (mode === "edit") {
+      const [{ data: isMasterEdit }, { data: isAdminEdit }] = await Promise.all([
+        supabase.rpc("is_master_admin", { _user_id: user.id }),
+        supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      ]);
+      if (!isMasterEdit && !isAdminEdit) {
+        throw new Error(USER_ERROR_MESSAGES.permission_denied);
+      }
+    }
 
     // Support both modes: by dashboardId OR by direct parameters (for slider slides)
     let targetWorkspaceId: string;
@@ -500,7 +513,8 @@ serve(async (req) => {
     const embedData = await getReportEmbedToken(
       accessToken,
       targetWorkspaceId,
-      targetReportId
+      targetReportId,
+      mode
     );
 
     console.log("Embed data generated successfully");

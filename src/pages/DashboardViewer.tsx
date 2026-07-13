@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { BookmarksDialog } from "@/components/dashboards/BookmarksDialog";
@@ -72,6 +72,8 @@ const DashboardViewer = () => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard_fit_mode") : null;
     return (saved === "page" ? "page" : "width");
   });
+  const [editMode, setEditMode] = useState(false);
+  const [switchingMode, setSwitchingMode] = useState(false);
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
@@ -301,7 +303,7 @@ const DashboardViewer = () => {
     }
   };
 
-  const fetchEmbedToken = async (dashboardId: string) => {
+  const fetchEmbedToken = async (dashboardId: string, mode: "view" | "edit" = "view") => {
     setEmbedLoading(true);
     setEmbedError(null);
 
@@ -310,7 +312,7 @@ const DashboardViewer = () => {
       if (!session) throw new Error("Não autenticado");
 
       const response = await supabase.functions.invoke("get-powerbi-embed", {
-        body: { dashboardId },
+        body: { dashboardId, mode },
       });
 
       if (response.error) {
@@ -324,9 +326,9 @@ const DashboardViewer = () => {
       }
 
       setEmbedLoading(false);
-      
+
       setTimeout(() => {
-        embedReport(data);
+        embedReport(data, mode);
       }, 100);
     } catch (error: any) {
       console.error("Error fetching embed token:", error);
@@ -335,7 +337,7 @@ const DashboardViewer = () => {
     }
   };
 
-  const embedReport = (embedData: EmbedData) => {
+  const embedReport = (embedData: EmbedData, mode: "view" | "edit" = "view") => {
     if (!embedContainerRef.current || !powerbiRef.current) return;
 
     const config: pbi.IEmbedConfiguration = {
@@ -343,9 +345,11 @@ const DashboardViewer = () => {
       tokenType: pbi.models.TokenType.Embed,
       accessToken: embedData.embedToken,
       embedUrl: embedData.embedUrl,
+      viewMode: mode === "edit" ? pbi.models.ViewMode.Edit : pbi.models.ViewMode.View,
+      permissions: mode === "edit" ? pbi.models.Permissions.ReadWrite : pbi.models.Permissions.Read,
       settings: {
         panes: {
-          filters: { visible: false },
+          filters: { visible: mode === "edit" },
           pageNavigation: { visible: false }, // Hide default nav, use our custom one
         },
         background: pbi.models.BackgroundType.Default,
@@ -368,6 +372,7 @@ const DashboardViewer = () => {
       },
 
     };
+
 
     if (embedData.reportSection) {
       config.pageName = embedData.reportSection;
@@ -579,6 +584,31 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {/* Edit mode toggle - only for admin/master_admin */}
+          {dashboard.embed_type === "workspace_id" && isAdmin && (
+            <Button
+              variant={editMode ? "default" : "ghost"}
+              size="sm"
+              disabled={switchingMode || embedLoading}
+              onClick={async () => {
+                if (!dashboard) return;
+                const next = !editMode;
+                if (next && !window.confirm("Modo de edição: as alterações salvas afetarão o relatório original no Power BI e serão visíveis a todos os usuários. Deseja continuar?")) {
+                  return;
+                }
+                setSwitchingMode(true);
+                setEditMode(next);
+                await fetchEmbedToken(dashboard.id, next ? "edit" : "view");
+                setSwitchingMode(false);
+              }}
+              className="text-xs h-7 px-2"
+              title={editMode ? "Sair do modo de edição" : "Editar relatório"}
+            >
+              {editMode ? <Eye className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+              <span className="ml-1 hidden sm:inline">{editMode ? "Visualizar" : "Editar"}</span>
+            </Button>
+          )}
+
           {/* Fit mode toggle */}
           {dashboard.embed_type === "workspace_id" && (
             <Button
@@ -592,6 +622,7 @@ const DashboardViewer = () => {
               <span className="ml-1 hidden sm:inline">{fitMode === "width" ? "Ajustar à tela" : "Ajustar largura"}</span>
             </Button>
           )}
+
 
           {/* Chat with Data button - only for plans with ai_chat feature */}
           {dashboard.embed_type === "workspace_id" && canUseAiChat && (
