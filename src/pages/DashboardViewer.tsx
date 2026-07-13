@@ -584,6 +584,31 @@ const DashboardViewer = () => {
         </div>
         
         <div className="flex items-center gap-1">
+          {/* Edit mode toggle - only for admin/master_admin */}
+          {dashboard.embed_type === "workspace_id" && isAdmin && (
+            <Button
+              variant={editMode ? "default" : "ghost"}
+              size="sm"
+              disabled={switchingMode || embedLoading}
+              onClick={async () => {
+                if (!dashboard) return;
+                const next = !editMode;
+                if (next && !window.confirm("Modo de edição: as alterações salvas afetarão o relatório original no Power BI e serão visíveis a todos os usuários. Deseja continuar?")) {
+                  return;
+                }
+                setSwitchingMode(true);
+                setEditMode(next);
+                await fetchEmbedToken(dashboard.id, next ? "edit" : "view");
+                setSwitchingMode(false);
+              }}
+              className="text-xs h-7 px-2"
+              title={editMode ? "Sair do modo de edição" : "Editar relatório"}
+            >
+              {editMode ? <Eye className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+              <span className="ml-1 hidden sm:inline">{editMode ? "Visualizar" : "Editar"}</span>
+            </Button>
+          )}
+
           {/* Fit mode toggle */}
           {dashboard.embed_type === "workspace_id" && (
             <Button
@@ -597,6 +622,7 @@ const DashboardViewer = () => {
               <span className="ml-1 hidden sm:inline">{fitMode === "width" ? "Ajustar à tela" : "Ajustar largura"}</span>
             </Button>
           )}
+
 
           {/* Chat with Data button - only for plans with ai_chat feature */}
           {dashboard.embed_type === "workspace_id" && canUseAiChat && (
