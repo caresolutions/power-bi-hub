@@ -84,6 +84,7 @@ const DashboardViewer = () => {
   });
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
