@@ -303,7 +303,7 @@ const DashboardViewer = () => {
     }
   };
 
-  const fetchEmbedToken = async (dashboardId: string) => {
+  const fetchEmbedToken = async (dashboardId: string, mode: "view" | "edit" = "view") => {
     setEmbedLoading(true);
     setEmbedError(null);
 
@@ -312,7 +312,7 @@ const DashboardViewer = () => {
       if (!session) throw new Error("Não autenticado");
 
       const response = await supabase.functions.invoke("get-powerbi-embed", {
-        body: { dashboardId },
+        body: { dashboardId, mode },
       });
 
       if (response.error) {
@@ -326,9 +326,9 @@ const DashboardViewer = () => {
       }
 
       setEmbedLoading(false);
-      
+
       setTimeout(() => {
-        embedReport(data);
+        embedReport(data, mode);
       }, 100);
     } catch (error: any) {
       console.error("Error fetching embed token:", error);
@@ -337,7 +337,7 @@ const DashboardViewer = () => {
     }
   };
 
-  const embedReport = (embedData: EmbedData) => {
+  const embedReport = (embedData: EmbedData, mode: "view" | "edit" = "view") => {
     if (!embedContainerRef.current || !powerbiRef.current) return;
 
     const config: pbi.IEmbedConfiguration = {
