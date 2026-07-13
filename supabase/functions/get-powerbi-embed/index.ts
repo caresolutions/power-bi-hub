@@ -356,7 +356,19 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { dashboardId, workspaceId, reportId, credentialId, reportSection } = body;
+    const { dashboardId, workspaceId, reportId, credentialId, reportSection, mode: requestedMode } = body;
+    const mode: "view" | "edit" = requestedMode === "edit" ? "edit" : "view";
+
+    // Edit mode is restricted to admin / master_admin
+    if (mode === "edit") {
+      const [{ data: isMasterEdit }, { data: isAdminEdit }] = await Promise.all([
+        supabase.rpc("is_master_admin", { _user_id: user.id }),
+        supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      ]);
+      if (!isMasterEdit && !isAdminEdit) {
+        throw new Error(USER_ERROR_MESSAGES.permission_denied);
+      }
+    }
 
     // Support both modes: by dashboardId OR by direct parameters (for slider slides)
     let targetWorkspaceId: string;
