@@ -665,6 +665,18 @@ const DashboardViewer = () => {
           
           {canRefresh && dashboard.embed_type === "workspace_id" && (
             <>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setScheduleOpen(true)}
+                  className="text-xs h-7 px-2"
+                  title="Agendar atualização automática"
+                >
+                  <CalendarClock className="h-3 w-3" />
+                  <span className="ml-1 hidden sm:inline">Agendar</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
