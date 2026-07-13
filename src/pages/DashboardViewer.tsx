@@ -94,7 +94,7 @@ const DashboardViewer = () => {
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
-  const { role } = useAuth();
+  const { role, companyId } = useAuth();
   const { hasFeature } = useSubscriptionPlan();
   const isAdmin = role === 'admin' || role === 'master_admin';
   const canUseAiChat = hasFeature("ai_chat");
