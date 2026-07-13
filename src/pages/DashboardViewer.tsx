@@ -603,13 +603,13 @@ const DashboardViewer = () => {
               disabled={switchingMode || embedLoading}
               onClick={async () => {
                 if (!dashboard) return;
-                const next = !editMode;
-                if (next && !window.confirm("Modo de edição: as alterações salvas afetarão o relatório original no Power BI e serão visíveis a todos os usuários. Deseja continuar?")) {
+                if (!editMode) {
+                  setEditConfirmOpen(true);
                   return;
                 }
                 setSwitchingMode(true);
-                setEditMode(next);
-                await fetchEmbedToken(dashboard.id, next ? "edit" : "view");
+                setEditMode(false);
+                await fetchEmbedToken(dashboard.id, "view");
                 setSwitchingMode(false);
               }}
               className="text-xs h-7 px-2"
