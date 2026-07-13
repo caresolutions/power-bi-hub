@@ -709,6 +709,16 @@ const DashboardViewer = () => {
         dashboardName={dashboard.name}
       />
 
+      {/* Refresh Schedule Dialog */}
+      <RefreshScheduleDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        dashboardId={dashboard.id}
+        dashboardName={dashboard.name}
+        companyId={companyId}
+      />
+
+
       {/* Bookmarks Dialog */}
       <BookmarksDialog
         open={bookmarksOpen}
