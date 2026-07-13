@@ -311,7 +311,7 @@ async function getReportEmbedToken(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ accessLevel: "View" }),
+    body: JSON.stringify({ accessLevel: mode === "edit" ? "Edit" : "View", allowSaveAs: false }),
   });
 
   if (!embedResponse.ok) {
