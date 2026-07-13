@@ -76,6 +76,9 @@ export function RefreshScheduleDialog({
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pbiSchedule, setPbiSchedule] = useState<any>(null);
+  const [pbiHistory, setPbiHistory] = useState<any[]>([]);
+  const [pbiLoading, setPbiLoading] = useState(false);
 
   // Draft new schedule form
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
@@ -85,8 +88,29 @@ export function RefreshScheduleDialog({
   const [dayOfMonth, setDayOfMonth] = useState(1);
 
   useEffect(() => {
-    if (open) fetchSchedules();
+    if (open) {
+      fetchSchedules();
+      fetchPowerBISchedule();
+    }
   }, [open, dashboardId]);
+
+  const fetchPowerBISchedule = async () => {
+    setPbiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("get-powerbi-schedule", {
+        body: { dashboardId },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setPbiSchedule(data.schedule);
+        setPbiHistory(data.history ?? []);
+      }
+    } catch (err) {
+      console.error("PBI schedule fetch failed", err);
+    } finally {
+      setPbiLoading(false);
+    }
+  };
 
   const fetchSchedules = async () => {
     setLoading(true);
