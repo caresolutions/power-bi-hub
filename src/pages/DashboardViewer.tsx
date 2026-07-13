@@ -345,9 +345,11 @@ const DashboardViewer = () => {
       tokenType: pbi.models.TokenType.Embed,
       accessToken: embedData.embedToken,
       embedUrl: embedData.embedUrl,
+      viewMode: mode === "edit" ? pbi.models.ViewMode.Edit : pbi.models.ViewMode.View,
+      permissions: mode === "edit" ? pbi.models.Permissions.ReadWrite : pbi.models.Permissions.Read,
       settings: {
         panes: {
-          filters: { visible: false },
+          filters: { visible: mode === "edit" },
           pageNavigation: { visible: false }, // Hide default nav, use our custom one
         },
         background: pbi.models.BackgroundType.Default,
@@ -370,6 +372,7 @@ const DashboardViewer = () => {
       },
 
     };
+
 
     if (embedData.reportSection) {
       config.pageName = embedData.reportSection;
