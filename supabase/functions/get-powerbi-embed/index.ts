@@ -14,6 +14,7 @@ const USER_ERROR_MESSAGES = {
   resource_not_found: `Não conseguimos localizar este dashboard. Revise as configurações ou ${SUPPORT_CONTACT}`,
   permission_denied: `Você não tem permissão para acessar este conteúdo. Caso acredite que seja um engano, ${SUPPORT_CONTACT}`,
   embed_error: `Não foi possível carregar o dashboard. Verifique as permissões do workspace ou ${SUPPORT_CONTACT}`,
+  edit_not_allowed: `O modo de edição não está habilitado para este relatório. A API de escrita (Read-Write) do Power BI precisa estar ativada no tenant, e o Service Principal precisa ser Membro ou Administrador do workspace. Ajuste essas permissões no portal do Power BI/Azure ou ${SUPPORT_CONTACT}`,
   service_error: `Não conseguimos concluir sua solicitação no momento. Tente novamente em instantes ou ${SUPPORT_CONTACT}`,
   credentials_missing: `As credenciais do Power BI ainda não foram configuradas. Configure na página de Credenciais ou ${SUPPORT_CONTACT}`,
 };
@@ -317,6 +318,23 @@ async function getReportEmbedToken(
   if (!embedResponse.ok) {
     const errorText = await embedResponse.text();
     console.error("[AUDIT] Embed token error:", errorText);
+    if (mode === "edit") {
+      const lower = errorText.toLowerCase();
+      // Detect common signals that write API / edit permission is not enabled
+      if (
+        embedResponse.status === 401 ||
+        embedResponse.status === 403 ||
+        lower.includes("powerbinotauthorized") ||
+        lower.includes("unauthorized") ||
+        lower.includes("forbidden") ||
+        lower.includes("write") ||
+        lower.includes("edit") ||
+        lower.includes("readwrite")
+      ) {
+        throw new Error(USER_ERROR_MESSAGES.edit_not_allowed);
+      }
+      throw new Error(USER_ERROR_MESSAGES.edit_not_allowed);
+    }
     throw new Error(USER_ERROR_MESSAGES.embed_error);
   }
 
