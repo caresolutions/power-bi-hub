@@ -7,13 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -23,6 +16,8 @@ import { Loader2 } from "lucide-react";
 interface EditLogsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  dashboardId: string;
+  dashboardName?: string;
 }
 
 type LogRow = {
@@ -37,10 +32,8 @@ type LogRow = {
 };
 
 const ENTITY_LABEL: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Cadastro do Dashboard",
   powerbi_report: "Relatório Power BI",
-  user: "Usuário",
-  user_group: "Grupo",
 };
 
 const ACTION_LABEL: Record<string, string> = {
@@ -50,52 +43,35 @@ const ACTION_LABEL: Record<string, string> = {
   save: "Salvamento",
 };
 
-export function EditLogsDialog({ open, onOpenChange }: EditLogsDialogProps) {
+export function EditLogsDialog({ open, onOpenChange, dashboardId, dashboardName }: EditLogsDialogProps) {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<string>("all");
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dashboardId) return;
     (async () => {
       setLoading(true);
-      let query = supabase
+      const { data, error } = await supabase
         .from("edit_logs")
         .select("id, entity_type, entity_id, entity_name, action, user_email, created_at, details")
+        .in("entity_type", ["dashboard", "powerbi_report"])
+        .eq("entity_id", dashboardId)
         .order("created_at", { ascending: false })
         .limit(300);
-      if (filter !== "all") query = query.eq("entity_type", filter);
-      const { data, error } = await query;
       if (!error) setLogs((data as any) || []);
       setLoading(false);
     })();
-  }, [open, filter]);
+  }, [open, dashboardId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Histórico de edições</DialogTitle>
           <DialogDescription>
-            Registro de alterações em dashboards, relatórios Power BI, usuários e grupos.
+            {dashboardName ? `Alterações registradas para: ${dashboardName}` : "Alterações registradas neste dashboard."}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="flex items-center gap-3 py-2">
-          <span className="text-sm text-muted-foreground">Filtrar por tipo:</span>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="dashboard">Dashboard</SelectItem>
-              <SelectItem value="powerbi_report">Relatório Power BI</SelectItem>
-              <SelectItem value="user">Usuário</SelectItem>
-              <SelectItem value="user_group">Grupo</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
         <div className="overflow-auto flex-1 border rounded-md">
           {loading ? (
@@ -104,16 +80,15 @@ export function EditLogsDialog({ open, onOpenChange }: EditLogsDialogProps) {
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
-              Nenhum registro encontrado.
+              Nenhum registro encontrado para este dashboard.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Data / hora</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Origem</TableHead>
                   <TableHead>Ação</TableHead>
-                  <TableHead>Item</TableHead>
                   <TableHead>Usuário</TableHead>
                 </TableRow>
               </TableHeader>
@@ -128,9 +103,6 @@ export function EditLogsDialog({ open, onOpenChange }: EditLogsDialogProps) {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{ACTION_LABEL[log.action] ?? log.action}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[260px] truncate" title={log.entity_name ?? ""}>
-                      {log.entity_name || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-sm">{log.user_email || "—"}</TableCell>
                   </TableRow>
