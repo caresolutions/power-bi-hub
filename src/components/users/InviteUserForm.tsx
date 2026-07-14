@@ -443,6 +443,15 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           }
         }
 
+        await logEdit({
+          entityType: "user",
+          entityId: createData?.userId ?? null,
+          entityName: email,
+          action: "create",
+          companyId: adminProfile.company_id,
+          details: { role: selectedRole, dashboards: selectedDashboards.length, groups: selectedGroups, isExistingUser },
+        });
+
         onSuccess();
       }
     } catch (error: any) {
