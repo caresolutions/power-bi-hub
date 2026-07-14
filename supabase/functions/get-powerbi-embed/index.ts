@@ -318,6 +318,23 @@ async function getReportEmbedToken(
   if (!embedResponse.ok) {
     const errorText = await embedResponse.text();
     console.error("[AUDIT] Embed token error:", errorText);
+    if (mode === "edit") {
+      const lower = errorText.toLowerCase();
+      // Detect common signals that write API / edit permission is not enabled
+      if (
+        embedResponse.status === 401 ||
+        embedResponse.status === 403 ||
+        lower.includes("powerbinotauthorized") ||
+        lower.includes("unauthorized") ||
+        lower.includes("forbidden") ||
+        lower.includes("write") ||
+        lower.includes("edit") ||
+        lower.includes("readwrite")
+      ) {
+        throw new Error(USER_ERROR_MESSAGES.edit_not_allowed);
+      }
+      throw new Error(USER_ERROR_MESSAGES.edit_not_allowed);
+    }
     throw new Error(USER_ERROR_MESSAGES.embed_error);
   }
 
