@@ -247,15 +247,24 @@ const UserGroups = () => {
         return;
       }
       toast.success("Grupo atualizado");
+      await logEdit({
+        entityType: "user_group",
+        entityId: editingGroup.id,
+        entityName: formData.name,
+        action: "update",
+        companyId: profileData.company_id,
+      });
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("user_groups")
         .insert({ 
           name: formData.name, 
           description: formData.description || null,
           created_by: user.id,
           company_id: profileData.company_id
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) {
         if (error.code === "23505") {
