@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const activeUserIdRef = useRef<string | null>(null);
 
   const fetchUserData = useCallback(async (currentUser: User) => {
     // Check cache first
@@ -288,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        activeUserIdRef.current = currentSession?.user?.id ?? null;
 
         if (currentSession?.user) {
           const userData = await fetchUserData(currentSession.user);
@@ -320,8 +322,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Supabase can emit a duplicate SIGNED_IN event when the browser tab regains focus.
+      // If it is the same authenticated user, do not update auth/subscription state because
+      // SubscriptionGuard would briefly unmount dashboard pages and force the Power BI embed to reload.
+      if (event === 'SIGNED_IN' && newSession?.user?.id === activeUserIdRef.current) {
+        return;
+      }
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      activeUserIdRef.current = newSession?.user?.id ?? null;
 
       if (event === 'SIGNED_OUT') {
         cachedUserData = null;
