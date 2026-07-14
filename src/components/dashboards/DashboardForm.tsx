@@ -19,6 +19,7 @@ import { motion } from "framer-motion";
 import SliderSlidesManager, { SliderSlide } from "./SliderSlidesManager";
 import DashboardAppItemsManager from "./DashboardAppItemsManager";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { logEdit } from "@/lib/editLog";
 
 interface Dashboard {
   id: string;
