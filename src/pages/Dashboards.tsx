@@ -870,6 +870,8 @@ const Dashboards = () => {
           onOpenChange={(open) => !open && setRefreshPermsDashboard(null)}
         />
       )}
+
+      <EditLogsDialog open={logsOpen} onOpenChange={setLogsOpen} />
     </div>
   );
 };
