@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle, Users } from "lucide-react";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { logEdit } from "@/lib/editLog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
