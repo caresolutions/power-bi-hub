@@ -868,7 +868,14 @@ const Dashboards = () => {
         />
       )}
 
-      <EditLogsDialog open={logsOpen} onOpenChange={setLogsOpen} />
+      {logsDashboard && (
+        <EditLogsDialog
+          open={!!logsDashboard}
+          onOpenChange={(open) => !open && setLogsDashboard(null)}
+          dashboardId={logsDashboard.id}
+          dashboardName={logsDashboard.name}
+        />
+      )}
     </div>
   );
 };
