@@ -275,6 +275,13 @@ const UserGroups = () => {
         return;
       }
       toast.success("Grupo criado");
+      await logEdit({
+        entityType: "user_group",
+        entityId: created?.id ?? null,
+        entityName: formData.name,
+        action: "create",
+        companyId: profileData.company_id,
+      });
     }
 
     setDialogOpen(false);
