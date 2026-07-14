@@ -65,7 +65,7 @@ const Dashboards = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
-  const [logsOpen, setLogsOpen] = useState(false);
+  const [logsDashboard, setLogsDashboard] = useState<Dashboard | null>(null);
   
   // Catalog filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -401,10 +401,7 @@ const Dashboards = () => {
             
             {isAdmin && !showForm && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setLogsOpen(true)}>
-                  <ScrollText className="mr-2 h-4 w-4" />
-                  Logs
-                </Button>
+
                 <Button
                   onClick={handleNewDashboard}
                   className="bg-primary hover:bg-primary/90 shadow-glow"
@@ -679,6 +676,18 @@ const Dashboards = () => {
                                 {t('dashboards.refresh')}
                               </Button>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLogsDashboard(dashboard);
+                              }}
+                            >
+                              <ScrollText className="mr-2 h-4 w-4" />
+                              Logs
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -817,6 +826,15 @@ const Dashboards = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                onClick={() => setLogsDashboard(dashboard)}
+                                title="Logs"
+                              >
+                                <ScrollText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
                                 onClick={() => setEditingDashboard(dashboard)}
                                 title={t('common.edit')}
                               >
@@ -871,7 +889,14 @@ const Dashboards = () => {
         />
       )}
 
-      <EditLogsDialog open={logsOpen} onOpenChange={setLogsOpen} />
+      {logsDashboard && (
+        <EditLogsDialog
+          open={!!logsDashboard}
+          onOpenChange={(open) => !open && setLogsDashboard(null)}
+          dashboardId={logsDashboard.id}
+          dashboardName={logsDashboard.name}
+        />
+      )}
     </div>
   );
 };
