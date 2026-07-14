@@ -338,6 +338,15 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           await saveAppItems(dashboard.id);
         }
 
+        await logEdit({
+          entityType: "dashboard",
+          entityId: dashboard.id,
+          entityName: name,
+          action: "update",
+          companyId: (isMasterAdmin && companyId) ? companyId : (dashboard as any).company_id ?? null,
+          details: { embed_type: embedType },
+        });
+
         toast({
           title: "Sucesso",
           description: "Dashboard atualizado com sucesso",
