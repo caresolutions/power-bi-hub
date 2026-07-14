@@ -400,19 +400,25 @@ const Dashboards = () => {
             </div>
             
             {isAdmin && !showForm && (
-              <Button
-                onClick={handleNewDashboard}
-                className="bg-primary hover:bg-primary/90 shadow-glow"
-                disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                {t('dashboards.newDashboard')}
-                {!dashboardLimit.isUnlimited && (
-                  <Badge variant="secondary" className="ml-2">
-                    {dashboardLimit.current}/{dashboardLimit.limit}
-                  </Badge>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setLogsOpen(true)}>
+                  <ScrollText className="mr-2 h-4 w-4" />
+                  Logs
+                </Button>
+                <Button
+                  onClick={handleNewDashboard}
+                  className="bg-primary hover:bg-primary/90 shadow-glow"
+                  disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  {t('dashboards.newDashboard')}
+                  {!dashboardLimit.isUnlimited && (
+                    <Badge variant="secondary" className="ml-2">
+                      {dashboardLimit.current}/{dashboardLimit.limit}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         </div>
