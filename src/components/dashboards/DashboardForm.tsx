@@ -384,6 +384,15 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           await saveAppItems(newDashboard.id);
         }
 
+        await logEdit({
+          entityType: "dashboard",
+          entityId: newDashboard?.id ?? null,
+          entityName: name,
+          action: "create",
+          companyId: targetCompanyId ?? null,
+          details: { embed_type: embedType },
+        });
+
         toast({
           title: "Sucesso",
           description: "Dashboard criado com sucesso",
