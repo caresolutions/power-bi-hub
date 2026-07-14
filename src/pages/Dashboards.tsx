@@ -65,6 +65,7 @@ const Dashboards = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  const [logsOpen, setLogsOpen] = useState(false);
   
   // Catalog filters
   const [searchQuery, setSearchQuery] = useState("");
