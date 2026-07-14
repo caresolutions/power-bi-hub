@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 import { cn } from "@/lib/utils";
+import { logEdit } from "@/lib/editLog";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
   AlertDialog,
@@ -443,6 +444,21 @@ const DashboardViewer = () => {
 
     report.on("rendered", () => {
       console.log("Report rendered successfully");
+    });
+
+    report.on("saved", async (event: any) => {
+      try {
+        await logEdit({
+          entityType: "powerbi_report",
+          entityId: dashboard?.id ?? id ?? null,
+          entityName: dashboard?.name ?? null,
+          action: "save",
+          companyId: (dashboard as any)?.company_id ?? null,
+          details: { reportObjectId: event?.detail?.reportObjectId ?? null },
+        });
+      } catch (err) {
+        console.warn("edit log (powerbi save) failed", err);
+      }
     });
 
     report.on("pageChanged", (event: any) => {

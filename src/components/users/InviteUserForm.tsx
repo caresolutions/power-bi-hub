@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Mail, ArrowLeft, Send, Search, Shield, Eye, AlertTriangle, Users } from "lucide-react";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { logEdit } from "@/lib/editLog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 
@@ -283,6 +284,15 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           description: `${newDashboardIds.length} dashboard(s) liberado(s) para ${email}`,
         });
 
+        await logEdit({
+          entityType: "user",
+          entityId: existingProfile.id,
+          entityName: email,
+          action: "update",
+          companyId: adminProfile.company_id,
+          details: { grantedDashboards: newDashboardIds.length, role: selectedRole, groups: selectedGroups },
+        });
+
         onSuccess();
       } else {
         // User doesn't exist - create user directly with temporary password
@@ -432,6 +442,15 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
             });
           }
         }
+
+        await logEdit({
+          entityType: "user",
+          entityId: createData?.userId ?? null,
+          entityName: email,
+          action: "create",
+          companyId: adminProfile.company_id,
+          details: { role: selectedRole, dashboards: selectedDashboards.length, groups: selectedGroups, isExistingUser },
+        });
 
         onSuccess();
       }

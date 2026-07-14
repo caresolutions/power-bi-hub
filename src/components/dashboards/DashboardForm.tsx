@@ -19,6 +19,7 @@ import { motion } from "framer-motion";
 import SliderSlidesManager, { SliderSlide } from "./SliderSlidesManager";
 import DashboardAppItemsManager from "./DashboardAppItemsManager";
 import { useSubscriptionPlan } from "@/hooks/useSubscriptionPlan";
+import { logEdit } from "@/lib/editLog";
 
 interface Dashboard {
   id: string;
@@ -337,6 +338,15 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
           await saveAppItems(dashboard.id);
         }
 
+        await logEdit({
+          entityType: "dashboard",
+          entityId: dashboard.id,
+          entityName: name,
+          action: "update",
+          companyId: (isMasterAdmin && companyId) ? companyId : (dashboard as any).company_id ?? null,
+          details: { embed_type: embedType },
+        });
+
         toast({
           title: "Sucesso",
           description: "Dashboard atualizado com sucesso",
@@ -373,6 +383,15 @@ const DashboardForm = ({ dashboard, credentials, onSuccess, onCancel, isMasterAd
         if (embedType === "app" && newDashboard) {
           await saveAppItems(newDashboard.id);
         }
+
+        await logEdit({
+          entityType: "dashboard",
+          entityId: newDashboard?.id ?? null,
+          entityName: name,
+          action: "create",
+          companyId: targetCompanyId ?? null,
+          details: { embed_type: embedType },
+        });
 
         toast({
           title: "Sucesso",

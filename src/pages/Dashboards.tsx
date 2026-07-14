@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2, LayoutGrid, List } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2, LayoutGrid, List, ScrollText } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
+import { EditLogsDialog } from "@/components/dashboards/EditLogsDialog";
 import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
@@ -64,6 +65,7 @@ const Dashboards = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  const [logsOpen, setLogsOpen] = useState(false);
   
   // Catalog filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -398,19 +400,25 @@ const Dashboards = () => {
             </div>
             
             {isAdmin && !showForm && (
-              <Button
-                onClick={handleNewDashboard}
-                className="bg-primary hover:bg-primary/90 shadow-glow"
-                disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                {t('dashboards.newDashboard')}
-                {!dashboardLimit.isUnlimited && (
-                  <Badge variant="secondary" className="ml-2">
-                    {dashboardLimit.current}/{dashboardLimit.limit}
-                  </Badge>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setLogsOpen(true)}>
+                  <ScrollText className="mr-2 h-4 w-4" />
+                  Logs
+                </Button>
+                <Button
+                  onClick={handleNewDashboard}
+                  className="bg-primary hover:bg-primary/90 shadow-glow"
+                  disabled={!dashboardLimit.allowed && !dashboardLimit.isUnlimited}
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  {t('dashboards.newDashboard')}
+                  {!dashboardLimit.isUnlimited && (
+                    <Badge variant="secondary" className="ml-2">
+                      {dashboardLimit.current}/{dashboardLimit.limit}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -862,6 +870,8 @@ const Dashboards = () => {
           onOpenChange={(open) => !open && setRefreshPermsDashboard(null)}
         />
       )}
+
+      <EditLogsDialog open={logsOpen} onOpenChange={setLogsOpen} />
     </div>
   );
 };

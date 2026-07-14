@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { logEdit } from "@/lib/editLog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -246,15 +247,24 @@ const UserGroups = () => {
         return;
       }
       toast.success("Grupo atualizado");
+      await logEdit({
+        entityType: "user_group",
+        entityId: editingGroup.id,
+        entityName: formData.name,
+        action: "update",
+        companyId: profileData.company_id,
+      });
     } else {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from("user_groups")
         .insert({ 
           name: formData.name, 
           description: formData.description || null,
           created_by: user.id,
           company_id: profileData.company_id
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) {
         if (error.code === "23505") {
@@ -265,6 +275,13 @@ const UserGroups = () => {
         return;
       }
       toast.success("Grupo criado");
+      await logEdit({
+        entityType: "user_group",
+        entityId: created?.id ?? null,
+        entityName: formData.name,
+        action: "create",
+        companyId: profileData.company_id,
+      });
     }
 
     setDialogOpen(false);
