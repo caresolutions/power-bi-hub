@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 import { cn } from "@/lib/utils";
+import { logEdit } from "@/lib/editLog";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
   AlertDialog,
