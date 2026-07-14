@@ -313,6 +313,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
 
+      // For TOKEN_REFRESHED / USER_UPDATED (fires when tab regains focus), skip state updates
+      // entirely if the user id hasn't changed. Updating session/user with a new object reference
+      // causes cascading re-renders (and re-embeds of Power BI reports) even though nothing changed.
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        return;
+      }
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
@@ -324,8 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         setSubscriptionLoading(false);
       } else if (newSession?.user && event === 'SIGNED_IN') {
-        // Only refetch user data on actual sign-in, not on TOKEN_REFRESHED
-        // (TOKEN_REFRESHED fires when tab regains focus and would cause the app to re-render/refresh)
+        // Only refetch user data on actual sign-in
         setTimeout(async () => {
           if (!mounted) return;
           const userData = await fetchUserData(newSession.user);
@@ -335,7 +341,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }, 0);
       }
-      // For TOKEN_REFRESHED: session/user are already updated above; skip data refetch to avoid UI refresh
     });
 
     return () => {
