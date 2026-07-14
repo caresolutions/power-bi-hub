@@ -401,10 +401,7 @@ const Dashboards = () => {
             
             {isAdmin && !showForm && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setLogsOpen(true)}>
-                  <ScrollText className="mr-2 h-4 w-4" />
-                  Logs
-                </Button>
+
                 <Button
                   onClick={handleNewDashboard}
                   className="bg-primary hover:bg-primary/90 shadow-glow"
