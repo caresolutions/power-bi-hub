@@ -676,6 +676,18 @@ const Dashboards = () => {
                                 {t('dashboards.refresh')}
                               </Button>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLogsDashboard(dashboard);
+                              }}
+                            >
+                              <ScrollText className="mr-2 h-4 w-4" />
+                              Logs
+                            </Button>
                           </div>
                         )}
                       </div>
