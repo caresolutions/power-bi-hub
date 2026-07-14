@@ -284,6 +284,15 @@ const InviteUserForm = ({ dashboards, onSuccess, onCancel }: InviteUserFormProps
           description: `${newDashboardIds.length} dashboard(s) liberado(s) para ${email}`,
         });
 
+        await logEdit({
+          entityType: "user",
+          entityId: existingProfile.id,
+          entityName: email,
+          action: "update",
+          companyId: adminProfile.company_id,
+          details: { grantedDashboards: newDashboardIds.length, role: selectedRole, groups: selectedGroups },
+        });
+
         onSuccess();
       } else {
         // User doesn't exist - create user directly with temporary password
