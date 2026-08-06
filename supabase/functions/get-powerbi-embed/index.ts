@@ -219,12 +219,7 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
     const errorText = await response.text();
     console.error("[AUDIT] Azure AD token error:", errorText);
 
-    const lowerError = errorText.toLowerCase();
-    if (lowerError.includes('aadsts65001') || lowerError.includes('consent_required')) {
-      throw new Error(USER_ERROR_MESSAGES.consent_required);
-    }
-
-    throw new Error(USER_ERROR_MESSAGES.auth_failed);
+    throw new Error(mapAzureAdError(errorText));
   }
 
   const data = await response.json();
