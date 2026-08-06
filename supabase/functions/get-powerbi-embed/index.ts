@@ -15,9 +15,34 @@ const USER_ERROR_MESSAGES = {
   permission_denied: `Você não tem permissão para acessar este conteúdo. Caso acredite que seja um engano, ${SUPPORT_CONTACT}`,
   embed_error: `Não foi possível carregar o dashboard. Verifique as permissões do workspace ou ${SUPPORT_CONTACT}`,
   edit_not_allowed: `O modo de edição não está habilitado para este relatório. A API de escrita (Read-Write) do Power BI precisa estar ativada no tenant, e o Service Principal precisa ser Membro ou Administrador do workspace. Ajuste essas permissões no portal do Power BI/Azure ou ${SUPPORT_CONTACT}`,
+  mfa_required: `As credenciais estão corretas, mas a conta master exige autenticação multifator (MFA) — o login por usuário/senha usado na integração não suporta MFA. Peça ao administrador do Azure para excluir essa conta das políticas de Acesso Condicional/MFA (ou use uma conta de serviço dedicada sem MFA) e tente novamente, ou ${SUPPORT_CONTACT}`,
+  password_invalid: `Usuário ou senha da conta master do Power BI inválidos (ou a senha expirou). Atualize a senha na página de Credenciais ou ${SUPPORT_CONTACT}`,
+  account_blocked: `A conta master do Power BI está bloqueada, desabilitada ou sem licença válida. Verifique a conta no Azure/Microsoft 365 ou ${SUPPORT_CONTACT}`,
+  ropc_blocked: `O tenant do Azure bloqueia o fluxo de autenticação por usuário/senha (ROPC) usado nesta integração. Habilite "Allow public client flows" no registro do aplicativo ou ${SUPPORT_CONTACT}`,
   service_error: `Não conseguimos concluir sua solicitação no momento. Tente novamente em instantes ou ${SUPPORT_CONTACT}`,
   credentials_missing: `As credenciais do Power BI ainda não foram configuradas. Configure na página de Credenciais ou ${SUPPORT_CONTACT}`,
 };
+
+// Maps a raw Azure AD error payload to a precise user message
+function mapAzureAdError(errorText: string): string {
+  const e = errorText.toLowerCase();
+  if (e.includes('aadsts50079') || e.includes('aadsts50076') || e.includes('aadsts50158') || e.includes('multi-factor') || e.includes('multifactor')) {
+    return USER_ERROR_MESSAGES.mfa_required;
+  }
+  if (e.includes('aadsts65001') || e.includes('consent_required') || e.includes('admin consent')) {
+    return USER_ERROR_MESSAGES.consent_required;
+  }
+  if (e.includes('aadsts50126') || e.includes('aadsts50055') || e.includes('aadsts50144')) {
+    return USER_ERROR_MESSAGES.password_invalid;
+  }
+  if (e.includes('aadsts50057') || e.includes('aadsts50053') || e.includes('aadsts50034')) {
+    return USER_ERROR_MESSAGES.account_blocked;
+  }
+  if (e.includes('aadsts7000218') || e.includes('aadsts50199') || e.includes('public client')) {
+    return USER_ERROR_MESSAGES.ropc_blocked;
+  }
+  return USER_ERROR_MESSAGES.auth_failed;
+}
 
 // Categorize errors for safe user messages
 function categorizeError(error: Error | string): keyof typeof USER_ERROR_MESSAGES {
@@ -194,12 +219,7 @@ async function getAzureAccessToken(config: PowerBIConfig): Promise<string> {
     const errorText = await response.text();
     console.error("[AUDIT] Azure AD token error:", errorText);
 
-    const lowerError = errorText.toLowerCase();
-    if (lowerError.includes('aadsts65001') || lowerError.includes('consent_required')) {
-      throw new Error(USER_ERROR_MESSAGES.consent_required);
-    }
-
-    throw new Error(USER_ERROR_MESSAGES.auth_failed);
+    throw new Error(mapAzureAdError(errorText));
   }
 
   const data = await response.json();
