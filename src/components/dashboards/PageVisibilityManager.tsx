@@ -104,6 +104,7 @@ export const PageVisibilityManager = ({
           is_visible: saved?.is_visible ?? true,
           display_order: saved?.display_order ?? index,
           restriction_count: saved?.id ? countMap.get(saved.id) || 0 : 0,
+          restriction_mode: saved?.restriction_mode ?? "allow",
         };
       });
 
