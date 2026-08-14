@@ -100,7 +100,7 @@ export const PageRestrictionsDialog = ({
 
       // Load existing restrictions
       if (pageVisibilityId) {
-        const [{ data: userR }, { data: groupR }] = await Promise.all([
+        const [{ data: userR }, { data: groupR }, { data: pvRow }] = await Promise.all([
           supabase
             .from("dashboard_page_user_restrictions")
             .select("user_id")
@@ -109,13 +109,21 @@ export const PageRestrictionsDialog = ({
             .from("dashboard_page_group_restrictions")
             .select("group_id")
             .eq("page_visibility_id", pageVisibilityId),
+          supabase
+            .from("dashboard_page_visibility")
+            .select("restriction_mode")
+            .eq("id", pageVisibilityId)
+            .maybeSingle(),
         ]);
 
         const uSet = new Set((userR || []).map((r) => r.user_id));
         const gSet = new Set((groupR || []).map((r) => r.group_id));
         setSelectedUsers(uSet);
         setSelectedGroups(gSet);
-        setMode(uSet.size > 0 || gSet.size > 0 ? "restricted" : "all");
+        const hasAny = uSet.size > 0 || gSet.size > 0;
+        setMode(
+          !hasAny ? "all" : (pvRow as any)?.restriction_mode === "deny" ? "hidden" : "restricted"
+        );
       } else {
         setSelectedUsers(new Set());
         setSelectedGroups(new Set());
