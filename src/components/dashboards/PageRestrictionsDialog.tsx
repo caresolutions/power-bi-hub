@@ -27,6 +27,8 @@ interface PageRestrictionsDialogProps {
   companyId: string;
 }
 
+type Mode = "all" | "restricted" | "hidden";
+
 interface CompanyUser {
   id: string;
   full_name: string | null;
