@@ -374,6 +374,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Diagnostic context returned alongside errors so admins know WHICH
+  // credential / workspace / step failed.
+  const diag: {
+    stage?: string;
+    credentialName?: string;
+    credentialId?: string;
+    workspaceId?: string;
+    reportId?: string;
+    masterUser?: string;
+  } = {};
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
