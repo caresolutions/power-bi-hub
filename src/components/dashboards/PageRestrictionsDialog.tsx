@@ -265,8 +265,19 @@ export const PageRestrictionsDialog = ({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="restricted" id="r-restricted" />
                 <Label htmlFor="r-restricted" className="cursor-pointer font-normal">
-                  Restringir acesso{" "}
+                  Visível apenas para os selecionados{" "}
                   {mode === "restricted" && restrictedCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      ({restrictedCount} selecionado{restrictedCount > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="hidden" id="r-hidden" />
+                <Label htmlFor="r-hidden" className="cursor-pointer font-normal">
+                  Ocultar dos selecionados{" "}
+                  {mode === "hidden" && restrictedCount > 0 && (
                     <span className="text-xs text-muted-foreground">
                       ({restrictedCount} selecionado{restrictedCount > 1 ? "s" : ""})
                     </span>
@@ -275,7 +286,14 @@ export const PageRestrictionsDialog = ({
               </div>
             </RadioGroup>
 
-            {mode === "restricted" && (
+            {mode === "hidden" && (
+              <p className="text-xs text-muted-foreground">
+                Todos com acesso ao dashboard veem esta página, exceto os usuários e
+                grupos marcados abaixo.
+              </p>
+            )}
+
+            {mode !== "all" && (
               <Tabs defaultValue="groups">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="groups" className="gap-2">
