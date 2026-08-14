@@ -374,6 +374,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Diagnostic context returned alongside errors so admins know WHICH
+  // credential / workspace / step failed.
+  const diag: {
+    stage?: string;
+    credentialName?: string;
+    credentialId?: string;
+    workspaceId?: string;
+    reportId?: string;
+    masterUser?: string;
+  } = {};
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -503,6 +514,10 @@ serve(async (req) => {
     }
 
     console.log("Processing credential:", targetCredentialId);
+    diag.credentialId = targetCredentialId;
+    diag.workspaceId = targetWorkspaceId;
+    diag.reportId = targetReportId;
+    diag.stage = "credenciais";
 
     // Get and decrypt credentials
     const encryptionKey = Deno.env.get("ENCRYPTION_KEY");
@@ -511,7 +526,7 @@ serve(async (req) => {
     if (encryptionKey) {
       const { data: credData, error: credError } = await supabase
         .from("power_bi_configs")
-        .select("client_id, client_secret, tenant_id, username, password")
+        .select("name, client_id, client_secret, tenant_id, username, password")
         .eq("id", targetCredentialId)
         .single();
 
@@ -530,7 +545,7 @@ serve(async (req) => {
     } else {
       const { data: credData, error: credError } = await supabase
         .from("power_bi_configs")
-        .select("client_id, client_secret, tenant_id, username, password")
+        .select("name, client_id, client_secret, tenant_id, username, password")
         .eq("id", targetCredentialId)
         .single();
 
@@ -546,7 +561,13 @@ serve(async (req) => {
       throw new Error(USER_ERROR_MESSAGES.credentials_missing);
     }
 
+    diag.credentialName = (credential as any).name ?? undefined;
+    diag.masterUser = credential.username ?? undefined;
+
+    diag.stage = "autenticação no Azure AD";
     const accessToken = await getAzureAccessToken(credential);
+
+    diag.stage = "acesso ao relatório no Power BI";
 
     const embedData = await getReportEmbedToken(
       accessToken,
@@ -555,6 +576,7 @@ serve(async (req) => {
       mode
     );
 
+    diag.stage = undefined;
     console.log("Embed data generated successfully");
 
     return new Response(
@@ -581,6 +603,13 @@ serve(async (req) => {
       JSON.stringify({
         success: false,
         error: safeError,
+        details: {
+          stage: diag.stage ?? null,
+          credentialName: diag.credentialName ?? null,
+          masterUser: diag.masterUser ?? null,
+          workspaceId: diag.workspaceId ?? null,
+          reportId: diag.reportId ?? null,
+        },
       }),
       {
         // Return 200 so the client always receives the friendly message body

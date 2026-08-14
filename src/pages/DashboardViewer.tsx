@@ -333,10 +333,34 @@ const DashboardViewer = () => {
         throw new Error(response.error.message);
       }
 
-      const data = response.data as EmbedData & { success: boolean; error?: string };
+      const data = response.data as EmbedData & {
+        success: boolean;
+        error?: string;
+        details?: {
+          stage?: string | null;
+          credentialName?: string | null;
+          masterUser?: string | null;
+          workspaceId?: string | null;
+          reportId?: string | null;
+        };
+      };
 
       if (!data.success) {
-        throw new Error(data.error || "Falha ao obter token de embed");
+        const d = data.details;
+        const extra = d
+          ? [
+              d.stage ? `Etapa: ${d.stage}` : null,
+              d.credentialName ? `Credencial: ${d.credentialName}` : null,
+              d.masterUser ? `Conta master: ${d.masterUser}` : null,
+              d.workspaceId ? `Workspace: ${d.workspaceId}` : null,
+              d.reportId ? `Relatório: ${d.reportId}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : "";
+        throw new Error(
+          [data.error || "Falha ao obter token de embed", extra].filter(Boolean).join("\n\n")
+        );
       }
 
       setEmbedLoading(false);
@@ -789,7 +813,9 @@ const DashboardViewer = () => {
             {embedError && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center p-8">
-                  <p className="text-destructive mb-4">{embedError}</p>
+                  <p className="text-destructive mb-4 whitespace-pre-line max-w-2xl mx-auto text-sm">
+                    {embedError}
+                  </p>
                   <Button onClick={() => fetchEmbedToken(dashboard.id)}>
                     Tentar novamente
                   </Button>
