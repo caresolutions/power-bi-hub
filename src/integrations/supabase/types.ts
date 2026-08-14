@@ -423,6 +423,7 @@ export type Database = {
           is_visible: boolean
           page_display_name: string
           page_name: string
+          restriction_mode: string
           updated_at: string
         }
         Insert: {
@@ -433,6 +434,7 @@ export type Database = {
           is_visible?: boolean
           page_display_name: string
           page_name: string
+          restriction_mode?: string
           updated_at?: string
         }
         Update: {
@@ -443,6 +445,7 @@ export type Database = {
           is_visible?: boolean
           page_display_name?: string
           page_name?: string
+          restriction_mode?: string
           updated_at?: string
         }
         Relationships: [

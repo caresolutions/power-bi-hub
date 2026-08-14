@@ -21,6 +21,7 @@ interface PageVisibility {
   is_visible: boolean;
   display_order: number;
   restriction_count?: number;
+  restriction_mode?: string;
 }
 
 interface ReportPage {
@@ -103,6 +104,7 @@ export const PageVisibilityManager = ({
           is_visible: saved?.is_visible ?? true,
           display_order: saved?.display_order ?? index,
           restriction_count: saved?.id ? countMap.get(saved.id) || 0 : 0,
+          restriction_mode: saved?.restriction_mode ?? "allow",
         };
       });
 
@@ -238,7 +240,9 @@ export const PageVisibilityManager = ({
                         </span>
                         <span className="text-xs text-muted-foreground truncate">
                           {(page.restriction_count ?? 0) > 0
-                            ? `Restrito a ${page.restriction_count} usuário(s)/grupo(s)`
+                            ? page.restriction_mode === "deny"
+                              ? `Oculta para ${page.restriction_count} usuário(s)/grupo(s)`
+                              : `Restrito a ${page.restriction_count} usuário(s)/grupo(s)`
                             : page.page_name}
                         </span>
                       </div>

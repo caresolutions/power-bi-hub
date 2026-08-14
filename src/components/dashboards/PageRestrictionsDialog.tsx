@@ -27,6 +27,8 @@ interface PageRestrictionsDialogProps {
   companyId: string;
 }
 
+type Mode = "all" | "restricted" | "hidden";
+
 interface CompanyUser {
   id: string;
   full_name: string | null;
@@ -49,7 +51,7 @@ export const PageRestrictionsDialog = ({
 }: PageRestrictionsDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<"all" | "restricted">("all");
+  const [mode, setMode] = useState<Mode>("all");
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [groups, setGroups] = useState<CompanyGroup[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -98,7 +100,7 @@ export const PageRestrictionsDialog = ({
 
       // Load existing restrictions
       if (pageVisibilityId) {
-        const [{ data: userR }, { data: groupR }] = await Promise.all([
+        const [{ data: userR }, { data: groupR }, { data: pvRow }] = await Promise.all([
           supabase
             .from("dashboard_page_user_restrictions")
             .select("user_id")
@@ -107,13 +109,21 @@ export const PageRestrictionsDialog = ({
             .from("dashboard_page_group_restrictions")
             .select("group_id")
             .eq("page_visibility_id", pageVisibilityId),
+          supabase
+            .from("dashboard_page_visibility")
+            .select("restriction_mode")
+            .eq("id", pageVisibilityId)
+            .maybeSingle(),
         ]);
 
         const uSet = new Set((userR || []).map((r) => r.user_id));
         const gSet = new Set((groupR || []).map((r) => r.group_id));
         setSelectedUsers(uSet);
         setSelectedGroups(gSet);
-        setMode(uSet.size > 0 || gSet.size > 0 ? "restricted" : "all");
+        const hasAny = uSet.size > 0 || gSet.size > 0;
+        setMode(
+          !hasAny ? "all" : (pvRow as any)?.restriction_mode === "deny" ? "hidden" : "restricted"
+        );
       } else {
         setSelectedUsers(new Set());
         setSelectedGroups(new Set());
@@ -171,7 +181,16 @@ export const PageRestrictionsDialog = ({
           .eq("page_visibility_id", pvId),
       ]);
 
-      if (mode === "restricted") {
+      // Persist the restriction mode on the visibility row
+      {
+        const { error: modeError } = await supabase
+          .from("dashboard_page_visibility")
+          .update({ restriction_mode: mode === "hidden" ? "deny" : "allow" } as any)
+          .eq("id", pvId);
+        if (modeError) throw modeError;
+      }
+
+      if (mode !== "all") {
         const userRows = Array.from(selectedUsers).map((uid) => ({
           page_visibility_id: pvId,
           user_id: uid,
@@ -246,8 +265,19 @@ export const PageRestrictionsDialog = ({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="restricted" id="r-restricted" />
                 <Label htmlFor="r-restricted" className="cursor-pointer font-normal">
-                  Restringir acesso{" "}
+                  Visível apenas para os selecionados{" "}
                   {mode === "restricted" && restrictedCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      ({restrictedCount} selecionado{restrictedCount > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="hidden" id="r-hidden" />
+                <Label htmlFor="r-hidden" className="cursor-pointer font-normal">
+                  Ocultar dos selecionados{" "}
+                  {mode === "hidden" && restrictedCount > 0 && (
                     <span className="text-xs text-muted-foreground">
                       ({restrictedCount} selecionado{restrictedCount > 1 ? "s" : ""})
                     </span>
@@ -256,7 +286,14 @@ export const PageRestrictionsDialog = ({
               </div>
             </RadioGroup>
 
-            {mode === "restricted" && (
+            {mode === "hidden" && (
+              <p className="text-xs text-muted-foreground">
+                Todos com acesso ao dashboard veem esta página, exceto os usuários e
+                grupos marcados abaixo.
+              </p>
+            )}
+
+            {mode !== "all" && (
               <Tabs defaultValue="groups">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="groups" className="gap-2">
