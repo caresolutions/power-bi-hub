@@ -181,7 +181,16 @@ export const PageRestrictionsDialog = ({
           .eq("page_visibility_id", pvId),
       ]);
 
-      if (mode === "restricted") {
+      // Persist the restriction mode on the visibility row
+      {
+        const { error: modeError } = await supabase
+          .from("dashboard_page_visibility")
+          .update({ restriction_mode: mode === "hidden" ? "deny" : "allow" } as any)
+          .eq("id", pvId);
+        if (modeError) throw modeError;
+      }
+
+      if (mode !== "all") {
         const userRows = Array.from(selectedUsers).map((uid) => ({
           page_visibility_id: pvId,
           user_id: uid,
