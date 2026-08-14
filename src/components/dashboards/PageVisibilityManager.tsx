@@ -21,6 +21,7 @@ interface PageVisibility {
   is_visible: boolean;
   display_order: number;
   restriction_count?: number;
+  restriction_mode?: string;
 }
 
 interface ReportPage {
