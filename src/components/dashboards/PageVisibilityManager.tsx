@@ -240,7 +240,9 @@ export const PageVisibilityManager = ({
                         </span>
                         <span className="text-xs text-muted-foreground truncate">
                           {(page.restriction_count ?? 0) > 0
-                            ? `Restrito a ${page.restriction_count} usuário(s)/grupo(s)`
+                            ? page.restriction_mode === "deny"
+                              ? `Oculta para ${page.restriction_count} usuário(s)/grupo(s)`
+                              : `Restrito a ${page.restriction_count} usuário(s)/grupo(s)`
                             : page.page_name}
                         </span>
                       </div>
