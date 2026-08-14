@@ -813,7 +813,9 @@ const DashboardViewer = () => {
             {embedError && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center p-8">
-                  <p className="text-destructive mb-4">{embedError}</p>
+                  <p className="text-destructive mb-4 whitespace-pre-line max-w-2xl mx-auto text-sm">
+                    {embedError}
+                  </p>
                   <Button onClick={() => fetchEmbedToken(dashboard.id)}>
                     Tentar novamente
                   </Button>
