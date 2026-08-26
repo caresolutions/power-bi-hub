@@ -234,37 +234,31 @@ export const UsersSettings = ({ companyId }: UsersSettingsProps) => {
 
   const handleDelete = async () => {
     if (!deletingUser) return;
-    
+
     setDeleting(true);
-    
-    await supabase
-      .from("user_roles")
-      .delete()
-      .eq("user_id", deletingUser.id);
 
-    await supabase
-      .from("user_dashboard_access")
-      .delete()
-      .eq("user_id", deletingUser.id);
-
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("id", deletingUser.id);
-
-    if (error) {
-      toast({
-        title: t('common.error'),
-        description: t('settings.userRemoveError'),
-        variant: "destructive",
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId: deletingUser.id, deleteFromAuth: true },
       });
-    } else {
+
+      const errMessage = (data as { error?: string } | null)?.error;
+      if (error || errMessage) {
+        throw new Error(errMessage || error?.message);
+      }
+
       toast({
         title: t('common.success'),
         description: t('settings.userRemoved'),
       });
+    } catch (err: unknown) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof Error && err.message ? err.message : t('settings.userRemoveError'),
+        variant: "destructive",
+      });
     }
-    
+
     setDeletingUser(null);
     setDeleting(false);
     fetchUsers();
