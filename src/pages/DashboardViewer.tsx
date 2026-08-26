@@ -165,10 +165,8 @@ const DashboardViewer = () => {
 
   // Update layout when fit mode changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("dashboard_fit_mode", fitMode);
-    }
     if (reportRef.current) {
+
       reportRef.current.updateSettings({
         layoutType: pbi.models.LayoutType.Custom,
         customLayout: {
