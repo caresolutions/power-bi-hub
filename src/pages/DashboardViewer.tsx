@@ -81,10 +81,9 @@ const DashboardViewer = () => {
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [visiblePages, setVisiblePages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
-  const [fitMode, setFitMode] = useState<"width" | "page">(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("dashboard_fit_mode") : null;
-    return (saved === "page" ? "page" : "width");
-  });
+  // Padrão global: sempre inicia ajustado à largura para todos os usuários
+  const [fitMode, setFitMode] = useState<"width" | "page">("width");
+
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
@@ -166,10 +165,8 @@ const DashboardViewer = () => {
 
   // Update layout when fit mode changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("dashboard_fit_mode", fitMode);
-    }
     if (reportRef.current) {
+
       reportRef.current.updateSettings({
         layoutType: pbi.models.LayoutType.Custom,
         customLayout: {
