@@ -25,6 +25,74 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // ---- Authorization: only master admins, or admins of the same company ----
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "");
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    const caller = authData?.user;
+
+    if (authErr || !caller) {
+      return new Response(JSON.stringify({ error: "Não autenticado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (caller.id === userId) {
+      return new Response(JSON.stringify({ error: "Você não pode excluir o próprio usuário" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: callerRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id);
+
+    const roles = (callerRoles ?? []).map((r: { role: string }) => r.role);
+    const isMaster = roles.includes("master_admin");
+    const isAdmin = roles.includes("admin");
+
+    if (!isMaster && !isAdmin) {
+      return new Response(JSON.stringify({ error: "Permissão negada" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!isMaster) {
+      const [{ data: callerProfile }, { data: targetProfile }] = await Promise.all([
+        supabaseAdmin.from("profiles").select("company_id").eq("id", caller.id).maybeSingle(),
+        supabaseAdmin.from("profiles").select("company_id").eq("id", userId).maybeSingle(),
+      ]);
+
+      if (
+        !callerProfile?.company_id ||
+        !targetProfile?.company_id ||
+        callerProfile.company_id !== targetProfile.company_id
+      ) {
+        return new Response(
+          JSON.stringify({ error: "Você só pode excluir usuários da sua empresa" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Admins cannot delete master admins
+      const { data: targetRoles } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      if ((targetRoles ?? []).some((r: { role: string }) => r.role === "master_admin")) {
+        return new Response(JSON.stringify({ error: "Permissão negada" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
     // Remove dashboard access
     await supabaseAdmin
       .from("user_dashboard_access")
