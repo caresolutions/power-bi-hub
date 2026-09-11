@@ -81,7 +81,7 @@ const DashboardViewer = () => {
   const [reportPages, setReportPages] = useState<ReportPage[]>([]);
   const [visiblePages, setVisiblePages] = useState<ReportPage[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
-  // Padrão global: sempre inicia ajustado à largura para todos os usuários
+  // Padrão da empresa (definido pelo admin), com preferência individual do usuário
   const [fitMode, setFitMode] = useState<"width" | "page">("width");
 
   const [editMode, setEditMode] = useState(false);
