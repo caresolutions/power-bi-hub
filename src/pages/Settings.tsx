@@ -117,7 +117,7 @@ const Settings = () => {
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-6 py-8">
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-4">
+          <TabsList className="grid w-full max-w-2xl grid-cols-5">
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">{t('settings.company')}</span>
@@ -125,6 +125,10 @@ const Settings = () => {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">{t('settings.users')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="dashboards" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Dashboards</span>
             </TabsTrigger>
             <TabsTrigger value="customization" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
@@ -144,6 +148,10 @@ const Settings = () => {
             <UsersSettings companyId={effectiveCompanyId} />
           </TabsContent>
 
+          <TabsContent value="dashboards">
+            <DashboardsSettings companyId={effectiveCompanyId} />
+          </TabsContent>
+
           <TabsContent value="customization">
             <CustomizationSettings companyId={effectiveCompanyId} />
           </TabsContent>
@@ -152,6 +160,7 @@ const Settings = () => {
             <CancellationSettings />
           </TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
