@@ -94,10 +94,37 @@ const DashboardViewer = () => {
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
-  const { role, companyId } = useAuth();
+  const { role, companyId, userId } = useAuth();
   const { hasFeature } = useSubscriptionPlan();
   const isAdmin = role === 'admin' || role === 'master_admin';
   const canUseAiChat = hasFeature("ai_chat");
+
+  // Resolve fit mode: preferência do usuário > padrão da empresa
+  useEffect(() => {
+    if (!userId) return;
+    const saved = localStorage.getItem(`dashboard_fit_mode_${userId}`);
+    if (saved === "width" || saved === "page") {
+      setFitMode(saved);
+      return;
+    }
+    if (!companyId) return;
+    supabase
+      .from("companies")
+      .select("default_fit_mode")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.default_fit_mode === "page" || data?.default_fit_mode === "width") {
+          setFitMode(data.default_fit_mode);
+        }
+      });
+  }, [userId, companyId]);
+
+  const handleToggleFitMode = () => {
+    const next = fitMode === "width" ? "page" : "width";
+    setFitMode(next);
+    if (userId) localStorage.setItem(`dashboard_fit_mode_${userId}`, next);
+  };
 
   // Load page visibility settings
   const loadPageVisibility = useCallback(async (pages: ReportPage[]) => {
