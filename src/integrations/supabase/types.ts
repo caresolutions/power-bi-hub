@@ -55,6 +55,7 @@ export type Database = {
           card_color: string | null
           cnpj: string
           created_at: string
+          default_fit_mode: string
           destructive_color: string | null
           font_primary: string | null
           font_secondary: string | null
@@ -76,6 +77,7 @@ export type Database = {
           card_color?: string | null
           cnpj: string
           created_at?: string
+          default_fit_mode?: string
           destructive_color?: string | null
           font_primary?: string | null
           font_secondary?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           card_color?: string | null
           cnpj?: string
           created_at?: string
+          default_fit_mode?: string
           destructive_color?: string | null
           font_primary?: string | null
           font_secondary?: string | null
