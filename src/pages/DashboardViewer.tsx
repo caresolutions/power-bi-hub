@@ -99,7 +99,8 @@ const DashboardViewer = () => {
   const isAdmin = role === 'admin' || role === 'master_admin';
   const canUseAiChat = hasFeature("ai_chat");
 
-  // Resolve fit mode: preferência do usuário > padrão da empresa
+  // Resolve fit mode: preferência do usuário > padrão da empresa dona do dashboard
+  const dashboardCompanyId = (dashboard as any)?.company_id ?? companyId;
   useEffect(() => {
     if (!userId) return;
     const saved = localStorage.getItem(`dashboard_fit_mode_${userId}`);
@@ -107,18 +108,18 @@ const DashboardViewer = () => {
       setFitMode(saved);
       return;
     }
-    if (!companyId) return;
+    if (!dashboardCompanyId) return;
     supabase
       .from("companies")
       .select("default_fit_mode")
-      .eq("id", companyId)
+      .eq("id", dashboardCompanyId)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.default_fit_mode === "page" || data?.default_fit_mode === "width") {
           setFitMode(data.default_fit_mode);
         }
       });
-  }, [userId, companyId]);
+  }, [userId, dashboardCompanyId]);
 
   const handleToggleFitMode = () => {
     const next = fitMode === "width" ? "page" : "width";
