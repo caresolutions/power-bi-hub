@@ -691,7 +691,7 @@ const DashboardViewer = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setFitMode(fitMode === "width" ? "page" : "width")}
+              onClick={handleToggleFitMode}
               className="text-xs h-7 px-2"
               title={fitMode === "width" ? "Ajustar à tela (sem rolagem)" : "Ajustar à largura"}
             >
