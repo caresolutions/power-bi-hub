@@ -593,6 +593,86 @@ const DashboardViewer = () => {
     }
   }, [toast]);
 
+  const handleExport = useCallback(
+    async (fileFormat: "PDF" | "PPTX", scope: "current" | "all") => {
+      if (!dashboard) return;
+      setExporting(true);
+      try {
+        let bookmarkState: string | undefined;
+        let pages: string[] | undefined;
+
+        if (reportRef.current) {
+          try {
+            const captured = await reportRef.current.bookmarksManager.capture();
+            bookmarkState = captured.state;
+          } catch (err) {
+            console.warn("Não foi possível capturar o estado atual:", err);
+          }
+        }
+
+        if (scope === "current") {
+          pages = currentPage ? [currentPage] : undefined;
+        } else if (visiblePages.length > 0) {
+          // Respeita as restrições de páginas configuradas
+          pages = visiblePages.map((p) => p.name);
+        }
+
+        toast({
+          title: "Exportação iniciada",
+          description: "Estamos gerando o arquivo no Power BI. Isso pode levar alguns instantes.",
+        });
+
+        const response = await supabase.functions.invoke("export-powerbi-report", {
+          body: {
+            dashboardId: dashboard.id,
+            format: fileFormat,
+            scope: scope === "current" ? "current" : pages ? "current" : "all",
+            pages,
+            bookmarkState,
+          },
+        });
+
+        if (response.error) throw new Error(response.error.message);
+
+        const data = response.data as {
+          success: boolean;
+          error?: string;
+          fileName?: string;
+          mimeType?: string;
+          fileBase64?: string;
+        };
+
+        if (!data.success || !data.fileBase64) {
+          throw new Error(data.error || "Falha ao exportar o relatório");
+        }
+
+        const binary = atob(data.fileBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: data.mimeType || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = data.fileName || `relatorio.${fileFormat.toLowerCase()}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({ title: "Exportação concluída", description: "O download foi iniciado." });
+      } catch (error: any) {
+        toast({
+          title: "Erro na exportação",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setExporting(false);
+      }
+    },
+    [dashboard, currentPage, visiblePages, toast]
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
