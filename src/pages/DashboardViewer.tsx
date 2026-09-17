@@ -25,6 +25,12 @@ import { logEdit } from "@/lib/editLog";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
