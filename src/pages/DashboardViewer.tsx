@@ -596,13 +596,26 @@ const DashboardViewer = () => {
     if (!dashboard || !reportRef.current) return;
     setExporting(true);
     const originalTitle = document.title;
+    const restore = () => {
+      document.title = originalTitle;
+      window.removeEventListener("afterprint", restore);
+    };
     try {
       const now = new Date();
       setExportStamp(format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
 
       const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "-").trim();
       const companyPart = companyInfo.name ? `${safe(companyInfo.name)} - ` : "";
-      document.title = `${companyPart}${safe(dashboard.name)} - ${format(now, "dd-MM-yyyy HH-mm")}`;
+      const fileTitle = `${companyPart}${safe(dashboard.name)} - ${format(now, "dd-MM-yyyy HH-mm")}`;
+      document.title = fileTitle;
+      // alguns navegadores só leem o título do documento no topo da janela
+      try {
+        if (window.top && window.top !== window.self) {
+          (window.top as Window).document.title = fileTitle;
+        }
+      } catch {
+        // janela pai de outro domínio (ex.: pré-visualização) — ignora
+      }
 
       toast({
         title: "Preparando exportação",
@@ -611,18 +624,20 @@ const DashboardViewer = () => {
 
       // aguarda o cabeçalho de impressão renderizar
       await new Promise((r) => setTimeout(r, 300));
+      window.addEventListener("afterprint", restore);
       window.print();
+      setExporting(false);
     } catch (error: any) {
+      restore();
+      setExporting(false);
       toast({
         title: "Erro na exportação",
         description: error?.message || "Não foi possível gerar a captura do relatório.",
         variant: "destructive",
       });
-    } finally {
-      document.title = originalTitle;
-      setExporting(false);
     }
   }, [dashboard, companyInfo, toast]);
+
 
 
 
