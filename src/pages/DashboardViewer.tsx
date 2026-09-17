@@ -622,13 +622,16 @@ const DashboardViewer = () => {
         // janela pai de outro domínio (ex.: pré-visualização) — ignora
       }
 
-      toast({
+      const preparing = toast({
         title: "Preparando exportação",
         description: "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
       });
 
       // aguarda o cabeçalho de impressão renderizar
       await new Promise((r) => setTimeout(r, 300));
+      // fecha os avisos para não saírem na impressão
+      preparing.dismiss();
+      await new Promise((r) => setTimeout(r, 100));
       window.addEventListener("afterprint", restore);
       window.print();
       setExporting(false);
