@@ -104,24 +104,26 @@ const DashboardViewer = () => {
   // Resolve fit mode: preferência do usuário > padrão da empresa dona do dashboard
   const dashboardCompanyId = (dashboard as any)?.company_id ?? companyId;
   useEffect(() => {
-    if (!userId) return;
-    const saved = localStorage.getItem(`dashboard_fit_mode_${userId}`);
-    if (saved === "width" || saved === "page") {
-      setFitMode(saved);
-      return;
-    }
     if (!dashboardCompanyId) return;
     supabase
       .from("companies")
-      .select("default_fit_mode")
+      .select("name, logo_url, default_fit_mode")
       .eq("id", dashboardCompanyId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.default_fit_mode === "page" || data?.default_fit_mode === "width") {
+        if (!data) return;
+        setCompanyInfo({ name: (data as any).name ?? null, logo_url: (data as any).logo_url ?? null });
+        const saved = userId ? localStorage.getItem(`dashboard_fit_mode_${userId}`) : null;
+        if (saved === "width" || saved === "page") {
+          setFitMode(saved);
+          return;
+        }
+        if (data.default_fit_mode === "page" || data.default_fit_mode === "width") {
           setFitMode(data.default_fit_mode);
         }
       });
   }, [userId, dashboardCompanyId]);
+
 
   const handleToggleFitMode = () => {
     const next = fitMode === "width" ? "page" : "width";
