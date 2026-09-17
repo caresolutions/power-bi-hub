@@ -860,23 +860,54 @@ const DashboardViewer = () => {
 
           {/* Export button (captura da tela) */}
           {dashboard.embed_type === "workspace_id" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={exporting}
-              onClick={handleExport}
-              className="text-xs h-7 px-2"
-              title="Exportar em PDF (captura da tela)"
-            >
-              {exporting ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Download className="h-3 w-3" />
-              )}
-              <span className="ml-1 hidden sm:inline">
-                {exporting ? "Exportando..." : "Exportar PDF"}
-              </span>
-            </Button>
+            visiblePages.length > 1 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={exporting}
+                    className="text-xs h-7 px-2"
+                    title="Exportar em PDF (captura da tela)"
+                  >
+                    {exporting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                    <span className="ml-1 hidden sm:inline">
+                      {exporting ? "Exportando..." : "Exportar PDF"}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport("current")}>
+                    Somente a página atual
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("all")}>
+                    Todas as páginas ({visiblePages.length})
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={exporting}
+                onClick={() => handleExport("current")}
+                className="text-xs h-7 px-2"
+                title="Exportar em PDF (captura da tela)"
+              >
+                {exporting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3" />
+                )}
+                <span className="ml-1 hidden sm:inline">
+                  {exporting ? "Exportando..." : "Exportar PDF"}
+                </span>
+              </Button>
+            )
           )}
 
 
