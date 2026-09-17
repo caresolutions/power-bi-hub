@@ -56,6 +56,14 @@ const ConditionalSupportChat = () => {
   return <SupportChat />;
 };
 
+// Force the page title everywhere so preview/hosting suffixes never show
+const TitleSetter = () => {
+  useEffect(() => {
+    document.title = "Power BI Hub Dashboards";
+  }, []);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
