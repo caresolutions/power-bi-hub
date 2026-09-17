@@ -92,6 +92,7 @@ const DashboardViewer = () => {
   // Padrão da empresa (definido pelo admin), com preferência individual do usuário
   const [fitMode, setFitMode] = useState<"width" | "page">("width");
 
+  const [exporting, setExporting] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
