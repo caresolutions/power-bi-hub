@@ -72,6 +72,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ConsentProvider>
+            <TitleSetter />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/saiba-mais" element={<LearnMore />} />
