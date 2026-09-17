@@ -598,47 +598,91 @@ const DashboardViewer = () => {
     }
   }, [toast]);
 
-  const handleExport = useCallback(async () => {
+  const handleExport = useCallback(async (mode: "current" | "all" = "current") => {
     if (!dashboard || !reportRef.current) return;
     setExporting(true);
     const originalTitle = document.title;
-    const restore = () => {
+    const restoreTitle = () => {
       document.title = originalTitle;
-      window.removeEventListener("afterprint", restore);
     };
+    const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "-").trim();
+
+    const printOnce = () =>
+      new Promise<void>((resolve) => {
+        const done = () => {
+          window.removeEventListener("afterprint", done);
+          resolve();
+        };
+        window.addEventListener("afterprint", done);
+        window.print();
+        // fallback caso o navegador não dispare afterprint
+        setTimeout(done, 60000);
+      });
+
     try {
       const now = new Date();
       setExportStamp(format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
 
-      const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "-").trim();
       const companyPart = companyInfo.name ? `${safe(companyInfo.name)} - ` : "";
-      const fileTitle = `${companyPart}${safe(dashboard.name)} - ${format(now, "dd-MM-yyyy HH-mm")}`;
-      document.title = fileTitle;
-      // alguns navegadores só leem o título do documento no topo da janela
-      try {
-        if (window.top && window.top !== window.self) {
-          (window.top as Window).document.title = fileTitle;
-        }
-      } catch {
-        // janela pai de outro domínio (ex.: pré-visualização) — ignora
-      }
+      const stampPart = format(now, "dd-MM-yyyy HH-mm");
+
+      const targets =
+        mode === "all" && visiblePages.length > 0
+          ? visiblePages.map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
+          : [
+              {
+                name: currentPage,
+                displayName:
+                  visiblePages.find((p) => p.name === currentPage)?.displayName || "",
+              },
+            ];
 
       const preparing = toast({
         title: "Preparando exportação",
-        description: "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
+        description:
+          mode === "all"
+            ? `Vamos abrir a janela de impressão para cada uma das ${targets.length} páginas. Escolha 'Salvar como PDF'.`
+            : "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
       });
-
-      // aguarda o cabeçalho de impressão renderizar
-      await new Promise((r) => setTimeout(r, 300));
-      // fecha todos os avisos para não saírem na impressão
+      await new Promise((r) => setTimeout(r, mode === "all" ? 1500 : 300));
       preparing.dismiss();
       dismiss();
-      await new Promise((r) => setTimeout(r, 150));
-      window.addEventListener("afterprint", restore);
-      window.print();
+
+      const originalPage = currentPage;
+
+      for (const target of targets) {
+        if (mode === "all" && target.name && target.name !== currentPage) {
+          await handlePageChange(target.name);
+          await new Promise((r) => setTimeout(r, 2500));
+        }
+
+        setExportPageLabel(target.displayName || "");
+        const pagePart = mode === "all" && target.displayName ? ` - ${safe(target.displayName)}` : "";
+        const fileTitle = `${companyPart}${safe(dashboard.name)}${pagePart} - ${stampPart}`;
+        document.title = fileTitle;
+        try {
+          if (window.top && window.top !== window.self) {
+            (window.top as Window).document.title = fileTitle;
+          }
+        } catch {
+          // janela pai de outro domínio (ex.: pré-visualização) — ignora
+        }
+
+        await new Promise((r) => setTimeout(r, 300));
+        await printOnce();
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      if (mode === "all" && originalPage && originalPage !== currentPage) {
+        await handlePageChange(originalPage);
+      }
+
+      setExportPageLabel("");
+      restoreTitle();
       setExporting(false);
     } catch (error: any) {
-      restore();
+      setExportPageLabel("");
+      restoreTitle();
       setExporting(false);
       toast({
         title: "Erro na exportação",
@@ -646,7 +690,7 @@ const DashboardViewer = () => {
         variant: "destructive",
       });
     }
-  }, [dashboard, companyInfo, toast]);
+  }, [dashboard, companyInfo, toast, dismiss, visiblePages, currentPage]);
 
 
 
