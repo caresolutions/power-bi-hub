@@ -217,6 +217,14 @@ All colors MUST be HSL.
 @media print {
   .no-print { display: none !important; }
 
+  /* Esconde avisos/toasts na impressão */
+  [data-sonner-toaster],
+  [data-sonner-toast],
+  .sonner-toaster,
+  [role="status"] {
+    display: none !important;
+  }
+
   .print-header {
     display: flex !important;
     padding: 0 8px;
