@@ -89,6 +89,9 @@ const DashboardViewer = () => {
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState<{ name: string | null; logo_url: string | null }>({ name: null, logo_url: null });
+  const [exportStamp, setExportStamp] = useState<string>("");
+
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
