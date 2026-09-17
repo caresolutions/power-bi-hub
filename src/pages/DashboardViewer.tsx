@@ -92,6 +92,7 @@ const DashboardViewer = () => {
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<{ name: string | null; logo_url: string | null }>({ name: null, logo_url: null });
   const [exportStamp, setExportStamp] = useState<string>("");
+  const [exportPageLabel, setExportPageLabel] = useState<string>("");
 
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
