@@ -733,7 +733,10 @@ const DashboardViewer = () => {
           )}
           <div>
             {companyInfo.name && <p className="text-sm font-semibold">{companyInfo.name}</p>}
-            <p className="text-base font-bold">{dashboard.name}</p>
+            <p className="text-base font-bold">
+              {dashboard.name}
+              {exportPageLabel ? ` — ${exportPageLabel}` : ""}
+            </p>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">Exportado em {exportStamp}</p>
