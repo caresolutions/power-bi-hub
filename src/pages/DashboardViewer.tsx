@@ -644,9 +644,24 @@ const DashboardViewer = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col dashboard-print-root">
+      {/* Cabeçalho exibido apenas na exportação/impressão */}
+      <div className="print-header hidden items-center justify-between border-b border-border pb-2 mb-2">
+        <div className="flex items-center gap-3">
+          {companyInfo.logo_url && (
+            <img src={companyInfo.logo_url} alt={companyInfo.name || "Logo da empresa"} className="h-10 w-auto object-contain" />
+          )}
+          <div>
+            {companyInfo.name && <p className="text-sm font-semibold">{companyInfo.name}</p>}
+            <p className="text-base font-bold">{dashboard.name}</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Exportado em {exportStamp}</p>
+      </div>
+
       {/* Header with back button */}
-      <div className="flex-shrink-0 h-10 bg-background border-b border-border flex items-center justify-between px-2">
+      <div className="no-print flex-shrink-0 h-10 bg-background border-b border-border flex items-center justify-between px-2">
+
         <div className="flex items-center">
           <Button 
             variant="ghost" 
