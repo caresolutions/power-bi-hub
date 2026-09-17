@@ -25,12 +25,6 @@ import { logEdit } from "@/lib/editLog";
 import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -604,7 +598,7 @@ const DashboardViewer = () => {
     }
   }, [toast]);
 
-  const handleExport = useCallback(async (mode: "current" | "all" = "current") => {
+  const handleExport = useCallback(async () => {
     if (!dashboard || !reportRef.current) return;
     setExporting(true);
     const originalTitle = document.title;
@@ -631,58 +625,30 @@ const DashboardViewer = () => {
 
       const companyPart = companyInfo.name ? `${safe(companyInfo.name)} - ` : "";
       const stampPart = format(now, "dd-MM-yyyy HH-mm");
-
-      const targets =
-        mode === "all" && visiblePages.length > 0
-          ? visiblePages.map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
-          : [
-              {
-                name: currentPage,
-                displayName:
-                  visiblePages.find((p) => p.name === currentPage)?.displayName || "",
-              },
-            ];
+      const pageDisplayName = visiblePages.find((p) => p.name === currentPage)?.displayName || "";
 
       const preparing = toast({
         title: "Preparando exportação",
-        description:
-          mode === "all"
-            ? `Vamos abrir a janela de impressão para cada uma das ${targets.length} páginas. Escolha 'Salvar como PDF'.`
-            : "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
+        description: "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
       });
-      await new Promise((r) => setTimeout(r, mode === "all" ? 1500 : 300));
+      await new Promise((r) => setTimeout(r, 300));
       preparing.dismiss();
       dismiss();
 
-      const originalPage = currentPage;
-
-      for (const target of targets) {
-        if (mode === "all" && target.name && target.name !== currentPage) {
-          await handlePageChange(target.name);
-          await new Promise((r) => setTimeout(r, 2500));
+      setExportPageLabel(pageDisplayName);
+      const pagePart = pageDisplayName ? ` - ${safe(pageDisplayName)}` : "";
+      const fileTitle = `${companyPart}${safe(dashboard.name)}${pagePart} - ${stampPart}`;
+      document.title = fileTitle;
+      try {
+        if (window.top && window.top !== window.self) {
+          (window.top as Window).document.title = fileTitle;
         }
-
-        setExportPageLabel(target.displayName || "");
-        const pagePart = mode === "all" && target.displayName ? ` - ${safe(target.displayName)}` : "";
-        const fileTitle = `${companyPart}${safe(dashboard.name)}${pagePart} - ${stampPart}`;
-        document.title = fileTitle;
-        try {
-          if (window.top && window.top !== window.self) {
-            (window.top as Window).document.title = fileTitle;
-          }
-        } catch {
-          // janela pai de outro domínio (ex.: pré-visualização) — ignora
-        }
-
-        await new Promise((r) => setTimeout(r, 300));
-        await printOnce();
-        await new Promise((r) => setTimeout(r, 400));
+      } catch {
+        // janela pai de outro domínio (ex.: pré-visualização) — ignora
       }
 
-      if (mode === "all" && originalPage && originalPage !== currentPage) {
-        await handlePageChange(originalPage);
-      }
-
+      await new Promise((r) => setTimeout(r, 300));
+      await printOnce();
       setExportPageLabel("");
       restoreTitle();
       setExporting(false);
@@ -869,54 +835,23 @@ const DashboardViewer = () => {
 
           {/* Export button (captura da tela) */}
           {dashboard.embed_type === "workspace_id" && (
-            visiblePages.length > 1 ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={exporting}
-                    className="text-xs h-7 px-2"
-                    title="Exportar em PDF (captura da tela)"
-                  >
-                    {exporting ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Download className="h-3 w-3" />
-                    )}
-                    <span className="ml-1 hidden sm:inline">
-                      {exporting ? "Exportando..." : "Exportar PDF"}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleExport("current")}>
-                    Somente a página atual
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("all")}>
-                    Todas as páginas ({visiblePages.length})
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={exporting}
-                onClick={() => handleExport("current")}
-                className="text-xs h-7 px-2"
-                title="Exportar em PDF (captura da tela)"
-              >
-                {exporting ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Download className="h-3 w-3" />
-                )}
-                <span className="ml-1 hidden sm:inline">
-                  {exporting ? "Exportando..." : "Exportar PDF"}
-                </span>
-              </Button>
-            )
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={exporting}
+              onClick={handleExport}
+              className="text-xs h-7 px-2"
+              title="Exportar página atual em PDF (captura da tela)"
+            >
+              {exporting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3" />
+              )}
+              <span className="ml-1 hidden sm:inline">
+                {exporting ? "Exportando..." : "Exportar PDF"}
+              </span>
+            </Button>
           )}
 
 
