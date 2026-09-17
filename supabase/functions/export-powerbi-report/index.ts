@@ -170,10 +170,12 @@ serve(async (req) => {
       if (
         startRes.status === 402 || lower.includes("capacity") ||
         lower.includes("notsupported") || lower.includes("premium") ||
-        lower.includes("fixedcapacity")
+        lower.includes("fixedcapacity") ||
+        lower.includes("featurenotavailable")
       ) {
         throw new Error(MSG.no_capacity);
       }
+
       if (startRes.status === 401 || startRes.status === 403) throw new Error(MSG.permission_denied);
       throw new Error(MSG.service_error);
     }
