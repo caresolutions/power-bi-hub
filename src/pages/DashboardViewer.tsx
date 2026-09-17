@@ -22,6 +22,7 @@ import { ptBR } from "date-fns/locale";
 import * as pbi from "powerbi-client";
 import { cn } from "@/lib/utils";
 import { logEdit } from "@/lib/editLog";
+import { useCompanyCustomization } from "@/hooks/useCompanyCustomization";
 import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 import {
   AlertDialog,
@@ -126,6 +127,10 @@ const DashboardViewer = () => {
         }
       });
   }, [userId, dashboardCompanyId]);
+
+  // Se a empresa do dashboard não tiver logo (ou não for legível), usa o logo da empresa do usuário logado
+  const { customization } = useCompanyCustomization();
+  const printLogoUrl = companyInfo.logo_url || customization?.logo_url || null;
 
 
   const handleToggleFitMode = () => {
@@ -663,8 +668,13 @@ const DashboardViewer = () => {
       {/* Cabeçalho exibido apenas na exportação/impressão */}
       <div className="print-header hidden items-center justify-between border-b border-border pb-2 mb-2">
         <div className="flex items-center gap-3">
-          {companyInfo.logo_url && (
-            <img src={companyInfo.logo_url} alt={companyInfo.name || "Logo da empresa"} className="h-10 w-auto object-contain" />
+          {printLogoUrl && (
+            <img
+              src={printLogoUrl}
+              alt={companyInfo.name || "Logo da empresa"}
+              crossOrigin="anonymous"
+              className="h-10 w-auto object-contain"
+            />
           )}
           <div>
             {companyInfo.name && <p className="text-sm font-semibold">{companyInfo.name}</p>}
