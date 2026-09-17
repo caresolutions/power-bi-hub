@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -55,6 +56,25 @@ const ConditionalSupportChat = () => {
   return <SupportChat />;
 };
 
+// Force the page title everywhere so preview/hosting suffixes never show
+const TitleSetter = () => {
+  useEffect(() => {
+    const setTitle = () => {
+      if (document.title.includes("Lovable")) {
+        document.title = "Power BI Hub Dashboards";
+      }
+    };
+    setTitle();
+    const observer = new MutationObserver(setTitle);
+    const titleEl = document.querySelector("title");
+    if (titleEl) {
+      observer.observe(titleEl, { childList: true, subtree: true });
+    }
+    return () => observer.disconnect();
+  }, []);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -63,6 +83,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ConsentProvider>
+            <TitleSetter />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/saiba-mais" element={<LearnMore />} />
