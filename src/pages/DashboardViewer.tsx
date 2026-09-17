@@ -629,9 +629,10 @@ const DashboardViewer = () => {
 
       // aguarda o cabeçalho de impressão renderizar
       await new Promise((r) => setTimeout(r, 300));
-      // fecha os avisos para não saírem na impressão
+      // fecha todos os avisos para não saírem na impressão
       preparing.dismiss();
-      await new Promise((r) => setTimeout(r, 100));
+      dismiss();
+      await new Promise((r) => setTimeout(r, 150));
       window.addEventListener("afterprint", restore);
       window.print();
       setExporting(false);
