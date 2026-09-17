@@ -68,7 +68,7 @@ const DashboardViewer = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get("app");
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [embedLoading, setEmbedLoading] = useState(false);
