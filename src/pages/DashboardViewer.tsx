@@ -2,7 +2,15 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye, CalendarClock } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye, CalendarClock, Download, FileText, Presentation } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { RefreshScheduleDialog } from "@/components/dashboards/RefreshScheduleDialog";
@@ -84,6 +92,7 @@ const DashboardViewer = () => {
   // Padrão da empresa (definido pelo admin), com preferência individual do usuário
   const [fitMode, setFitMode] = useState<"width" | "page">("width");
 
+  const [exporting, setExporting] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
@@ -585,6 +594,86 @@ const DashboardViewer = () => {
     }
   }, [toast]);
 
+  const handleExport = useCallback(
+    async (fileFormat: "PDF" | "PPTX", scope: "current" | "all") => {
+      if (!dashboard) return;
+      setExporting(true);
+      try {
+        let bookmarkState: string | undefined;
+        let pages: string[] | undefined;
+
+        if (reportRef.current) {
+          try {
+            const captured = await reportRef.current.bookmarksManager.capture();
+            bookmarkState = captured.state;
+          } catch (err) {
+            console.warn("Não foi possível capturar o estado atual:", err);
+          }
+        }
+
+        if (scope === "current") {
+          pages = currentPage ? [currentPage] : undefined;
+        } else if (visiblePages.length > 0) {
+          // Respeita as restrições de páginas configuradas
+          pages = visiblePages.map((p) => p.name);
+        }
+
+        toast({
+          title: "Exportação iniciada",
+          description: "Estamos gerando o arquivo no Power BI. Isso pode levar alguns instantes.",
+        });
+
+        const response = await supabase.functions.invoke("export-powerbi-report", {
+          body: {
+            dashboardId: dashboard.id,
+            format: fileFormat,
+            scope: scope === "current" ? "current" : pages ? "current" : "all",
+            pages,
+            bookmarkState,
+          },
+        });
+
+        if (response.error) throw new Error(response.error.message);
+
+        const data = response.data as {
+          success: boolean;
+          error?: string;
+          fileName?: string;
+          mimeType?: string;
+          fileBase64?: string;
+        };
+
+        if (!data.success || !data.fileBase64) {
+          throw new Error(data.error || "Falha ao exportar o relatório");
+        }
+
+        const binary = atob(data.fileBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: data.mimeType || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = data.fileName || `relatorio.${fileFormat.toLowerCase()}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({ title: "Exportação concluída", description: "O download foi iniciado." });
+      } catch (error: any) {
+        toast({
+          title: "Erro na exportação",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setExporting(false);
+      }
+    },
+    [dashboard, currentPage, visiblePages, toast]
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -727,7 +816,52 @@ const DashboardViewer = () => {
               <span className="ml-1 hidden sm:inline">Visualizações</span>
             </Button>
           )}
-          
+
+          {/* Export button */}
+          {dashboard.embed_type === "workspace_id" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={exporting}
+                  className="text-xs h-7 px-2"
+                  title="Exportar relatório"
+                >
+                  {exporting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Download className="h-3 w-3" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">
+                    {exporting ? "Exportando..." : "Exportar"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 bg-popover z-[60]">
+                <DropdownMenuLabel>PDF</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("PDF", "current")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Página atual
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("PDF", "all")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Relatório completo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>PowerPoint</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("PPTX", "current")}>
+                  <Presentation className="mr-2 h-4 w-4" />
+                  Página atual
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("PPTX", "all")}>
+                  <Presentation className="mr-2 h-4 w-4" />
+                  Relatório completo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {isAdmin && dashboard.embed_type === "workspace_id" && (
             <Button
               variant="ghost"
