@@ -2,15 +2,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye, CalendarClock, Download, FileText, Presentation } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Loader2, RefreshCw, History, Bookmark, Star, MessageSquare, Maximize2, Monitor, Pencil, Eye, CalendarClock, Download } from "lucide-react";
+
 import { useToast } from "@/components/ui/use-toast";
 import { RefreshHistoryDialog } from "@/components/dashboards/RefreshHistoryDialog";
 import { RefreshScheduleDialog } from "@/components/dashboards/RefreshScheduleDialog";
