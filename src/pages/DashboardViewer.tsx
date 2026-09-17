@@ -89,6 +89,9 @@ const DashboardViewer = () => {
   const [editMode, setEditMode] = useState(false);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState<{ name: string | null; logo_url: string | null }>({ name: null, logo_url: null });
+  const [exportStamp, setExportStamp] = useState<string>("");
+
   
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
@@ -104,24 +107,26 @@ const DashboardViewer = () => {
   // Resolve fit mode: preferência do usuário > padrão da empresa dona do dashboard
   const dashboardCompanyId = (dashboard as any)?.company_id ?? companyId;
   useEffect(() => {
-    if (!userId) return;
-    const saved = localStorage.getItem(`dashboard_fit_mode_${userId}`);
-    if (saved === "width" || saved === "page") {
-      setFitMode(saved);
-      return;
-    }
     if (!dashboardCompanyId) return;
     supabase
       .from("companies")
-      .select("default_fit_mode")
+      .select("name, logo_url, default_fit_mode")
       .eq("id", dashboardCompanyId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.default_fit_mode === "page" || data?.default_fit_mode === "width") {
+        if (!data) return;
+        setCompanyInfo({ name: (data as any).name ?? null, logo_url: (data as any).logo_url ?? null });
+        const saved = userId ? localStorage.getItem(`dashboard_fit_mode_${userId}`) : null;
+        if (saved === "width" || saved === "page") {
+          setFitMode(saved);
+          return;
+        }
+        if (data.default_fit_mode === "page" || data.default_fit_mode === "width") {
           setFitMode(data.default_fit_mode);
         }
       });
   }, [userId, dashboardCompanyId]);
+
 
   const handleToggleFitMode = () => {
     const next = fitMode === "width" ? "page" : "width";
@@ -590,13 +595,23 @@ const DashboardViewer = () => {
   const handleExport = useCallback(async () => {
     if (!dashboard || !reportRef.current) return;
     setExporting(true);
+    const originalTitle = document.title;
     try {
+      const now = new Date();
+      setExportStamp(format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
+
+      const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "-").trim();
+      const companyPart = companyInfo.name ? `${safe(companyInfo.name)} - ` : "";
+      document.title = `${companyPart}${safe(dashboard.name)} - ${format(now, "dd-MM-yyyy HH-mm")}`;
+
       toast({
         title: "Preparando exportação",
         description: "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
       });
 
-      await reportRef.current.print();
+      // aguarda o cabeçalho de impressão renderizar
+      await new Promise((r) => setTimeout(r, 300));
+      window.print();
     } catch (error: any) {
       toast({
         title: "Erro na exportação",
@@ -604,9 +619,11 @@ const DashboardViewer = () => {
         variant: "destructive",
       });
     } finally {
+      document.title = originalTitle;
       setExporting(false);
     }
-  }, [dashboard, toast]);
+  }, [dashboard, companyInfo, toast]);
+
 
 
   if (loading) {
@@ -627,9 +644,24 @@ const DashboardViewer = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col dashboard-print-root">
+      {/* Cabeçalho exibido apenas na exportação/impressão */}
+      <div className="print-header hidden items-center justify-between border-b border-border pb-2 mb-2">
+        <div className="flex items-center gap-3">
+          {companyInfo.logo_url && (
+            <img src={companyInfo.logo_url} alt={companyInfo.name || "Logo da empresa"} className="h-10 w-auto object-contain" />
+          )}
+          <div>
+            {companyInfo.name && <p className="text-sm font-semibold">{companyInfo.name}</p>}
+            <p className="text-base font-bold">{dashboard.name}</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Exportado em {exportStamp}</p>
+      </div>
+
       {/* Header with back button */}
-      <div className="flex-shrink-0 h-10 bg-background border-b border-border flex items-center justify-between px-2">
+      <div className="no-print flex-shrink-0 h-10 bg-background border-b border-border flex items-center justify-between px-2">
+
         <div className="flex items-center">
           <Button 
             variant="ghost" 

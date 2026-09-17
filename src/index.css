@@ -213,3 +213,28 @@ All colors MUST be HSL.
   height: 100% !important;
   border: none !important;
 }
+/* Exportação por captura (impressão / salvar como PDF) */
+@media print {
+  .no-print { display: none !important; }
+
+  .print-header {
+    display: flex !important;
+    padding: 0 8px;
+  }
+
+  .dashboard-print-root {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-print-root iframe {
+    width: 100% !important;
+    min-height: 90vh !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+}
