@@ -816,7 +816,52 @@ const DashboardViewer = () => {
               <span className="ml-1 hidden sm:inline">Visualizações</span>
             </Button>
           )}
-          
+
+          {/* Export button */}
+          {dashboard.embed_type === "workspace_id" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={exporting}
+                  className="text-xs h-7 px-2"
+                  title="Exportar relatório"
+                >
+                  {exporting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Download className="h-3 w-3" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">
+                    {exporting ? "Exportando..." : "Exportar"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 bg-popover z-[60]">
+                <DropdownMenuLabel>PDF</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("PDF", "current")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Página atual
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("PDF", "all")}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Relatório completo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>PowerPoint</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport("PPTX", "current")}>
+                  <Presentation className="mr-2 h-4 w-4" />
+                  Página atual
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("PPTX", "all")}>
+                  <Presentation className="mr-2 h-4 w-4" />
+                  Relatório completo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {isAdmin && dashboard.embed_type === "workspace_id" && (
             <Button
               variant="ghost"
