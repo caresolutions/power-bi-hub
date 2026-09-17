@@ -595,13 +595,23 @@ const DashboardViewer = () => {
   const handleExport = useCallback(async () => {
     if (!dashboard || !reportRef.current) return;
     setExporting(true);
+    const originalTitle = document.title;
     try {
+      const now = new Date();
+      setExportStamp(format(now, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
+
+      const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "-").trim();
+      const companyPart = companyInfo.name ? `${safe(companyInfo.name)} - ` : "";
+      document.title = `${companyPart}${safe(dashboard.name)} - ${format(now, "dd-MM-yyyy HH-mm")}`;
+
       toast({
         title: "Preparando exportação",
         description: "Vamos abrir a janela de impressão. Escolha 'Salvar como PDF'.",
       });
 
-      await reportRef.current.print();
+      // aguarda o cabeçalho de impressão renderizar
+      await new Promise((r) => setTimeout(r, 300));
+      window.print();
     } catch (error: any) {
       toast({
         title: "Erro na exportação",
@@ -609,9 +619,11 @@ const DashboardViewer = () => {
         variant: "destructive",
       });
     } finally {
+      document.title = originalTitle;
       setExporting(false);
     }
-  }, [dashboard, toast]);
+  }, [dashboard, companyInfo, toast]);
+
 
 
   if (loading) {
