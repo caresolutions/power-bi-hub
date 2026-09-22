@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
 import { EditLogsDialog } from "@/components/dashboards/EditLogsDialog";
+import { RlsFilterDialog } from "@/components/dashboards/RlsFilterDialog";
 import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
