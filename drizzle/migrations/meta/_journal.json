@@ -8,6 +8,13 @@
       "when": 1790084140455,
       "tag": "0000_dashboard_rls_filters_table",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790084156849,
+      "tag": "0001_dashboard_rls_filters_policies",
+      "breakpoints": true
     }
   ]
 }
