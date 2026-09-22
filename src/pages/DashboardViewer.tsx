@@ -98,6 +98,7 @@ const DashboardViewer = () => {
   const embedContainerRef = useRef<HTMLDivElement>(null);
   const powerbiRef = useRef<pbi.service.Service | null>(null);
   const reportRef = useRef<pbi.Report | null>(null);
+  const rlsFiltersRef = useRef<pbi.models.IBasicFilter[]>([]);
   
   const { isFavorite, toggleFavorite } = useDashboardFavorites();
   const { logPageAccess } = useAccessLog();
