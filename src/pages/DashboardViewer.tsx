@@ -510,6 +510,9 @@ const DashboardViewer = () => {
 
     };
 
+    if (rlsFiltersRef.current.length > 0) {
+      config.filters = rlsFiltersRef.current;
+    }
 
     if (embedData.reportSection) {
       config.pageName = embedData.reportSection;
