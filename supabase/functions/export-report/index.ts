@@ -80,7 +80,7 @@ serve(async (req) => {
     }
 
     // Build dashboard link
-    const appBaseUrl = 'https://28dee854-2d52-4030-99a6-3f96767762b3.lovableproject.com';
+    const appBaseUrl = 'https://dashboards.care-br.com';
     const dashboardLink = `${appBaseUrl}/dashboard/${dashboard.id}`;
     
     // Power BI direct link
