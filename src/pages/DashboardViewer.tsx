@@ -274,7 +274,19 @@ const DashboardViewer = () => {
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        let errorMessage = response.error.message;
+        const errorContext = (response.error as { context?: Response }).context;
+
+        if (errorContext) {
+          try {
+            const errorBody = await errorContext.clone().json() as { error?: string };
+            errorMessage = errorBody.error || errorMessage;
+          } catch {
+            // Keep the SDK message when the response body is not JSON.
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       const data = response.data as { success: boolean; error?: string; message?: string };
