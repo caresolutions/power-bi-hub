@@ -47,7 +47,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = "https://dashboards.care-br.com";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

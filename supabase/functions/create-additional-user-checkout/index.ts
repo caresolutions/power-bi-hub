@@ -86,7 +86,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = "https://dashboards.care-br.com";
 
     // Build session params - only use customer OR customer_email, not both
     const sessionParams: any = {
