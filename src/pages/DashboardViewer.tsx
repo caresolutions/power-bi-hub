@@ -367,11 +367,59 @@ const DashboardViewer = () => {
     }
   };
 
+  // Monta os filtros de segurança por linha configurados para este dashboard
+  const loadRlsFilters = async (dashboardId: string) => {
+    rlsFiltersRef.current = [];
+    try {
+      const { data: config } = await supabase
+        .from("dashboard_rls_filters")
+        .select("table_name, column_name, use_email, exempt_admins, is_active")
+        .eq("dashboard_id", dashboardId)
+        .maybeSingle();
+
+      if (!config || !config.is_active || !config.table_name || !config.column_name) return;
+      if (config.exempt_admins && isAdmin) return;
+
+      const values: string[] = [];
+
+      if (config.use_email) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) values.push(user.email);
+      }
+
+      if (userId) {
+        const { data: userValues } = await supabase
+          .from("dashboard_rls_user_values")
+          .select("filter_value")
+          .eq("dashboard_id", dashboardId)
+          .eq("user_id", userId);
+        (userValues || []).forEach((v) => values.push(v.filter_value));
+      }
+
+      // Sem valores: bloqueia tudo em vez de liberar tudo
+      const finalValues = values.length > 0 ? values : ["__sem_acesso__"];
+
+      rlsFiltersRef.current = [
+        {
+          $schema: "http://powerbi.com/product/schema#basic",
+          target: { table: config.table_name, column: config.column_name },
+          operator: "In",
+          values: finalValues,
+          filterType: pbi.models.FilterType.Basic,
+        } as pbi.models.IBasicFilter,
+      ];
+    } catch (error) {
+      console.error("Erro ao carregar filtros de segurança:", error);
+    }
+  };
+
   const fetchEmbedToken = async (dashboardId: string, mode: "view" | "edit" = "view") => {
     setEmbedLoading(true);
     setEmbedError(null);
 
     try {
+      await loadRlsFilters(dashboardId);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
