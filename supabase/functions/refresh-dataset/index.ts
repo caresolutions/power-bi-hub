@@ -9,6 +9,7 @@ const corsHeaders = {
 // Generic user-facing error messages (hide internal details)
 const USER_ERROR_MESSAGES = {
   auth_failed: "Falha na autenticação. Verifique suas credenciais do Power BI.",
+  refresh_permission_denied: "A conta do Power BI está autenticada, mas não tem permissão para atualizar este conjunto de dados. Conceda a permissão Dataset.ReadWrite.All ao aplicativo Microsoft e acesso de Membro ou Administrador no workspace.",
   resource_not_found: "Recurso não encontrado. Verifique as configurações do dashboard.",
   permission_denied: "Você não tem permissão para atualizar este dashboard.",
   refresh_in_progress: "Atualização já em andamento ou limite atingido. Tente novamente mais tarde.",
@@ -181,7 +182,7 @@ async function refreshDataset(
       throw new Error(USER_ERROR_MESSAGES.refresh_in_progress);
     }
     if (response.status === 401) {
-      throw new Error(USER_ERROR_MESSAGES.auth_failed);
+      throw new Error(USER_ERROR_MESSAGES.refresh_permission_denied);
     }
     if (response.status === 403) {
       throw new Error(USER_ERROR_MESSAGES.permission_denied);
