@@ -690,6 +690,20 @@ const Dashboards = () => {
                               <ScrollText className="mr-2 h-4 w-4" />
                               Logs
                             </Button>
+                            {dashboard.embed_type === "workspace_id" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRlsDashboard(dashboard);
+                                }}
+                              >
+                                <ShieldCheck className="mr-2 h-4 w-4" />
+                                Restrição
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
