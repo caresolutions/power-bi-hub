@@ -924,6 +924,15 @@ const Dashboards = () => {
           dashboardName={logsDashboard.name}
         />
       )}
+
+      {rlsDashboard && (
+        <RlsFilterDialog
+          open={!!rlsDashboard}
+          onOpenChange={(open) => !open && setRlsDashboard(null)}
+          dashboardId={rlsDashboard.id}
+          dashboardName={rlsDashboard.name}
+        />
+      )}
     </div>
   );
 };
