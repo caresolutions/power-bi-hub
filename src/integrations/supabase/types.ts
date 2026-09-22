@@ -571,6 +571,88 @@ export type Database = {
           },
         ]
       }
+      dashboard_rls_filters: {
+        Row: {
+          column_name: string
+          created_at: string
+          created_by: string | null
+          dashboard_id: string
+          exempt_admins: boolean
+          id: string
+          is_active: boolean
+          table_name: string
+          updated_at: string
+          use_email: boolean
+        }
+        Insert: {
+          column_name: string
+          created_at?: string
+          created_by?: string | null
+          dashboard_id: string
+          exempt_admins?: boolean
+          id?: string
+          is_active?: boolean
+          table_name: string
+          updated_at?: string
+          use_email?: boolean
+        }
+        Update: {
+          column_name?: string
+          created_at?: string
+          created_by?: string | null
+          dashboard_id?: string
+          exempt_admins?: boolean
+          id?: string
+          is_active?: boolean
+          table_name?: string
+          updated_at?: string
+          use_email?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_rls_filters_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: true
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_rls_user_values: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dashboard_id: string
+          filter_value: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dashboard_id: string
+          filter_value: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dashboard_id?: string
+          filter_value?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_rls_user_values_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboards: {
         Row: {
           category: string | null
