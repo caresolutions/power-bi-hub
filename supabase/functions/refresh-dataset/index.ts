@@ -20,8 +20,16 @@ const USER_ERROR_MESSAGES = {
 function categorizeError(error: Error | string): keyof typeof USER_ERROR_MESSAGES {
   const message = typeof error === 'string' ? error : error.message;
   const lowerMsg = message.toLowerCase();
+
+  const knownCategory = (Object.entries(USER_ERROR_MESSAGES) as Array<
+    [keyof typeof USER_ERROR_MESSAGES, string]
+  >).find(([, userMessage]) => userMessage === message)?.[0];
+
+  if (knownCategory) {
+    return knownCategory;
+  }
   
-  if (lowerMsg.includes('authentication') || lowerMsg.includes('token') || lowerMsg.includes('azure')) {
+  if (lowerMsg.includes('authentication') || lowerMsg.includes('autenticação') || lowerMsg.includes('token') || lowerMsg.includes('azure')) {
     return 'auth_failed';
   }
   if (lowerMsg.includes('not found') || lowerMsg.includes('404')) {
