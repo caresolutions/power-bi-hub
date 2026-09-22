@@ -847,6 +847,17 @@ const Dashboards = () => {
                               >
                                 <ScrollText className="h-4 w-4" />
                               </Button>
+                              {dashboard.embed_type === "workspace_id" && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setRlsDashboard(dashboard)}
+                                  title="Restrição de dados"
+                                >
+                                  <ShieldCheck className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
