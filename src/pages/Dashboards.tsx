@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2, LayoutGrid, List, ScrollText } from "lucide-react";
+import { ArrowLeft, Plus, BarChart3, Users, Pencil, Trash2, Mail, RefreshCw, Building2, LayoutGrid, List, ScrollText, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardForm from "@/components/dashboards/DashboardForm";
 import RefreshPermissionsDialog from "@/components/dashboards/RefreshPermissionsDialog";
 import { EditLogsDialog } from "@/components/dashboards/EditLogsDialog";
+import { RlsFilterDialog } from "@/components/dashboards/RlsFilterDialog";
 import { DashboardCatalogFilters } from "@/components/dashboards/DashboardCatalogFilters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FavoriteButton } from "@/components/dashboards/FavoriteButton";
@@ -66,6 +67,7 @@ const Dashboards = () => {
   const [refreshPermsDashboard, setRefreshPermsDashboard] = useState<Dashboard | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
   const [logsDashboard, setLogsDashboard] = useState<Dashboard | null>(null);
+  const [rlsDashboard, setRlsDashboard] = useState<Dashboard | null>(null);
   
   // Catalog filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -688,6 +690,20 @@ const Dashboards = () => {
                               <ScrollText className="mr-2 h-4 w-4" />
                               Logs
                             </Button>
+                            {dashboard.embed_type === "workspace_id" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRlsDashboard(dashboard);
+                                }}
+                              >
+                                <ShieldCheck className="mr-2 h-4 w-4" />
+                                Restrição
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -831,6 +847,17 @@ const Dashboards = () => {
                               >
                                 <ScrollText className="h-4 w-4" />
                               </Button>
+                              {dashboard.embed_type === "workspace_id" && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setRlsDashboard(dashboard)}
+                                  title="Restrição de dados"
+                                >
+                                  <ShieldCheck className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -895,6 +922,15 @@ const Dashboards = () => {
           onOpenChange={(open) => !open && setLogsDashboard(null)}
           dashboardId={logsDashboard.id}
           dashboardName={logsDashboard.name}
+        />
+      )}
+
+      {rlsDashboard && (
+        <RlsFilterDialog
+          open={!!rlsDashboard}
+          onOpenChange={(open) => !open && setRlsDashboard(null)}
+          dashboardId={rlsDashboard.id}
+          dashboardName={rlsDashboard.name}
         />
       )}
     </div>
