@@ -486,7 +486,7 @@ const DashboardViewer = () => {
       permissions: mode === "edit" ? pbi.models.Permissions.ReadWrite : pbi.models.Permissions.Read,
       settings: {
         panes: {
-          filters: { visible: mode === "edit" },
+          filters: { visible: mode === "edit" && rlsFiltersRef.current.length === 0 },
           pageNavigation: { visible: false }, // Hide default nav, use our custom one
         },
         background: pbi.models.BackgroundType.Default,
