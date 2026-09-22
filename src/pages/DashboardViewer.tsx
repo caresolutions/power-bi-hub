@@ -547,6 +547,28 @@ const DashboardViewer = () => {
 
     report.on("loaded", async () => {
       console.log("Report loaded successfully");
+
+      // Reaplica os filtros de segurança após o carregamento (garante que valem mesmo
+      // que o relatório traga filtros salvos) e reporta falhas de tabela/coluna inválidas
+      if (rlsFiltersRef.current.length > 0) {
+        try {
+          await report.updateFilters(
+            pbi.models.FiltersOperations.ReplaceAll,
+            rlsFiltersRef.current
+          );
+          const applied = await report.getFilters();
+          console.log("Filtros de segurança aplicados:", applied);
+        } catch (err: any) {
+          console.error("Falha ao aplicar filtro de segurança:", err);
+          toast({
+            title: "Filtro de segurança não aplicado",
+            description:
+              "Verifique se o nome da tabela e da coluna estão exatamente iguais aos do relatório.",
+            variant: "destructive",
+          });
+        }
+      }
+
       
       // Get report pages for navigation
       try {
