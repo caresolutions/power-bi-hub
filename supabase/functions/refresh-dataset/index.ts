@@ -164,16 +164,27 @@ async function refreshDataset(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("[AUDIT] Dataset refresh error:", errorText);
-    
+    console.error(
+      `[AUDIT] Dataset refresh error [status=${response.status}] workspace=${workspaceId} dataset=${datasetId} body=${errorText}`
+    );
+
     // Parse common errors
     if (response.status === 400) {
       throw new Error(USER_ERROR_MESSAGES.refresh_in_progress);
     }
+    if (response.status === 401) {
+      throw new Error(USER_ERROR_MESSAGES.auth_failed);
+    }
     if (response.status === 403) {
       throw new Error(USER_ERROR_MESSAGES.permission_denied);
     }
-    
+    if (response.status === 404) {
+      throw new Error(USER_ERROR_MESSAGES.resource_not_found);
+    }
+    if (response.status === 429) {
+      throw new Error(USER_ERROR_MESSAGES.refresh_in_progress);
+    }
+
     throw new Error(USER_ERROR_MESSAGES.service_error);
   }
 
